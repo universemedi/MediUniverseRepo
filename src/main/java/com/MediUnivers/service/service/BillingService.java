@@ -1,0 +1,257 @@
+package com.MediUnivers.service.service;
+
+import com.MediUnivers.service.domain.*;
+import com.MediUnivers.service.dto.*;
+import com.MediUnivers.service.payment.GatewayOrderResult;
+import com.MediUnivers.service.payment.PaymentGatewayService;
+import com.MediUnivers.service.repository.InvoiceRepository;
+import com.MediUnivers.service.security.CurrentUserService;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+/**
+ * The centralized Billing Engine. Every business module bills through this
+ * one service instead of building its own invoicing — per spec, "Pharmacy
+ * never creates invoices directly... one billing system for the platform,"
+ * and the same principle applies to Clinic, Laboratory, and any module that
+ * comes after them.
+ *
+ * TO ADD BILLING TO A NEW MODULE:
+ *   1. Add a value to {@link SourceModule} for it (or reuse OTHER for something minor).
+ *   2. Call {@link #createInvoice} with a list of {@link InvoiceLineItemInput} describing
+ *      what's being charged — sourceType/sourceId let the line trace back to whatever
+ *      record created it, without this engine needing a foreign key into that module's
+ *      tables.
+ *   3. Optionally call {@link #recordPayment} immediately if the module collects payment
+ *      inline (like Pharmacy's counter sales); otherwise leave the invoice UNPAID and let
+ *      reception collect payment later through the Billing screens, manually or via
+ *      {@link #createGatewayOrder} / {@link #confirmGatewayPayment} for online payment.
+ * Nothing else in this class needs to change for a new module to bill correctly.
+ *
+ * TO ADD A NEW PAYMENT GATEWAY: implement {@link PaymentGatewayService} and register it
+ * as a Spring bean — Spring collects every implementation into the gateways map below,
+ * keyed by bean name, so createGatewayOrder/confirmGatewayPayment can select it by that
+ * name without any change here.
+ */
+@Service
+@Transactional
+public class BillingService {
+
+    private final InvoiceRepository invoiceRepository;
+    private final NumberSeriesService numberSeriesService;
+    private final CurrentUserService currentUserService;
+    private final Map<String, PaymentGatewayService> gateways;
+    private static final String DEFAULT_GATEWAY = "razorpay";
+
+    public BillingService(InvoiceRepository invoiceRepository, NumberSeriesService numberSeriesService,
+                           CurrentUserService currentUserService, List<PaymentGatewayService> gatewayBeans) {
+        this.invoiceRepository = invoiceRepository;
+        this.numberSeriesService = numberSeriesService;
+        this.currentUserService = currentUserService;
+        // Keyed by each gateway's own gatewayName() — not the Spring bean name — so the
+        // API surface (and any request body) can use a short, stable identifier like
+        // "razorpay" regardless of how the implementation class happens to be named.
+        this.gateways = gatewayBeans.stream()
+                .collect(java.util.stream.Collectors.toMap(PaymentGatewayService::gatewayName, g -> g));
+    }
+
+    public Invoice createInvoice(Organization organization, Branch branch, Patient patient,
+                                  SourceModule sourceModule, List<InvoiceLineItemInput> items) {
+        if (items == null || items.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An invoice needs at least one line item.");
+        }
+        Invoice invoice = new Invoice();
+        invoice.setOrganization(organization);
+        invoice.setBranch(branch);
+        invoice.setPatient(patient);
+        invoice.setSourceModule(sourceModule);
+        invoice.setInvoiceNumber(numberSeriesService.next(organization, "INVOICE", "INV", ResetPolicy.YEARLY, 6));
+
+        BigDecimal subtotal = BigDecimal.ZERO;
+        BigDecimal discountTotal = BigDecimal.ZERO;
+        BigDecimal taxTotal = BigDecimal.ZERO;
+
+        for (InvoiceLineItemInput in : items) {
+            BigDecimal qty = BigDecimal.valueOf(in.quantity());
+            BigDecimal lineSubtotal = in.unitPrice().multiply(qty);
+            BigDecimal lineDiscount = (in.discount() != null ? in.discount() : BigDecimal.ZERO).multiply(qty);
+            BigDecimal taxable = lineSubtotal.subtract(lineDiscount);
+            BigDecimal taxPercent = in.taxPercent() != null ? in.taxPercent() : BigDecimal.ZERO;
+            BigDecimal lineTax = taxable.multiply(taxPercent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            BigDecimal lineTotal = taxable.add(lineTax);
+
+            InvoiceLineItem item = new InvoiceLineItem();
+            item.setDescription(in.description());
+            item.setSourceType(in.sourceType());
+            item.setSourceId(in.sourceId());
+            item.setQuantity(in.quantity());
+            item.setUnitPrice(in.unitPrice());
+            item.setDiscount(lineDiscount);
+            item.setTaxPercent(taxPercent);
+            item.setLineTotal(lineTotal);
+            invoice.addLineItem(item);
+
+            subtotal = subtotal.add(lineSubtotal);
+            discountTotal = discountTotal.add(lineDiscount);
+            taxTotal = taxTotal.add(lineTax);
+        }
+
+        invoice.setSubtotal(subtotal);
+        invoice.setDiscountTotal(discountTotal);
+        invoice.setTaxTotal(taxTotal);
+        invoice.setGrandTotal(subtotal.subtract(discountTotal).add(taxTotal));
+        invoice.setStatus(InvoiceStatus.UNPAID);
+        return invoiceRepository.save(invoice);
+    }
+
+    public Invoice recordPayment(Organization organization, Long invoiceId, RecordPaymentRequest request) {
+        Invoice invoice = requireOwned(organization, invoiceId);
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This invoice is already fully paid.");
+        }
+        if (invoice.getStatus() == InvoiceStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This invoice has been cancelled.");
+        }
+        PaymentMode mode;
+        try {
+            mode = PaymentMode.valueOf(request.mode().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown payment mode: " + request.mode());
+        }
+        if (request.amount().compareTo(invoice.balanceDue()) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "That's more than the outstanding balance of " + invoice.balanceDue());
+        }
+
+        Payment payment = new Payment();
+        payment.setPaymentNumber(numberSeriesService.next(organization, "PAYMENT", "PAY", ResetPolicy.YEARLY, 6));
+        payment.setAmount(request.amount());
+        payment.setMode(mode);
+        payment.setReference(request.reference());
+        payment.setNote(request.note());
+        payment.setReceivedBy(currentUserService.require());
+        payment.setReceivedAt(Instant.now());
+        invoice.addPayment(payment);
+
+        invoice.setAmountPaid(invoice.getAmountPaid().add(request.amount()));
+        invoice.setStatus(invoice.balanceDue().compareTo(BigDecimal.ZERO) <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID);
+        return invoiceRepository.save(invoice);
+    }
+
+    /** Convenience for modules (like Pharmacy) that collect full payment inline at the point of sale. */
+    public Invoice createPaidInvoice(Organization organization, Branch branch, Patient patient,
+                                      SourceModule sourceModule, List<InvoiceLineItemInput> items, PaymentMode paymentMode) {
+        Invoice invoice = createInvoice(organization, branch, patient, sourceModule, items);
+        return recordPayment(organization, invoice.getId(),
+                new RecordPaymentRequest(invoice.getGrandTotal(), paymentMode.name(), null, "Collected at point of sale"));
+    }
+
+    // ---------------- Online payment gateway ----------------
+
+    /** Step 1 of online payment: create an order on the gateway so the frontend can open its checkout widget. */
+    @Transactional(readOnly = true)
+    public GatewayOrderDto createGatewayOrder(Organization organization, Long invoiceId, CreateGatewayOrderRequest request) {
+        Invoice invoice = requireOwned(organization, invoiceId);
+        if (invoice.balanceDue().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This invoice has nothing outstanding to pay.");
+        }
+        PaymentGatewayService gateway = resolveGateway(request == null ? null : request.gateway());
+        GatewayOrderResult result = gateway.createOrder(invoice.balanceDue(), "INR", invoice.getInvoiceNumber());
+        return new GatewayOrderDto(invoice.getId(), gateway.gatewayName(), result.gatewayOrderId(), result.amount(), result.currency(), result.publicKey());
+    }
+
+    /** Step 2: the frontend hands back what the gateway returned after checkout — verify it, then record the payment. */
+    public Invoice confirmGatewayPayment(Organization organization, Long invoiceId, ConfirmGatewayPaymentRequest request) {
+        Invoice invoice = requireOwned(organization, invoiceId);
+        PaymentGatewayService gateway = resolveGateway(request.gateway());
+
+        boolean valid = gateway.verifyPayment(request.gatewayOrderId(), request.gatewayPaymentId(), request.signature());
+        if (!valid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This payment could not be verified with the gateway.");
+        }
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This invoice is already fully paid.");
+        }
+
+        BigDecimal amount = invoice.balanceDue();
+        Payment payment = new Payment();
+        payment.setPaymentNumber(numberSeriesService.next(organization, "PAYMENT", "PAY", ResetPolicy.YEARLY, 6));
+        payment.setAmount(amount);
+        payment.setMode(PaymentMode.ONLINE);
+        payment.setGateway(gateway.gatewayName());
+        payment.setGatewayOrderId(request.gatewayOrderId());
+        payment.setGatewayPaymentId(request.gatewayPaymentId());
+        payment.setReference(request.gatewayPaymentId());
+        payment.setReceivedAt(Instant.now());
+        invoice.addPayment(payment);
+
+        invoice.setAmountPaid(invoice.getAmountPaid().add(amount));
+        invoice.setStatus(InvoiceStatus.PAID);
+        return invoiceRepository.save(invoice);
+    }
+
+    private PaymentGatewayService resolveGateway(String name) {
+        String key = (name == null || name.isBlank()) ? DEFAULT_GATEWAY : name;
+        PaymentGatewayService gateway = gateways.get(key);
+        if (gateway == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown payment gateway: " + key);
+        }
+        return gateway;
+    }
+
+    @Transactional(readOnly = true)
+    public List<InvoiceDto> list(Organization organization, InvoiceStatus status) {
+        List<Invoice> invoices = status == null
+                ? invoiceRepository.findByOrganizationIdOrderByCreatedAtDesc(organization.getId())
+                : invoiceRepository.findByOrganizationIdAndStatusOrderByCreatedAtDesc(organization.getId(), status);
+        return invoices.stream().map(this::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<InvoiceDto> listForPatient(Organization organization, Long patientId) {
+        return invoiceRepository.findByPatientIdOrderByCreatedAtDesc(patientId).stream()
+                .filter(i -> i.getOrganization().getId().equals(organization.getId()))
+                .map(this::toDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public InvoiceDto get(Organization organization, Long invoiceId) {
+        return toDto(requireOwned(organization, invoiceId));
+    }
+
+    Invoice requireOwned(Organization organization, Long invoiceId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new EntityNotFoundException("Invoice not found: " + invoiceId));
+        if (!invoice.getOrganization().getId().equals(organization.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This invoice does not belong to your organization.");
+        }
+        return invoice;
+    }
+
+    public InvoiceDto toDto(Invoice invoice) {
+        List<InvoiceLineItemDto> lines = invoice.getLineItems().stream()
+                .map(i -> new InvoiceLineItemDto(i.getId(), i.getDescription(), i.getSourceType(), i.getSourceId(),
+                        i.getQuantity(), i.getUnitPrice(), i.getDiscount(), i.getTaxPercent(), i.getLineTotal()))
+                .toList();
+        List<PaymentDto> pays = invoice.getPayments().stream()
+                .map(p -> new PaymentDto(p.getId(), p.getPaymentNumber(), p.getAmount(), p.getMode().name(), p.getReference(),
+                        p.isRefund(), p.getNote(), p.getReceivedBy() != null ? p.getReceivedBy().getFullName() : null, p.getReceivedAt()))
+                .toList();
+        Patient p = invoice.getPatient();
+        return new InvoiceDto(invoice.getId(), invoice.getInvoiceNumber(), invoice.getSourceModule().name(), invoice.getStatus().name(),
+                p != null ? new PatientSummaryDto(p.getId(), p.getPatientNumber(), p.fullName(), p.getPhone()) : null,
+                lines, pays, invoice.getSubtotal(), invoice.getDiscountTotal(), invoice.getTaxTotal(),
+                invoice.getGrandTotal(), invoice.getAmountPaid(), invoice.balanceDue(), invoice.getCreatedAt());
+    }
+}
