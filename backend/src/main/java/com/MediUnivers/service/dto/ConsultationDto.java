@@ -20,6 +20,7 @@ public record ConsultationDto(
         Integer pulseBpm,
         Integer spo2Percent,
         List<PrescriptionItemInput> prescriptionItems,
+        String pharmacyStatus,
         LocalDate followUpDate,
         String followUpNotes,
         PatientSummaryDto patient,

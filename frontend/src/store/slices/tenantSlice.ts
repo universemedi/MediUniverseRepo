@@ -1,6 +1,25 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { GroupAccess } from "@/lib/rbac";
+import type { GroupAccess, ModuleGroup } from "@/lib/rbac";
 import type { OrganizationApiDto } from "@/lib/types";
+
+const KNOWN_GROUPS: ModuleGroup[] = [
+  "platform",
+  "org",
+  "billing",
+  "clinic",
+  "pharmacy",
+  "lab",
+  "crm",
+  "cms",
+  "patient",
+];
+
+/** The real backend returns module group names uppercased (e.g. "CLINIC"); the frontend's RBAC vocabulary is lowercase. */
+function toModuleGroups(modules: string[]): ModuleGroup[] {
+  return modules
+    .map((m) => m.toLowerCase())
+    .filter((m): m is ModuleGroup => (KNOWN_GROUPS as string[]).includes(m));
+}
 
 export interface CustomRole {
   key: string;
@@ -16,7 +35,19 @@ interface TenantState {
   orgName: string;
   /** business line — what kind of org this is (clinic / pharmacy / lab, in any combination) */
   orgTypeCode: string;
+  orgTypeName: string;
+  orgTypeDescription: string;
+  /** business module groups this org type can ever use — real data from the org's plan, not a static lookup */
+  orgTypeModules: ModuleGroup[];
   planCode: string;
+  planName: string;
+  planTagline: string;
+  planPrice: string;
+  planLimits: { branches: number; users: number; storage: string };
+  planHighlights: string[];
+  planFreeTrial: boolean;
+  /** module groups the current subscription actually pays for — real data, not a static lookup */
+  planModules: ModuleGroup[];
   status:
     | "DRAFT"
     | "PENDING_VERIFICATION"
@@ -36,7 +67,17 @@ interface TenantState {
 const initialState: TenantState = {
   orgName: "Sunrise Multispeciality",
   orgTypeCode: "MULTI_SPECIALITY",
+  orgTypeName: "Multi-Speciality",
+  orgTypeDescription: "",
+  orgTypeModules: ["org", "patient", "clinic", "pharmacy", "lab", "crm", "cms"],
   planCode: "PROFESSIONAL",
+  planName: "Professional",
+  planTagline: "",
+  planPrice: "",
+  planLimits: { branches: 10, users: 75, storage: "100 GB" },
+  planHighlights: [],
+  planFreeTrial: false,
+  planModules: ["org", "patient", "clinic", "pharmacy", "lab", "crm"],
   status: "ACTIVE",
   renewsOn: "2026-09-01",
   branches: ["Head Office", "Andheri Branch", "Bandra Branch", "Pune Central"],
@@ -74,7 +115,21 @@ const tenantSlice = createSlice({
       const org = action.payload;
       state.orgName = org.name;
       state.orgTypeCode = org.orgType.code;
+      state.orgTypeName = org.orgType.name;
+      state.orgTypeDescription = org.orgType.description;
+      state.orgTypeModules = toModuleGroups(org.orgType.modules);
       state.planCode = org.plan.code;
+      state.planName = org.plan.name;
+      state.planTagline = org.plan.tagline;
+      state.planPrice = org.plan.priceLabel;
+      state.planLimits = {
+        branches: org.plan.maxBranches,
+        users: org.plan.maxUsers,
+        storage: org.plan.storageLabel,
+      };
+      state.planHighlights = org.plan.highlights;
+      state.planFreeTrial = org.plan.freeTrial;
+      state.planModules = toModuleGroups(org.plan.modules);
       state.status = org.status;
       state.renewsOn = org.renewsOn ?? state.renewsOn;
       state.branches = org.branches.map((b) => b.name);

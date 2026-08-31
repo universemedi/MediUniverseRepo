@@ -22,7 +22,11 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(appProperties.frontendBaseUrl()));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        // X-Signup-Token: the public self-serve signup flow's stand-in for a session
+        // (POST /api/public/organizations/{id}/select-plan|select-custom-plan|subscribe/confirm) —
+        // without it in the allow-list, every browser request carrying it fails CORS
+        // preflight (curl-based testing never catches this since curl skips preflight).
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Signup-Token"));
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

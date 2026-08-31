@@ -67,6 +67,13 @@ public class AppUser {
     @Column(name = "invite_expires_at")
     private Instant inviteExpiresAt;
 
+    /** Separate from inviteToken on purpose — this only makes sense while status == ACTIVE, an already-usable account that forgot its password. */
+    @Column(name = "reset_token", length = 100)
+    private String resetToken;
+
+    @Column(name = "reset_token_expires_at")
+    private Instant resetTokenExpiresAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 

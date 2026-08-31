@@ -2,6 +2,7 @@ package com.MediUnivers.service.web;
 
 import com.MediUnivers.service.domain.AppUser;
 import com.MediUnivers.service.domain.InvoiceStatus;
+import com.MediUnivers.service.domain.SourceModule;
 import com.MediUnivers.service.dto.ConfirmGatewayPaymentRequest;
 import com.MediUnivers.service.dto.CreateGatewayOrderRequest;
 import com.MediUnivers.service.dto.GatewayOrderDto;
@@ -29,9 +30,11 @@ public class BillingController {
     private final CurrentUserService currentUserService;
 
     @GetMapping
-    public List<InvoiceDto> list(@RequestParam(value = "status", required = false) String status) {
-        InvoiceStatus parsed = status == null || status.isBlank() ? null : InvoiceStatus.valueOf(status.toUpperCase(Locale.ROOT));
-        return billingService.list(requireOrgUser().getOrganization(), parsed);
+    public List<InvoiceDto> list(@RequestParam(value = "status", required = false) String status,
+                                  @RequestParam(value = "sourceModule", required = false) String sourceModule) {
+        InvoiceStatus parsedStatus = status == null || status.isBlank() ? null : InvoiceStatus.valueOf(status.toUpperCase(Locale.ROOT));
+        SourceModule parsedModule = sourceModule == null || sourceModule.isBlank() ? null : SourceModule.valueOf(sourceModule.toUpperCase(Locale.ROOT));
+        return billingService.list(requireOrgUser().getOrganization(), parsedStatus, parsedModule);
     }
 
     @GetMapping("/patient/{patientId}")

@@ -33,11 +33,12 @@ public class WebsiteContentService {
     private final WebsiteTestimonialRepository testimonialRepository;
     private final WebsiteBlogPostRepository blogRepository;
     private final WebsiteContactSubmissionRepository contactRepository;
+    private final WebsiteTemplateRepository templateRepository;
     private final AccessService accessService;
 
     // ---------------- Config (branding, pages, contact, social, SEO) ----------------
 
-    @Transactional(readOnly = true)
+    /** Not read-only: requireConfig() auto-creates the row on an organization's first visit here. */
     public WebsiteConfigDto getConfig(Organization organization) {
         accessService.requireModuleEnabled(organization, ModuleGroup.CMS);
         return toDto(requireConfig(organization));
@@ -47,10 +48,21 @@ public class WebsiteContentService {
         accessService.requireModuleEnabled(organization, ModuleGroup.CMS);
         WebsiteConfig config = requireConfig(organization);
         if (request.templateCode() != null && !request.templateCode().isBlank()) config.setTemplateCode(request.templateCode());
+        if (request.templateId() != null) {
+            templateRepository.findById(request.templateId())
+                    .filter(t -> t.getAudience() == TemplateAudience.ORGANIZATION)
+                    .ifPresent(config::setTemplate);
+        }
         config.setPublished(request.published());
         config.setLogoUrl(request.logoUrl());
         if (request.primaryColor() != null && !request.primaryColor().isBlank()) config.setPrimaryColor(request.primaryColor());
         if (request.secondaryColor() != null && !request.secondaryColor().isBlank()) config.setSecondaryColor(request.secondaryColor());
+        config.setFontFamily(request.fontFamily());
+        config.setBackgroundColor(request.backgroundColor());
+        if (request.textSizeScale() != null && !request.textSizeScale().isBlank()) config.setTextSizeScale(request.textSizeScale());
+        config.setBannersJson(request.bannersJson());
+        config.setNavItemsJson(request.navItemsJson());
+        config.setFooterColumnsJson(request.footerColumnsJson());
         config.setTagline(request.tagline());
         config.setHeroHeading(request.heroHeading());
         config.setHeroSubheading(request.heroSubheading());
@@ -83,11 +95,15 @@ public class WebsiteContentService {
 
     WebsiteConfigDto toDto(WebsiteConfig c) {
         String siteUrl = c.getOrganization().getSlug() + ".mediunivers.com";
-        return new WebsiteConfigDto(c.getTemplateCode(), c.isPublished(), c.getLogoUrl(), c.getPrimaryColor(), c.getSecondaryColor(),
+        return new WebsiteConfigDto(c.getTemplateCode(), c.getTemplate() != null ? c.getTemplate().getId() : null,
+                c.isPublished(), c.getLogoUrl(), c.getPrimaryColor(), c.getSecondaryColor(),
+                c.getFontFamily(), c.getBackgroundColor(), c.getTextSizeScale(),
                 c.getTagline(), c.getHeroHeading(), c.getHeroSubheading(), c.getAboutContent(),
                 c.getContactEmail(), c.getContactPhone(), c.getContactAddress(),
                 c.getFacebookUrl(), c.getInstagramUrl(), c.getTwitterUrl(), c.getLinkedinUrl(), c.getYoutubeUrl(), c.getWhatsappNumber(),
-                c.getSeoTitle(), c.getSeoDescription(), c.getSeoKeywords(), c.isBookingEnabled(), siteUrl);
+                c.getSeoTitle(), c.getSeoDescription(), c.getSeoKeywords(),
+                c.getBannersJson(), c.getNavItemsJson(), c.getFooterColumnsJson(),
+                c.isBookingEnabled(), siteUrl);
     }
 
     // ---------------- Services ----------------

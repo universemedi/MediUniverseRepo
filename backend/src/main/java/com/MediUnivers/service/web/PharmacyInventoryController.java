@@ -51,6 +51,16 @@ public class PharmacyInventoryController {
         return inventoryService.expiringSoon(requireOrgUser().getOrganization(), withinDays);
     }
 
+    @GetMapping("/api/pharmacy/batches")
+    public List<OrgBatchDto> listAllBatches() {
+        return inventoryService.listAllBatches(requireOrgUser().getOrganization());
+    }
+
+    @GetMapping("/api/pharmacy/alerts/low-stock")
+    public List<LowStockAlertDto> lowStockAllBranches() {
+        return inventoryService.lowStockAllBranches(requireOrgUser().getOrganization());
+    }
+
     @PostMapping("/api/pharmacy/stock-transfers")
     public StockTransferDto transferStock(@Valid @RequestBody CreateStockTransferRequest request) {
         return inventoryService.transferStock(requireOrgUser().getOrganization(), request);

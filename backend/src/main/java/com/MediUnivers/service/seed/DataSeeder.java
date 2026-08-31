@@ -40,8 +40,15 @@ public class DataSeeder implements CommandLineRunner {
     private final LabTestCategoryRepository labTestCategoryRepository;
     private final TaxRuleRepository taxRuleRepository;
     private final OrganizationSettingsRepository organizationSettingsRepository;
+    private final SubscriptionRepository subscriptionRepository;
     private final WebsiteConfigRepository websiteConfigRepository;
     private final WebsiteServiceItemRepository websiteServiceItemRepository;
+    private final PlatformWebsiteConfigRepository platformWebsiteConfigRepository;
+    private final PlatformTestimonialRepository platformTestimonialRepository;
+    private final PlatformBlogPostRepository platformBlogPostRepository;
+    private final PlatformContentCardRepository platformContentCardRepository;
+    private final com.MediUnivers.service.service.NotificationTemplateService notificationTemplateService;
+    private final com.MediUnivers.service.service.NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
 
     private static final String DEMO_PASSWORD = "demo1234";
@@ -57,6 +64,7 @@ public class DataSeeder implements CommandLineRunner {
         seedTaxRules();
         seedDemoOrganizationAndUsers();
         seedDemoWebsite();
+        seedPlatformWebsiteContent();
         log.info("MediUnivers seed data ready. Demo accounts all use password '{}':", DEMO_PASSWORD);
         log.info("  Platform : superadmin@mediunivers.io  (SUPER_ADMIN)");
         log.info("  Tenant   : owner@sunrise.mediunivers.io (ORG_OWNER, Sunrise Multispeciality)");
@@ -95,24 +103,30 @@ public class DataSeeder implements CommandLineRunner {
         if (planRepository.count() > 0) return;
         seedPlan("TRIAL", "Free Trial", "\u20b90 / 14 days",
                 "Demo requested and approved by the MediUnivers sales team.",
-                1, 5, "1 GB", 0, List.of("Clinic module", "1 branch", "5 users"),
+                1, 5, 5, "1 GB", 0, java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO, true, 14,
+                List.of("Clinic module", "1 branch", "5 users"),
                 ModuleGroup.ORG, ModuleGroup.PATIENT, ModuleGroup.CLINIC);
         seedPlan("STARTER", "Starter", "\u20b92,999 / month",
                 "Single clinic running appointments, queue and billing.",
-                2, 15, "10 GB", 1, List.of("Clinic module", "2 branches", "15 users"),
+                2, 15, 10, "10 GB", 1, java.math.BigDecimal.valueOf(2999), java.math.BigDecimal.valueOf(18), false, 0,
+                List.of("Clinic module", "2 branches", "15 users"),
                 ModuleGroup.ORG, ModuleGroup.PATIENT, ModuleGroup.CLINIC);
         seedPlan("PROFESSIONAL", "Professional", "\u20b97,999 / month",
                 "Multi-branch clinic with pharmacy, laboratory, patient CRM and a public website.",
-                10, 75, "100 GB", 2, List.of("Clinic + Pharmacy + Lab", "Patient CRM", "Website Builder", "10 branches"),
+                10, 75, 25, "100 GB", 2, java.math.BigDecimal.valueOf(7999), java.math.BigDecimal.valueOf(18), false, 0,
+                List.of("Clinic + Pharmacy + Lab", "Patient CRM", "Website Builder", "10 branches"),
                 ModuleGroup.ORG, ModuleGroup.PATIENT, ModuleGroup.CLINIC, ModuleGroup.PHARMACY, ModuleGroup.LAB, ModuleGroup.CRM, ModuleGroup.CMS);
         seedPlan("ENTERPRISE", "Enterprise", "Custom",
                 "Everything, including the website builder and custom roles.",
-                999, 999, "1 TB", 3, List.of("All modules", "Website builder", "Unlimited branches"),
+                999, 999, 999, "1 TB", 3, java.math.BigDecimal.ZERO, java.math.BigDecimal.valueOf(18), false, 0,
+                List.of("All modules", "Website builder", "Unlimited branches"),
                 ModuleGroup.ORG, ModuleGroup.PATIENT, ModuleGroup.CLINIC, ModuleGroup.PHARMACY, ModuleGroup.LAB, ModuleGroup.CRM, ModuleGroup.CMS);
     }
 
     private void seedPlan(String code, String name, String priceLabel, String tagline, int maxBranches,
-                           int maxUsers, String storageLabel, int sortOrder, List<String> highlights, ModuleGroup... modules) {
+                           int maxUsers, int maxDoctorsPerBranch, String storageLabel, int sortOrder,
+                           java.math.BigDecimal priceWithoutTax, java.math.BigDecimal taxPercent,
+                           boolean freeTrial, int freeTrialDays, List<String> highlights, ModuleGroup... modules) {
         Plan p = new Plan();
         p.setCode(code);
         p.setName(name);
@@ -120,8 +134,14 @@ public class DataSeeder implements CommandLineRunner {
         p.setTagline(tagline);
         p.setMaxBranches(maxBranches);
         p.setMaxUsers(maxUsers);
+        p.setMaxDoctorsPerBranch(maxDoctorsPerBranch);
         p.setStorageLabel(storageLabel);
         p.setSortOrder(sortOrder);
+        p.setPriceWithoutTax(priceWithoutTax);
+        p.setTaxPercent(taxPercent);
+        p.setFreeTrial(freeTrial);
+        p.setFreeTrialDays(freeTrialDays);
+        p.setActive(true);
         p.getModules().addAll(List.of(modules));
         p.getHighlights().addAll(highlights);
         planRepository.save(p);
@@ -307,6 +327,12 @@ public class DataSeeder implements CommandLineRunner {
 
         Organization org = new Organization();
         org.setOrganizationCode("ORG-000001");
+        // The demo org's code is hardcoded rather than pulled from
+        // organization_code_seq, so advance the sequence in lockstep here —
+        // otherwise the first real org created afterwards collides on
+        // "ORG-000001" (uq_organizations_code) since the sequence would still
+        // think nextval() hasn't issued 1 yet.
+        organizationRepository.nextOrganizationCodeNumber();
         org.setSlug("sunrise-multispeciality");
         org.setName("Sunrise Multispeciality");
         org.setSubdomain("sunrise");
@@ -324,9 +350,25 @@ public class DataSeeder implements CommandLineRunner {
         org.setRenewsOn(LocalDate.now().plusMonths(1));
         org = organizationRepository.save(org);
 
+        Subscription demoSub = new Subscription();
+        demoSub.setOrganization(org);
+        demoSub.setPlan(professional);
+        demoSub.setPlanCodeSnapshot(professional.getCode());
+        demoSub.setPlanNameSnapshot(professional.getName());
+        demoSub.setStartDate(LocalDate.now());
+        demoSub.setEndDate(org.getRenewsOn());
+        demoSub.setPriceWithoutTax(professional.getPriceWithoutTax());
+        demoSub.setTaxPercent(professional.getTaxPercent());
+        demoSub.setPriceWithTax(com.MediUnivers.service.service.PricingCalculator.withTax(professional.getPriceWithoutTax(), professional.getTaxPercent()));
+        demoSub.setStatus(SubscriptionStatus.ACTIVE);
+        subscriptionRepository.save(demoSub);
+
         OrganizationSettings settings = new OrganizationSettings();
         settings.setOrganization(org);
         organizationSettingsRepository.save(settings);
+
+        notificationService.getOrCreateSettings(org);
+        notificationTemplateService.seedDefaults(org);
 
         Branch headOffice = newBranch(org, "Head Office", true);
         newBranch(org, "Andheri Branch", false);
@@ -399,6 +441,226 @@ public class DataSeeder implements CommandLineRunner {
                 websiteServiceItemRepository.save(item);
             }
         });
+    }
+
+    /**
+     * MediUnivers' own public marketing site — real starter content so the site isn't
+     * blank on first boot, editable from Platform > Website Content from here on. Every
+     * insert is guarded by "does this section already have anything?" so it never
+     * overwrites what a Super Admin has since edited.
+     */
+    private void seedPlatformWebsiteContent() {
+        PlatformWebsiteConfig config = platformWebsiteConfigRepository.findAll().stream().findFirst()
+                .orElseGet(PlatformWebsiteConfig::new);
+        if (config.getTagline() == null || config.getTagline().isBlank()) {
+            config.setTagline("Multi-tenant healthcare platform for clinics, pharmacies and diagnostic laboratories.");
+            config.setHeroHeading("Run your clinic, pharmacy and lab on one platform");
+            config.setHeroSubheading("Appointments, prescriptions, inventory, lab results and billing — all in one console, switched on by the plan you choose.");
+            config.setAboutContent("MediUnivers builds and operates a multi-tenant healthcare platform. "
+                    + "Organizations subscribe, choose a plan and get exactly the modules that plan unlocks.");
+            config.setMissionContent("Healthcare teams lose hours every day to registers, spreadsheets and disconnected software. "
+                    + "MediUnivers replaces that with one console where appointments, prescriptions, inventory, lab results, "
+                    + "billing and the organization's public website all share the same data.\n\n"
+                    + "Organizations request a demo, choose a plan and get exactly the modules that plan unlocks. From there "
+                    + "the organization's own administrator creates roles for doctors, reception, pharmacists, lab technicians "
+                    + "and accountants — so every staff member logs in to a workspace built around their job.");
+            config.setContactEmail("hello@mediunivers.io");
+            config.setContactPhone("+91 80 4567 8900");
+            config.setContactAddress("4th Floor, Prestige Tech Park, Bengaluru 560103");
+            config.setStatsJson("[{\"label\":\"Organizations\",\"value\":\"480+\"},"
+                    + "{\"label\":\"Branches live\",\"value\":\"1,200+\"},"
+                    + "{\"label\":\"Appointments booked\",\"value\":\"2.1M+\"},"
+                    + "{\"label\":\"Uptime\",\"value\":\"99.9%\"}]");
+            config.setSeoTitle("MediUnivers — Healthcare SaaS Platform");
+            config.setSeoDescription("Multi-tenant healthcare platform for clinics, pharmacies and diagnostic laboratories.");
+            config.setPrivacyContent("MediUnivers collects only the information needed to operate your organization's "
+                    + "workspace: account details, the clinical, pharmacy and laboratory records your staff enter, and "
+                    + "basic usage data to keep the platform reliable. Data is scoped by organization — one subscriber "
+                    + "can never see another's records. We never sell customer data to third parties.");
+            config.setTermsContent("By creating an account you agree to use MediUnivers only for lawful healthcare "
+                    + "operations for the organization you represent. Subscriptions renew on the cycle you choose and "
+                    + "can be cancelled at any time from Billing. Each plan defines the modules, branches and users "
+                    + "included; usage beyond that requires an upgrade.");
+            config.setSecurityContent("All traffic is encrypted in transit (TLS) and data is encrypted at rest. Access "
+                    + "is role-based down to the page and action level, and every organization's data is isolated from "
+                    + "every other's at the database layer. Platform staff access is logged and limited to what support "
+                    + "and operations genuinely require.");
+            platformWebsiteConfigRepository.save(config);
+        }
+
+        if (platformTestimonialRepository.count() == 0) {
+            seedTestimonial("Dr. Kavya Nair", "Founder, Nair Family Clinic — Kochi",
+                    "Reception, queue and billing finally live in one place. Our average patient wait dropped by 18 minutes.", 5, 0);
+            seedTestimonial("Rahul Shetty", "Operations Head, LifeCare Pharmacy — Bengaluru",
+                    "Batch and expiry alerts alone paid for the subscription in the first quarter.", 5, 1);
+            seedTestimonial("Dr. Imran Qureshi", "Lab Director, PrecisePath Diagnostics — Hyderabad",
+                    "Sample tracking with a doctor review step removed the phone calls chasing pending results.", 5, 2);
+            seedTestimonial("Sneha Patil", "Org Admin, Aarogya Group — Pune",
+                    "I created our own Front Desk and Senior Nurse roles in minutes — everyone sees exactly their pages.", 5, 3);
+            seedTestimonial("Dr. Vikram Rao", "Consultant Cardiologist — Chennai",
+                    "Consultation notes and prescriptions are quick enough that I actually use them during the visit.", 4, 4);
+            seedTestimonial("Meera Joshi", "Marketing Lead, SmileWorks Dental — Ahmedabad",
+                    "The built-in website and online booking replaced three separate tools we were paying for.", 5, 5);
+        }
+
+        if (platformBlogPostRepository.count() == 0) {
+            seedBlogPost("Cutting patient wait time with a live queue", "Dr. Kavya Nair",
+                    "How token-based queues and reception dashboards reduce the crowd at your front desk.",
+                    "Most clinics still call patients by shouting a name across a waiting room. A live, token-based queue "
+                            + "changes that: patients check in once, see their position on a screen, and reception can "
+                            + "reprioritize walk-ins without losing the line.\n\n"
+                            + "The bigger win is downstream — once reception, the doctor's consultation queue and billing "
+                            + "all read from the same live queue, nobody re-enters a patient's details three times, and "
+                            + "the front desk always knows exactly how many people are actually waiting.");
+            seedBlogPost("Batch and expiry: the pharmacy discipline that saves money", "Rahul Shetty",
+                    "A simple stock policy that prevents write-offs and keeps fast movers on the shelf.",
+                    "Every pharmacy writes off stock eventually — the question is how much. Batches with an expiry date "
+                            + "attached, and an alert before that date arrives, turns a periodic surprise into a routine "
+                            + "task: rotate old stock forward, order less of what's overstocked, and dispense against "
+                            + "the earliest expiry first automatically.\n\n"
+                            + "Pharmacies that adopt this consistently report the alerts paying for the software within "
+                            + "a quarter, purely from reduced write-offs.");
+            seedBlogPost("Lab turnaround time, measured properly", "Dr. Imran Qureshi",
+                    "Where samples actually get stuck, and the four checkpoints worth tracking.",
+                    "\"Turnaround time\" usually gets measured start-to-finish, which hides where a sample actually "
+                            + "loses time. Splitting it into four checkpoints — collection, receipt at the lab, "
+                            + "processing complete, and doctor review — makes the slow stage obvious.\n\n"
+                            + "In most labs, the surprise stage isn't processing at all — it's waiting for a referring "
+                            + "doctor to review and sign off before the report can be released.");
+            seedBlogPost("Converting enquiries into first appointments", "Sneha Patil",
+                    "Follow-up cadence, lead sources and the metrics that predict conversion.",
+                    "An enquiry that isn't followed up within a day rarely converts. Tracking where a lead came from "
+                            + "and assigning it to a specific person immediately — rather than a shared inbox — is the "
+                            + "single biggest lever most organizations haven't pulled yet.\n\n"
+                            + "The metric worth watching isn't total enquiries; it's time-to-first-response.");
+            seedBlogPost("Designing roles for a multi-branch group", "Dr. Vikram Rao",
+                    "Give each team the pages they need — nothing more — without slowing anyone down.",
+                    "Multi-branch organizations tend to over-grant access out of convenience, then regret it. Building "
+                            + "roles around what a job actually needs — reception sees the queue and billing, doctors "
+                            + "see consultations and prescriptions — keeps every screen relevant to the person using it.\n\n"
+                            + "Custom roles, created by the organization's own admin, let this shift as the team grows "
+                            + "without waiting on anyone else.");
+            seedBlogPost("Your clinic website should book appointments", "Meera Joshi",
+                    "Turning a brochure site into the cheapest patient acquisition channel you have.",
+                    "A website that only lists an address and phone number is a missed appointment every time a visitor "
+                            + "closes the tab. Connecting the public site directly to real doctor availability turns "
+                            + "casual browsing into a booked slot without a phone call.\n\n"
+                            + "It's also the cheapest acquisition channel available — the visitor already found you.");
+        }
+
+        if (platformContentCardRepository.count() == 0) {
+            seedFeature("CalendarDays", "Clinic management",
+                    "Patient registration & records\nAppointments and walk-ins\nReception & live queue\n"
+                            + "Consultation and prescriptions\nDoctor availability\nBilling and invoices", 0);
+            seedFeature("Pill", "Pharmacy",
+                    "Medicine categories & master\nManufacturers and suppliers\nPurchases and batch/expiry\n"
+                            + "Stock levels & low-stock alerts\nPrescription dispensing\nDirect sales and returns", 1);
+            seedFeature("FlaskConical", "Laboratory",
+                    "Test categories & catalogue\nTest packages\nOrders and sample tracking\n"
+                            + "Processing status\nResult entry\nDoctor review and reports", 2);
+            seedFeature("Target", "Patient CRM",
+                    "Lead sources\nLead pipeline and status\nAssignment to agents\n"
+                            + "Follow-ups and activities\nConversion reports", 3);
+            seedFeature("Globe", "Website & CMS",
+                    "Templates and branding\nPages, services, gallery\nTestimonials and blogs\n"
+                            + "Online booking\nSEO settings and subdomain", 4);
+            seedFeature("ShieldCheck", "Access control",
+                    "Platform, organization and patient portals\n14 built-in roles\n"
+                            + "Custom roles created by the org admin\nPage and action level permissions\n"
+                            + "Plan-based module entitlement", 5);
+            seedFeature("Building2", "Organization setup",
+                    "Clinics and branches\nDepartments\nUsers and invitations\n"
+                            + "Subscription and billing\nGuided onboarding wizard", 6);
+            seedFeature("Users", "Patient portal",
+                    "Profile and history\nAppointments\nPrescriptions\nLab reports\nInvoices", 7);
+
+            seedSolution("Single clinic", "Starter",
+                    "One doctor or a small team running appointments, walk-ins, prescriptions and billing without paperwork.",
+                    "Live queue at reception\nDigital prescriptions\nDaily collection report", 0);
+            seedSolution("Multi-branch group", "Professional",
+                    "Several clinics under one organization with departments, shared patient records and per-branch reporting.",
+                    "Branch switcher\nDepartment-wise load\nConsolidated revenue", 1);
+            seedSolution("Pharmacy chain", "Professional",
+                    "Purchase to sale traceability with batch and expiry control across every counter.",
+                    "Batch & expiry alerts\nSupplier ledger\nPrescription dispensing", 2);
+            seedSolution("Diagnostic laboratory", "Professional",
+                    "Order intake, sample tracking and verified result delivery back to the referring doctor.",
+                    "Sample barcode flow\nDoctor review step\nDownloadable reports", 3);
+            seedSolution("Polyclinic / hospital", "Enterprise",
+                    "Clinic, pharmacy and lab operating together, plus a public website and custom staff roles.",
+                    "All modules\nWebsite builder\nCustom role designer", 4);
+            seedSolution("Patients", "Included",
+                    "A patient portal for appointments, prescriptions, lab reports and invoices.",
+                    "Online booking\nReport history\nInvoice downloads", 5);
+
+            seedValue("HeartPulse", "Care comes first",
+                    "Every screen is designed to shorten the distance between a patient and their treatment.", 0);
+            seedValue("ShieldCheck", "Access by design",
+                    "Data is scoped by portal, plan and role — nobody sees more than their job requires.", 1);
+            seedValue("Building2", "One product, many tenants",
+                    "We build and run the product; organizations subscribe and configure it for themselves.", 2);
+            seedValue("Users", "Support that knows healthcare",
+                    "Sales, onboarding and support teams that have worked inside clinics and labs.", 3);
+
+            seedTeam("Product & Engineering", "Owns the platform roadmap, module releases and reliability.", 0);
+            seedTeam("Sales & CRM", "Handles demo requests, qualifies leads and moves organizations onto the right plan.", 1);
+            seedTeam("Onboarding", "Sets up organizations, clinics, branches and the first set of staff roles.", 2);
+            seedTeam("Support & Finance", "Resolves tickets, manages subscriptions, invoices, coupons and referrals.", 3);
+        }
+    }
+
+    private void seedTestimonial(String name, String roleCompany, String message, int rating, int sortOrder) {
+        PlatformTestimonial t = new PlatformTestimonial();
+        t.setName(name);
+        t.setRoleCompany(roleCompany);
+        t.setMessage(message);
+        t.setRating(rating);
+        t.setSortOrder(sortOrder);
+        t.setPublished(true);
+        platformTestimonialRepository.save(t);
+    }
+
+    private void seedBlogPost(String title, String author, String excerpt, String content) {
+        PlatformBlogPost post = new PlatformBlogPost();
+        post.setTitle(title);
+        String slug = title.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+        post.setSlug(slug);
+        post.setAuthor(author);
+        post.setExcerpt(excerpt);
+        post.setContent(content);
+        post.setPublished(true);
+        post.setPublishedAt(java.time.Instant.now());
+        platformBlogPostRepository.save(post);
+    }
+
+    private void seedFeature(String icon, String title, String bulletsText, int sortOrder) {
+        seedContentCard(PlatformContentSection.FEATURE, icon, title, null, null, bulletsText, sortOrder);
+    }
+
+    private void seedSolution(String title, String tag, String description, String bulletsText, int sortOrder) {
+        seedContentCard(PlatformContentSection.SOLUTION, null, title, tag, description, bulletsText, sortOrder);
+    }
+
+    private void seedValue(String icon, String title, String description, int sortOrder) {
+        seedContentCard(PlatformContentSection.VALUE, icon, title, null, description, null, sortOrder);
+    }
+
+    private void seedTeam(String title, String description, int sortOrder) {
+        seedContentCard(PlatformContentSection.TEAM, null, title, null, description, null, sortOrder);
+    }
+
+    private void seedContentCard(PlatformContentSection section, String icon, String title, String tag,
+                                  String description, String bulletsText, int sortOrder) {
+        PlatformContentCard card = new PlatformContentCard();
+        card.setSection(section);
+        card.setIcon(icon);
+        card.setTitle(title);
+        card.setTag(tag);
+        card.setDescription(description);
+        card.setBulletsText(bulletsText);
+        card.setSortOrder(sortOrder);
+        card.setPublished(true);
+        platformContentCardRepository.save(card);
     }
 
     // ---- small helpers to keep the role table above readable ----

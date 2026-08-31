@@ -14,12 +14,31 @@ public final class DtoMapper {
     }
 
     public static OrgTypeDto toDto(OrgType t) {
-        return new OrgTypeDto(t.getId(), t.getCode(), t.getName(), t.getDescription(), t.getModules());
+        return new OrgTypeDto(t.getId(), t.getCode(), t.getName(), t.getDescription(), t.getModules(), t.isActive());
     }
 
     public static PlanDto toDto(Plan p) {
         return new PlanDto(p.getId(), p.getCode(), p.getName(), p.getPriceLabel(), p.getTagline(),
-                p.getMaxBranches(), p.getMaxUsers(), p.getStorageLabel(), p.getModules(), p.getHighlights());
+                p.getMaxBranches(), p.getMaxUsers(), p.getMaxDoctorsPerBranch(), p.getStorageLabel(),
+                p.getPriceWithoutTax(), p.getTaxPercent(), PricingCalculator.withTax(p.getPriceWithoutTax(), p.getTaxPercent()),
+                p.isFreeTrial(), p.getFreeTrialDays(), p.isActive(), p.getValidFrom(), p.getValidTo(),
+                p.getModules(), p.getHighlights());
+    }
+
+    public static LeadDto toDto(Lead l) {
+        return new LeadDto(l.getId(), l.getSource(), l.getName(), l.getEmail(), l.getPhone(),
+                l.getOrganizationName(), l.getOrganizationType(), l.getCity(), l.getExpectedBranches(),
+                l.getExpectedUsers(), l.getModulesOfInterest(), l.getPreferredDemoDate(), l.getMessage(),
+                l.getInternalNotes(), l.getAssignedTo() != null ? l.getAssignedTo().getId() : null,
+                l.getAssignedTo() != null ? l.getAssignedTo().getFullName() : null,
+                l.getStatus().name(), l.getCreatedAt(), l.getUpdatedAt());
+    }
+
+    public static SubscriptionDto toDto(Subscription s) {
+        return new SubscriptionDto(s.getId(), s.getOrganization().getId(), s.getOrganization().getName(),
+                s.getPlanCodeSnapshot(), s.getPlanNameSnapshot(), s.getStartDate(), s.getEndDate(),
+                s.isFreeTrial(), s.getFreeTrialDays(), s.getPriceWithoutTax(), s.getTaxPercent(), s.getPriceWithTax(),
+                s.getStatus().name());
     }
 
     public static BranchDto toDto(Branch b) {

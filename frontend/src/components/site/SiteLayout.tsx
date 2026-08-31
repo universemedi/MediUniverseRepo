@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Menu } from "lucide-react";
+import { ArrowRight, Facebook, Instagram, Linkedin, Menu, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/common/Logo";
+import { PlatformSiteProvider, usePlatformSite } from "@/lib/platformSite";
 
 export const SITE_NAV = [
   { to: "/", label: "Home" },
@@ -103,7 +104,16 @@ function SiteHeader() {
   );
 }
 
+const SOCIAL_LINKS = [
+  { key: "facebookUrl", label: "Facebook", Icon: Facebook },
+  { key: "instagramUrl", label: "Instagram", Icon: Instagram },
+  { key: "linkedinUrl", label: "LinkedIn", Icon: Linkedin },
+  { key: "youtubeUrl", label: "YouTube", Icon: Youtube },
+] as const;
+
 function SiteFooter() {
+  const { site } = usePlatformSite();
+
   const columns = [
     {
       title: "Product",
@@ -132,6 +142,8 @@ function SiteFooter() {
     },
   ] as const;
 
+  const activeSocialLinks = SOCIAL_LINKS.filter((s) => !!site?.[s.key]);
+
   return (
     <footer className="mt-auto border-t border-primary/20 bg-primary/[0.07]">
       <div className="mx-auto max-w-6xl px-4 py-14">
@@ -139,11 +151,25 @@ function SiteFooter() {
           <div className="space-y-3">
             <Brand />
             <p className="text-sm text-muted-foreground">
-              Multi-tenant healthcare platform for clinics, pharmacies and diagnostic laboratories.
+              {site?.tagline ||
+                "Multi-tenant healthcare platform for clinics, pharmacies and diagnostic laboratories."}
             </p>
-            <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
-              Frontend demo · mock data
-            </Badge>
+            {activeSocialLinks.length ? (
+              <div className="flex items-center gap-3 pt-1">
+                {activeSocialLinks.map(({ key, label, Icon }) => (
+                  <a
+                    key={key}
+                    href={site?.[key] ?? "#"}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={label}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  >
+                    <Icon className="h-4 w-4" />
+                  </a>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {columns.map((col) => (
@@ -162,9 +188,9 @@ function SiteFooter() {
               </ul>
               {col.title === "Get started" && (
                 <address className="mt-5 space-y-1 text-sm not-italic text-muted-foreground">
-                  <p>hello@mediunivers.io</p>
-                  <p>+91 80 4567 8900</p>
-                  <p>Bengaluru, India</p>
+                  <p>{site?.contactEmail || "hello@mediunivers.io"}</p>
+                  {site?.contactPhone ? <p>{site.contactPhone}</p> : null}
+                  {site?.contactAddress ? <p>{site.contactAddress}</p> : null}
                 </address>
               )}
             </div>
@@ -175,9 +201,15 @@ function SiteFooter() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 py-5 text-xs text-muted-foreground sm:flex-row">
           <p>© {new Date().getFullYear()} MediUnivers. All rights reserved.</p>
           <p className="flex items-center gap-4">
-            <span>Privacy</span>
-            <span>Terms</span>
-            <span>Security</span>
+            <Link to="/privacy" className="transition-colors hover:text-primary">
+              Privacy
+            </Link>
+            <Link to="/terms" className="transition-colors hover:text-primary">
+              Terms
+            </Link>
+            <Link to="/security" className="transition-colors hover:text-primary">
+              Security
+            </Link>
           </p>
         </div>
       </div>
@@ -187,11 +219,13 @@ function SiteFooter() {
 
 export function SiteLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <SiteHeader />
-      <main className="flex-1">{children}</main>
-      <SiteFooter />
-    </div>
+    <PlatformSiteProvider>
+      <div className="flex min-h-screen flex-col bg-background">
+        <SiteHeader />
+        <main className="flex-1">{children}</main>
+        <SiteFooter />
+      </div>
+    </PlatformSiteProvider>
   );
 }
 

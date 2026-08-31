@@ -162,6 +162,19 @@ apiClient.interceptors.response.use(
   (error) => Promise.reject(error),
 );
 
+/** A separate instance (no auth interceptor) for /api/public/** calls. A visitor to a
+ * public marketing page may have a stale or expired access token sitting in session
+ * storage from an earlier admin session; routing public calls through `apiClient` would
+ * attach that token, and an *expired* Bearer token fails OAuth2 resource-server
+ * validation before Spring Security's permitAll check is ever reached — turning an
+ * otherwise-public endpoint into a 401. This instance can never carry that token. */
+export const publicApiClient = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+  timeout: 30_000,
+  headers: { "Content-Type": "application/json" },
+});
+
 export async function apiFetch<T>(path: string, config: AxiosRequestConfig = {}): Promise<T> {
   try {
     const response: AxiosResponse<T> = await apiClient.request<T>({
@@ -176,7 +189,7 @@ export async function apiFetch<T>(path: string, config: AxiosRequestConfig = {})
 
 export async function apiFetchPublic<T>(path: string, config: AxiosRequestConfig = {}): Promise<T> {
   try {
-    const response: AxiosResponse<T> = await apiClient.request<T>({
+    const response: AxiosResponse<T> = await publicApiClient.request<T>({
       url: path,
       ...config,
       headers: {
@@ -192,6 +205,25 @@ export async function apiFetchPublic<T>(path: string, config: AxiosRequestConfig
 
 export const apiGet = <T>(path: string, config?: AxiosRequestConfig) =>
   apiFetch<T>(path, { ...config, method: "GET" });
+
+/** Absolute URL a stored upload path resolves to — uploaded files come back as a relative
+ * "/api/public/uploads/xxx" path, which needs the API origin prefixed to actually load. */
+export function resolveUploadUrl(value: string): string {
+  return /^https?:\/\//.test(value) ? value : `${API_BASE_URL}${value}`;
+}
+
+/** Uploads a single image file as multipart/form-data. `Content-Type: undefined` lets the
+ * browser set its own header with the correct multipart boundary — setting it manually
+ * (or leaving the client's default "application/json") would break the upload. */
+export async function uploadFile(path: string, file: File): Promise<{ url: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiFetch<{ url: string }>(path, {
+    method: "POST",
+    data: formData,
+    headers: { "Content-Type": undefined },
+  } as unknown as AxiosRequestConfig);
+}
 
 export const apiPost = <T>(path: string, data?: unknown, config?: AxiosRequestConfig) =>
   apiFetch<T>(path, { ...config, method: "POST", data });

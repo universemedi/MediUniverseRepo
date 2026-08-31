@@ -13,8 +13,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +31,9 @@ public class ClinicAppointmentService {
     private final ClinicDoctorService doctorService;
     private final NumberSeriesService numberSeriesService;
     private final AccessService accessService;
+    private final NotificationService notificationService;
+
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("hh:mm a").withLocale(Locale.ENGLISH);
 
     @Transactional(readOnly = true)
     public List<AppointmentDto> listForDate(Organization organization, LocalDate date) {
@@ -61,6 +68,8 @@ public class ClinicAppointmentService {
         a.setReason(request.reason());
         a.setAppointmentNumber(numberSeriesService.next(organization, "APPOINTMENT", "APT", ResetPolicy.YEARLY, 6));
         a = appointmentRepository.save(a);
+        notifyBooked(organization, a);
+        scheduleReminders(organization, a);
         return toDto(a);
     }
 
@@ -110,7 +119,57 @@ public class ClinicAppointmentService {
         }
         a.setStatus(target);
         a = appointmentRepository.save(a);
+        if (target == AppointmentStatus.CANCELLED) {
+            notifyCancelled(organization, a);
+        }
         return toDto(a);
+    }
+
+    // ---------------- Communication Engine hooks ----------------
+
+    private void notifyBooked(Organization organization, Appointment a) {
+        notificationService.notify(organization, NotificationEventType.APPOINTMENT_BOOKED,
+                recipientFor(a), appointmentVariables(organization, a), NotificationPriority.NORMAL,
+                "APPOINTMENT", a.getId(), null);
+    }
+
+    private void notifyCancelled(Organization organization, Appointment a) {
+        notificationService.notify(organization, NotificationEventType.APPOINTMENT_CANCELLED,
+                recipientFor(a), appointmentVariables(organization, a), NotificationPriority.HIGH,
+                "APPOINTMENT", a.getId(), null);
+    }
+
+    /** Appointment Reminder (spec §17): 24 hours before, then 2 hours before — only if there's still time to send them. */
+    private void scheduleReminders(Organization organization, Appointment a) {
+        if (a.getScheduledAt() == null) return;
+        Instant now = Instant.now();
+        Instant reminder24h = a.getScheduledAt().minus(24, ChronoUnit.HOURS);
+        Instant reminder2h = a.getScheduledAt().minus(2, ChronoUnit.HOURS);
+        Map<String, String> variables = appointmentVariables(organization, a);
+        if (reminder24h.isAfter(now)) {
+            notificationService.notify(organization, NotificationEventType.APPOINTMENT_REMINDER, recipientFor(a),
+                    variables, NotificationPriority.NORMAL, "APPOINTMENT", a.getId(), reminder24h);
+        }
+        if (reminder2h.isAfter(now)) {
+            notificationService.notify(organization, NotificationEventType.APPOINTMENT_REMINDER, recipientFor(a),
+                    variables, NotificationPriority.HIGH, "APPOINTMENT", a.getId(), reminder2h);
+        }
+    }
+
+    private NotificationRecipient recipientFor(Appointment a) {
+        Patient p = a.getPatient();
+        return NotificationRecipient.of(p.fullName(), p.getEmail(), p.getPhone());
+    }
+
+    private Map<String, String> appointmentVariables(Organization organization, Appointment a) {
+        Map<String, String> vars = new HashMap<>();
+        vars.put("patientName", a.getPatient().fullName());
+        vars.put("doctorName", a.getDoctor().getFullName());
+        vars.put("organizationName", organization.getName());
+        vars.put("appointmentDate", a.getAppointmentDate() != null ? a.getAppointmentDate().toString() : "");
+        vars.put("appointmentTime", a.getScheduledAt() != null
+                ? TIME_FMT.format(a.getScheduledAt().atZone(java.time.ZoneId.systemDefault())) : "");
+        return vars;
     }
 
     Appointment requireOwned(Organization organization, Long appointmentId) {

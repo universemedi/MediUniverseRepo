@@ -100,6 +100,7 @@ interface GatewayOrder {
   amount: number;
   currency: string;
   publicKey: string;
+  mock: boolean;
 }
 
 declare global {
@@ -223,6 +224,43 @@ function InvoicesPage() {
         },
       );
 
+      const confirm = async (
+        gatewayOrderId: string,
+        gatewayPaymentId: string,
+        signature: string,
+      ) => {
+        try {
+          const updated = await apiFetch<Invoice>(
+            `/api/billing/invoices/${active.id}/gateway/confirm`,
+            {
+              method: "POST",
+              data: { gateway: order.gateway, gatewayOrderId, gatewayPaymentId, signature },
+            },
+          );
+
+          toast.success("Payment received", {
+            description: "Verified with the payment gateway.",
+          });
+          setActive(updated);
+          load();
+        } catch (err) {
+          toast.error(
+            err instanceof ApiError
+              ? err.message
+              : "Payment succeeded but couldn't be confirmed — contact support.",
+          );
+        } finally {
+          setPaying(false);
+        }
+      };
+
+      // Mock mode (razorpay.mock=true, the local-dev default): the backend already synthesized a
+      // pre-verified order, so there's no real checkout widget to open — confirm it directly.
+      if (order.mock) {
+        await confirm(order.gatewayOrderId, "mock_payment_" + Date.now(), "mock_signature");
+        return;
+      }
+
       await loadRazorpayScript();
       if (!window.Razorpay) throw new Error("Payment widget failed to load.");
 
@@ -238,34 +276,11 @@ function InvoicesPage() {
           razorpay_payment_id: string;
           razorpay_signature: string;
         }) => {
-          try {
-            const updated = await apiFetch<Invoice>(
-              `/api/billing/invoices/${active.id}/gateway/confirm`,
-              {
-                method: "POST",
-                data: {
-                  gateway: order.gateway,
-                  gatewayOrderId: response.razorpay_order_id,
-                  gatewayPaymentId: response.razorpay_payment_id,
-                  signature: response.razorpay_signature,
-                },
-              },
-            );
-
-            toast.success("Payment received", {
-              description: "Verified with the payment gateway.",
-            });
-            setActive(updated);
-            load();
-          } catch (err) {
-            toast.error(
-              err instanceof ApiError
-                ? err.message
-                : "Payment succeeded but couldn't be confirmed — contact support.",
-            );
-          } finally {
-            setPaying(false);
-          }
+          await confirm(
+            response.razorpay_order_id,
+            response.razorpay_payment_id,
+            response.razorpay_signature,
+          );
         },
         modal: { ondismiss: () => setPaying(false) },
         theme: { color: "#0f172a" },

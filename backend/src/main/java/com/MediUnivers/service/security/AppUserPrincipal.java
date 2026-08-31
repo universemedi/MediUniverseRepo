@@ -66,7 +66,12 @@ public class AppUserPrincipal implements UserDetails {
         if (org == null) return true;
         // Organization lifecycle login rules (Organization Foundation spec §13).
         return switch (org.getStatus()) {
-            case DRAFT, PENDING_VERIFICATION, ARCHIVED -> false;
+            case PENDING_VERIFICATION, ARCHIVED -> false;
+            // DRAFT = the public /subscribe flow created the org but payment
+            // never completed. The owner still needs to log in to finish
+            // subscribing (frontend routes them straight to the plans
+            // screen) — everyone else stays locked out until it's paid for.
+            case DRAFT -> "ORG_OWNER".equals(user.getRole().getCode());
             // Suspended/cancelled orgs still let the owner in to pay or wind down —
             // everyone else is locked out until the owner resolves it.
             case SUSPENDED, CANCELLED -> "ORG_OWNER".equals(user.getRole().getCode());

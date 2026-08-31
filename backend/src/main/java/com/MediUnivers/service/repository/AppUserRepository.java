@@ -15,5 +15,9 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
 
     Optional<AppUser> findByInviteToken(String inviteToken);
 
+    Optional<AppUser> findByResetToken(String resetToken);
+
     long countByOrganizationIdAndStatusIn(Long organizationId, List<com.MediUnivers.service.domain.UserStatus> statuses);
+
+    List<AppUser> findByOrganizationIsNullOrderByFullNameAsc();
 }

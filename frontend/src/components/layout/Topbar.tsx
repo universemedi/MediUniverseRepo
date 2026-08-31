@@ -5,7 +5,14 @@ import { useAppDispatch, useAppSelector } from "@/store";
 import { logout, setBranch, setRole } from "@/store/slices/authSlice";
 import { markAllRead, markRead } from "@/store/slices/notificationsSlice";
 import { toggleMode } from "@/store/slices/themeSlice";
-import { ROLES, PORTAL_LABEL, type Portal, type RoleKey } from "@/lib/rbac";
+import {
+  ROLES,
+  PORTAL_LABEL,
+  type GroupAccess,
+  type ModuleGroup,
+  type Portal,
+  type RoleKey,
+} from "@/lib/rbac";
 import { PLANS } from "@/lib/plans";
 import { setPlan } from "@/store/slices/tenantSlice";
 import { MODULES } from "@/config/modules";
@@ -52,14 +59,41 @@ import { cn } from "@/lib/utils";
  * "Preview" popover so testers can jump between roles/plans without logging
  * out, without it crowding the topbar or overflowing small screens.
  */
+const BUSINESS_GROUPS: ModuleGroup[] = ["clinic", "pharmacy", "lab", "crm", "cms"];
+
+/**
+ * Whether a role is worth offering in the tenant preview list for this
+ * organization — a role built entirely around a module the org's plan/business
+ * type doesn't currently include (e.g. Pharmacist with no pharmacy) is just
+ * noise. Roles that also touch at least one module the org does have (or
+ * that don't specialize in any single business module, like Org Owner/Admin,
+ * which grant every group) are still shown.
+ */
+function roleFitsSubscription(access: GroupAccess, availableModules: ModuleGroup[]) {
+  const businessGroups = BUSINESS_GROUPS.filter((g) => access[g]);
+  if (businessGroups.length === 0) return true;
+  return businessGroups.some((g) => availableModules.includes(g));
+}
+
 function PreviewSwitcher() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const authenticatedRole = useAppSelector((s) => s.auth.authenticatedRole);
   const tenant = useAppSelector((s) => s.tenant);
   const { isPlatform } = usePermissions();
-  const customRoles = tenant.customRoles;
   const previewing = user?.role !== authenticatedRole;
+
+  // Real modules this org's plan AND business type both allow — same rule usePermissions()
+  // enforces everywhere else. Only filters when the signed-in account IS a tenant user —
+  // platform staff have no real subscription of their own, so they can preview any role.
+  const availableModules = tenant.planModules.filter((g) => tenant.orgTypeModules.includes(g));
+  const tenantRoles = ROLES.filter(
+    (r) =>
+      r.portal === "tenant" && (isPlatform || roleFitsSubscription(r.access, availableModules)),
+  );
+  const customRoles = tenant.customRoles.filter(
+    (r) => isPlatform || roleFitsSubscription(r.access, availableModules),
+  );
 
   return (
     <Popover>
@@ -103,7 +137,7 @@ function PreviewSwitcher() {
                   <SelectLabel className="text-[10px] uppercase tracking-wide">
                     {PORTAL_LABEL[p]}
                   </SelectLabel>
-                  {ROLES.filter((r) => r.portal === p).map((r) => (
+                  {(p === "tenant" ? tenantRoles : ROLES.filter((r) => r.portal === p)).map((r) => (
                     <SelectItem key={r.key} value={r.key}>
                       {r.name}
                     </SelectItem>
@@ -168,14 +202,100 @@ function PreviewSwitcher() {
   );
 }
 
+/**
+ * Real (non-demo) tenant context: shown only to Organization Owner/Admin — the
+ * two roles with unrestricted org access. The plan is informational only (no
+ * switcher — subscriptions are bought via the billing flow at /app/org/plans,
+ * never toggled from a menu), and the branch is a dropdown only when the
+ * organization actually has more than one.
+ */
+function OrgContextBar() {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const user = useAppSelector((s) => s.auth.user);
+  const tenant = useAppSelector((s) => s.tenant);
+
+  const branchRecords = tenant.branchRecords.length ? tenant.branchRecords : null;
+  const singleBranchName = branchRecords?.[0]?.name ?? tenant.branches[0] ?? "Head Office";
+  const isMultiBranch = (branchRecords?.length ?? tenant.branches.length) > 1;
+  const canUpgrade = tenant.planCode !== "ENTERPRISE";
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="hidden h-9 items-center gap-1.5 sm:flex">
+          <span className="max-w-[9rem] truncate">{tenant.orgName}</span>
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-foreground">Subscription plan</label>
+          <div className="flex items-center justify-between gap-2 rounded-md border border-input bg-muted/30 px-3 py-2">
+            <div>
+              <p className="text-sm font-medium leading-tight">{tenant.planName}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {tenant.planFreeTrial ? "Trial ends" : "Renews"} {tenant.renewsOn}
+              </p>
+            </div>
+            {canUpgrade ? (
+              <Button
+                size="sm"
+                className="h-7 shrink-0 text-xs"
+                onClick={() => navigate({ to: "/app/org/plans" })}
+              >
+                Upgrade
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-foreground">Branch</label>
+          {isMultiBranch ? (
+            <Select
+              value={user?.branch ?? singleBranchName}
+              onValueChange={(v) => dispatch(setBranch(v))}
+            >
+              <SelectTrigger className="h-9" aria-label="Switch branch">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {tenant.branches.map((b) => (
+                  <SelectItem key={b} value={b}>
+                    {b}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="rounded-md border border-input bg-muted/30 px-3 py-2 text-sm">
+              {singleBranchName}
+            </p>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function Topbar() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const user = useAppSelector((s) => s.auth.user);
+  const authenticatedRole = useAppSelector((s) => s.auth.authenticatedRole);
   const mode = useAppSelector((s) => s.theme.mode);
   const notifications = useAppSelector((s) => s.notifications.items);
   const { canAccessPath, roleName, isPlatform, plan, orgName } = usePermissions();
   const [open, setOpen] = useState(false);
+
+  // The demo role/plan/branch preview tool is a testing aid for the platform
+  // owner only — real tenant users (Org Owner/Admin included) never get an
+  // editable identity switcher. Org Owner/Admin instead see a small read-only
+  // context bar (plan + expiry + upgrade, branch if there's more than one);
+  // every other tenant/platform/patient role sees nothing here at all.
+  const showDemoSwitcher = authenticatedRole === "SUPER_ADMIN";
+  const showOrgContext = authenticatedRole === "ORG_OWNER" || authenticatedRole === "ORG_ADMIN";
 
   const unread = notifications.filter((n) => !n.read).length;
   const searchable = MODULES.filter((m) => canAccessPath(m.path));
@@ -207,7 +327,7 @@ export function Topbar() {
           <Search className="h-4 w-4" />
         </Button>
 
-        <PreviewSwitcher />
+        {showDemoSwitcher ? <PreviewSwitcher /> : showOrgContext ? <OrgContextBar /> : null}
 
         <Button
           variant="outline"

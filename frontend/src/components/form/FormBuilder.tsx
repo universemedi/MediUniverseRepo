@@ -19,6 +19,15 @@ function normalizePhone(value: string) {
   return value.replace(/\D/g, "").slice(0, 10);
 }
 
+/** Strips the "+91" prefix as a literal string first, then normalizes — stripping
+ * non-digits from the already-prefixed value directly would leak the prefix's own
+ * "9" and "1" back in as if the user had typed them (e.g. typing "9898" would
+ * visually become "9198989898..." on every keystroke). */
+function displayDigits(value: string) {
+  const withoutCode = value.startsWith(INDIA_CODE) ? value.slice(INDIA_CODE.length) : value;
+  return normalizePhone(withoutCode);
+}
+
 function schemaFor(columns: ColumnDef[]) {
   const shape: Record<string, z.ZodTypeAny> = {};
 
@@ -208,7 +217,7 @@ function Field({ column, value, error, touched, onChange, onBlur, inputRef }: Fi
           inputMode="numeric"
           autoComplete="tel-national"
           maxLength={10}
-          value={normalizePhone(value)}
+          value={displayDigits(value)}
           onChange={(e) => {
             const digits = normalizePhone(e.target.value);
             onChange(digits ? `${INDIA_CODE}${digits}` : "");

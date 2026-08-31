@@ -20,42 +20,102 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FreeTrialRouteImport } from './routes/free-trial'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RequestDemoRouteImport } from './routes/request-demo'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SecurityRouteImport } from './routes/security'
 import { Route as SolutionsRouteImport } from './routes/solutions'
+import { Route as SubscribeRouteImport } from './routes/subscribe'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TestimonialsRouteImport } from './routes/testimonials'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppSplatRouteImport } from './routes/app.$'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as OauthCallbackRouteImport } from './routes/oauth.callback'
 import { Route as SiteSlugRouteImport } from './routes/site.$slug'
+import { Route as SubscribeIndexRouteImport } from './routes/subscribe.index'
+import { Route as SubscribePlansRouteImport } from './routes/subscribe.plans'
 import { Route as AppBillingInvoicesRouteImport } from './routes/app.billing.invoices'
 import { Route as AppClinicAppointmentsRouteImport } from './routes/app.clinic.appointments'
+import { Route as AppClinicAvailabilityRouteImport } from './routes/app.clinic.availability'
+import { Route as AppClinicBillingRouteImport } from './routes/app.clinic.billing'
 import { Route as AppClinicConsultationsRouteImport } from './routes/app.clinic.consultations'
 import { Route as AppClinicDoctorsRouteImport } from './routes/app.clinic.doctors'
 import { Route as AppClinicPatientsRouteImport } from './routes/app.clinic.patients'
+import { Route as AppClinicPrescriptionsRouteImport } from './routes/app.clinic.prescriptions'
+import { Route as AppClinicQueueRouteImport } from './routes/app.clinic.queue'
+import { Route as AppClinicReceptionRouteImport } from './routes/app.clinic.reception'
+import { Route as AppClinicReportsRouteImport } from './routes/app.clinic.reports'
+import { Route as AppClinicWalkInRouteImport } from './routes/app.clinic.walk-in'
 import { Route as AppCmsBlogsRouteImport } from './routes/app.cms.blogs'
 import { Route as AppCmsBrandingRouteImport } from './routes/app.cms.branding'
 import { Route as AppCmsEnquiriesRouteImport } from './routes/app.cms.enquiries'
 import { Route as AppCmsGalleryRouteImport } from './routes/app.cms.gallery'
 import { Route as AppCmsServicesRouteImport } from './routes/app.cms.services'
+import { Route as AppCmsTemplatesRouteImport } from './routes/app.cms.templates'
 import { Route as AppCmsTestimonialsRouteImport } from './routes/app.cms.testimonials'
+import { Route as AppCrmActivitiesRouteImport } from './routes/app.crm.activities'
+import { Route as AppCrmFollowUpsRouteImport } from './routes/app.crm.follow-ups'
+import { Route as AppCrmLeadsRouteImport } from './routes/app.crm.leads'
+import { Route as AppCrmReportsRouteImport } from './routes/app.crm.reports'
+import { Route as AppCrmSourcesRouteImport } from './routes/app.crm.sources'
+import { Route as AppLabCategoriesRouteImport } from './routes/app.lab.categories'
 import { Route as AppLabOrdersRouteImport } from './routes/app.lab.orders'
+import { Route as AppLabPackagesRouteImport } from './routes/app.lab.packages'
+import { Route as AppLabProcessingRouteImport } from './routes/app.lab.processing'
 import { Route as AppLabReportsRouteImport } from './routes/app.lab.reports'
 import { Route as AppLabResultsRouteImport } from './routes/app.lab.results'
+import { Route as AppLabReviewRouteImport } from './routes/app.lab.review'
+import { Route as AppLabSamplesRouteImport } from './routes/app.lab.samples'
 import { Route as AppLabTestsRouteImport } from './routes/app.lab.tests'
 import { Route as AppOrgBranchesRouteImport } from './routes/app.org.branches'
+import { Route as AppOrgCommunicationRouteImport } from './routes/app.org.communication'
+import { Route as AppOrgDepartmentsRouteImport } from './routes/app.org.departments'
 import { Route as AppOrgModulesRouteImport } from './routes/app.org.modules'
+import { Route as AppOrgNotificationTemplatesRouteImport } from './routes/app.org.notification-templates'
+import { Route as AppOrgNotificationsRouteImport } from './routes/app.org.notifications'
+import { Route as AppOrgOnboardingRouteImport } from './routes/app.org.onboarding'
+import { Route as AppOrgPlansRouteImport } from './routes/app.org.plans'
 import { Route as AppOrgRolesRouteImport } from './routes/app.org.roles'
 import { Route as AppOrgSettingsRouteImport } from './routes/app.org.settings'
 import { Route as AppOrgUsersRouteImport } from './routes/app.org.users'
+import { Route as AppPatientAppointmentsRouteImport } from './routes/app.patient.appointments'
 import { Route as AppPatientBookRouteImport } from './routes/app.patient.book'
+import { Route as AppPatientInvoicesRouteImport } from './routes/app.patient.invoices'
+import { Route as AppPatientPrescriptionsRouteImport } from './routes/app.patient.prescriptions'
+import { Route as AppPatientReportsRouteImport } from './routes/app.patient.reports'
+import { Route as AppPharmacyAlertsRouteImport } from './routes/app.pharmacy.alerts'
+import { Route as AppPharmacyBatchesRouteImport } from './routes/app.pharmacy.batches'
+import { Route as AppPharmacyCategoriesRouteImport } from './routes/app.pharmacy.categories'
 import { Route as AppPharmacyDispensingRouteImport } from './routes/app.pharmacy.dispensing'
+import { Route as AppPharmacyManufacturersRouteImport } from './routes/app.pharmacy.manufacturers'
 import { Route as AppPharmacyMedicinesRouteImport } from './routes/app.pharmacy.medicines'
 import { Route as AppPharmacyPurchasesRouteImport } from './routes/app.pharmacy.purchases'
+import { Route as AppPharmacyReportsRouteImport } from './routes/app.pharmacy.reports'
 import { Route as AppPharmacyReturnsRouteImport } from './routes/app.pharmacy.returns'
 import { Route as AppPharmacySalesRouteImport } from './routes/app.pharmacy.sales'
 import { Route as AppPharmacyStockRouteImport } from './routes/app.pharmacy.stock'
 import { Route as AppPharmacySuppliersRouteImport } from './routes/app.pharmacy.suppliers'
+import { Route as AppPlatformAuditLogsRouteImport } from './routes/app.platform.audit-logs'
+import { Route as AppPlatformBlogRouteImport } from './routes/app.platform.blog'
+import { Route as AppPlatformCmsRouteImport } from './routes/app.platform.cms'
+import { Route as AppPlatformContentCardsRouteImport } from './routes/app.platform.content-cards'
+import { Route as AppPlatformCouponsRouteImport } from './routes/app.platform.coupons'
+import { Route as AppPlatformDemoRequestsRouteImport } from './routes/app.platform.demo-requests'
+import { Route as AppPlatformFeaturesRouteImport } from './routes/app.platform.features'
+import { Route as AppPlatformLeadsRouteImport } from './routes/app.platform.leads'
+import { Route as AppPlatformModulesRouteImport } from './routes/app.platform.modules'
+import { Route as AppPlatformOrganizationTypesRouteImport } from './routes/app.platform.organization-types'
+import { Route as AppPlatformOrganizationsRouteImport } from './routes/app.platform.organizations'
+import { Route as AppPlatformPlansRouteImport } from './routes/app.platform.plans'
+import { Route as AppPlatformReferralsRouteImport } from './routes/app.platform.referrals'
+import { Route as AppPlatformRolesRouteImport } from './routes/app.platform.roles'
+import { Route as AppPlatformSubscriptionsRouteImport } from './routes/app.platform.subscriptions'
+import { Route as AppPlatformSupportRouteImport } from './routes/app.platform.support'
+import { Route as AppPlatformTestimonialsRouteImport } from './routes/app.platform.testimonials'
+import { Route as AppPlatformTrialsRouteImport } from './routes/app.platform.trials'
+import { Route as AppPlatformUsersRouteImport } from './routes/app.platform.users'
 import { Route as SiteSlugBlogBlogSlugRouteImport } from './routes/site.$slug.blog.$blogSlug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -113,6 +173,11 @@ const PricingRoute = PricingRouteImport.update({
   path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RequestDemoRoute = RequestDemoRouteImport.update({
   id: '/request-demo',
   path: '/request-demo',
@@ -123,9 +188,24 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SecurityRoute = SecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SolutionsRoute = SolutionsRouteImport.update({
   id: '/solutions',
   path: '/solutions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubscribeRoute = SubscribeRouteImport.update({
+  id: '/subscribe',
+  path: '/subscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TestimonialsRoute = TestimonialsRouteImport.update({
@@ -143,6 +223,16 @@ const AppSplatRoute = AppSplatRouteImport.update({
   path: '/$',
   getParentRoute: () => AppRoute,
 } as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BlogRoute,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => BlogRoute,
+} as any)
 const OauthCallbackRoute = OauthCallbackRouteImport.update({
   id: '/oauth/callback',
   path: '/oauth/callback',
@@ -153,6 +243,16 @@ const SiteSlugRoute = SiteSlugRouteImport.update({
   path: '/site/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SubscribeIndexRoute = SubscribeIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SubscribeRoute,
+} as any)
+const SubscribePlansRoute = SubscribePlansRouteImport.update({
+  id: '/plans',
+  path: '/plans',
+  getParentRoute: () => SubscribeRoute,
+} as any)
 const AppBillingInvoicesRoute = AppBillingInvoicesRouteImport.update({
   id: '/billing/invoices',
   path: '/billing/invoices',
@@ -161,6 +261,16 @@ const AppBillingInvoicesRoute = AppBillingInvoicesRouteImport.update({
 const AppClinicAppointmentsRoute = AppClinicAppointmentsRouteImport.update({
   id: '/clinic/appointments',
   path: '/clinic/appointments',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClinicAvailabilityRoute = AppClinicAvailabilityRouteImport.update({
+  id: '/clinic/availability',
+  path: '/clinic/availability',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClinicBillingRoute = AppClinicBillingRouteImport.update({
+  id: '/clinic/billing',
+  path: '/clinic/billing',
   getParentRoute: () => AppRoute,
 } as any)
 const AppClinicConsultationsRoute = AppClinicConsultationsRouteImport.update({
@@ -176,6 +286,31 @@ const AppClinicDoctorsRoute = AppClinicDoctorsRouteImport.update({
 const AppClinicPatientsRoute = AppClinicPatientsRouteImport.update({
   id: '/clinic/patients',
   path: '/clinic/patients',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClinicPrescriptionsRoute = AppClinicPrescriptionsRouteImport.update({
+  id: '/clinic/prescriptions',
+  path: '/clinic/prescriptions',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClinicQueueRoute = AppClinicQueueRouteImport.update({
+  id: '/clinic/queue',
+  path: '/clinic/queue',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClinicReceptionRoute = AppClinicReceptionRouteImport.update({
+  id: '/clinic/reception',
+  path: '/clinic/reception',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClinicReportsRoute = AppClinicReportsRouteImport.update({
+  id: '/clinic/reports',
+  path: '/clinic/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClinicWalkInRoute = AppClinicWalkInRouteImport.update({
+  id: '/clinic/walk-in',
+  path: '/clinic/walk-in',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCmsBlogsRoute = AppCmsBlogsRouteImport.update({
@@ -203,14 +338,59 @@ const AppCmsServicesRoute = AppCmsServicesRouteImport.update({
   path: '/cms/services',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCmsTemplatesRoute = AppCmsTemplatesRouteImport.update({
+  id: '/cms/templates',
+  path: '/cms/templates',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCmsTestimonialsRoute = AppCmsTestimonialsRouteImport.update({
   id: '/cms/testimonials',
   path: '/cms/testimonials',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCrmActivitiesRoute = AppCrmActivitiesRouteImport.update({
+  id: '/crm/activities',
+  path: '/crm/activities',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCrmFollowUpsRoute = AppCrmFollowUpsRouteImport.update({
+  id: '/crm/follow-ups',
+  path: '/crm/follow-ups',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCrmLeadsRoute = AppCrmLeadsRouteImport.update({
+  id: '/crm/leads',
+  path: '/crm/leads',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCrmReportsRoute = AppCrmReportsRouteImport.update({
+  id: '/crm/reports',
+  path: '/crm/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCrmSourcesRoute = AppCrmSourcesRouteImport.update({
+  id: '/crm/sources',
+  path: '/crm/sources',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLabCategoriesRoute = AppLabCategoriesRouteImport.update({
+  id: '/lab/categories',
+  path: '/lab/categories',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLabOrdersRoute = AppLabOrdersRouteImport.update({
   id: '/lab/orders',
   path: '/lab/orders',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLabPackagesRoute = AppLabPackagesRouteImport.update({
+  id: '/lab/packages',
+  path: '/lab/packages',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLabProcessingRoute = AppLabProcessingRouteImport.update({
+  id: '/lab/processing',
+  path: '/lab/processing',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLabReportsRoute = AppLabReportsRouteImport.update({
@@ -223,6 +403,16 @@ const AppLabResultsRoute = AppLabResultsRouteImport.update({
   path: '/lab/results',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLabReviewRoute = AppLabReviewRouteImport.update({
+  id: '/lab/review',
+  path: '/lab/review',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLabSamplesRoute = AppLabSamplesRouteImport.update({
+  id: '/lab/samples',
+  path: '/lab/samples',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLabTestsRoute = AppLabTestsRouteImport.update({
   id: '/lab/tests',
   path: '/lab/tests',
@@ -233,9 +423,40 @@ const AppOrgBranchesRoute = AppOrgBranchesRouteImport.update({
   path: '/org/branches',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOrgCommunicationRoute = AppOrgCommunicationRouteImport.update({
+  id: '/org/communication',
+  path: '/org/communication',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOrgDepartmentsRoute = AppOrgDepartmentsRouteImport.update({
+  id: '/org/departments',
+  path: '/org/departments',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOrgModulesRoute = AppOrgModulesRouteImport.update({
   id: '/org/modules',
   path: '/org/modules',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOrgNotificationTemplatesRoute =
+  AppOrgNotificationTemplatesRouteImport.update({
+    id: '/org/notification-templates',
+    path: '/org/notification-templates',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppOrgNotificationsRoute = AppOrgNotificationsRouteImport.update({
+  id: '/org/notifications',
+  path: '/org/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOrgOnboardingRoute = AppOrgOnboardingRouteImport.update({
+  id: '/org/onboarding',
+  path: '/org/onboarding',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOrgPlansRoute = AppOrgPlansRouteImport.update({
+  id: '/org/plans',
+  path: '/org/plans',
   getParentRoute: () => AppRoute,
 } as any)
 const AppOrgRolesRoute = AppOrgRolesRouteImport.update({
@@ -253,9 +474,44 @@ const AppOrgUsersRoute = AppOrgUsersRouteImport.update({
   path: '/org/users',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPatientAppointmentsRoute = AppPatientAppointmentsRouteImport.update({
+  id: '/patient/appointments',
+  path: '/patient/appointments',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPatientBookRoute = AppPatientBookRouteImport.update({
   id: '/patient/book',
   path: '/patient/book',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPatientInvoicesRoute = AppPatientInvoicesRouteImport.update({
+  id: '/patient/invoices',
+  path: '/patient/invoices',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPatientPrescriptionsRoute = AppPatientPrescriptionsRouteImport.update({
+  id: '/patient/prescriptions',
+  path: '/patient/prescriptions',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPatientReportsRoute = AppPatientReportsRouteImport.update({
+  id: '/patient/reports',
+  path: '/patient/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPharmacyAlertsRoute = AppPharmacyAlertsRouteImport.update({
+  id: '/pharmacy/alerts',
+  path: '/pharmacy/alerts',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPharmacyBatchesRoute = AppPharmacyBatchesRouteImport.update({
+  id: '/pharmacy/batches',
+  path: '/pharmacy/batches',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPharmacyCategoriesRoute = AppPharmacyCategoriesRouteImport.update({
+  id: '/pharmacy/categories',
+  path: '/pharmacy/categories',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPharmacyDispensingRoute = AppPharmacyDispensingRouteImport.update({
@@ -263,6 +519,12 @@ const AppPharmacyDispensingRoute = AppPharmacyDispensingRouteImport.update({
   path: '/pharmacy/dispensing',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPharmacyManufacturersRoute =
+  AppPharmacyManufacturersRouteImport.update({
+    id: '/pharmacy/manufacturers',
+    path: '/pharmacy/manufacturers',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppPharmacyMedicinesRoute = AppPharmacyMedicinesRouteImport.update({
   id: '/pharmacy/medicines',
   path: '/pharmacy/medicines',
@@ -271,6 +533,11 @@ const AppPharmacyMedicinesRoute = AppPharmacyMedicinesRouteImport.update({
 const AppPharmacyPurchasesRoute = AppPharmacyPurchasesRouteImport.update({
   id: '/pharmacy/purchases',
   path: '/pharmacy/purchases',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPharmacyReportsRoute = AppPharmacyReportsRouteImport.update({
+  id: '/pharmacy/reports',
+  path: '/pharmacy/reports',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPharmacyReturnsRoute = AppPharmacyReturnsRouteImport.update({
@@ -293,6 +560,104 @@ const AppPharmacySuppliersRoute = AppPharmacySuppliersRouteImport.update({
   path: '/pharmacy/suppliers',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPlatformAuditLogsRoute = AppPlatformAuditLogsRouteImport.update({
+  id: '/platform/audit-logs',
+  path: '/platform/audit-logs',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformBlogRoute = AppPlatformBlogRouteImport.update({
+  id: '/platform/blog',
+  path: '/platform/blog',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformCmsRoute = AppPlatformCmsRouteImport.update({
+  id: '/platform/cms',
+  path: '/platform/cms',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformContentCardsRoute = AppPlatformContentCardsRouteImport.update({
+  id: '/platform/content-cards',
+  path: '/platform/content-cards',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformCouponsRoute = AppPlatformCouponsRouteImport.update({
+  id: '/platform/coupons',
+  path: '/platform/coupons',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformDemoRequestsRoute = AppPlatformDemoRequestsRouteImport.update({
+  id: '/platform/demo-requests',
+  path: '/platform/demo-requests',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformFeaturesRoute = AppPlatformFeaturesRouteImport.update({
+  id: '/platform/features',
+  path: '/platform/features',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformLeadsRoute = AppPlatformLeadsRouteImport.update({
+  id: '/platform/leads',
+  path: '/platform/leads',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformModulesRoute = AppPlatformModulesRouteImport.update({
+  id: '/platform/modules',
+  path: '/platform/modules',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformOrganizationTypesRoute =
+  AppPlatformOrganizationTypesRouteImport.update({
+    id: '/platform/organization-types',
+    path: '/platform/organization-types',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppPlatformOrganizationsRoute =
+  AppPlatformOrganizationsRouteImport.update({
+    id: '/platform/organizations',
+    path: '/platform/organizations',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppPlatformPlansRoute = AppPlatformPlansRouteImport.update({
+  id: '/platform/plans',
+  path: '/platform/plans',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformReferralsRoute = AppPlatformReferralsRouteImport.update({
+  id: '/platform/referrals',
+  path: '/platform/referrals',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformRolesRoute = AppPlatformRolesRouteImport.update({
+  id: '/platform/roles',
+  path: '/platform/roles',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformSubscriptionsRoute =
+  AppPlatformSubscriptionsRouteImport.update({
+    id: '/platform/subscriptions',
+    path: '/platform/subscriptions',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppPlatformSupportRoute = AppPlatformSupportRouteImport.update({
+  id: '/platform/support',
+  path: '/platform/support',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformTestimonialsRoute = AppPlatformTestimonialsRouteImport.update({
+  id: '/platform/testimonials',
+  path: '/platform/testimonials',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformTrialsRoute = AppPlatformTrialsRouteImport.update({
+  id: '/platform/trials',
+  path: '/platform/trials',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlatformUsersRoute = AppPlatformUsersRouteImport.update({
+  id: '/platform/users',
+  path: '/platform/users',
+  getParentRoute: () => AppRoute,
+} as any)
 const SiteSlugBlogBlogSlugRoute = SiteSlugBlogBlogSlugRouteImport.update({
   id: '/blog/$blogSlug',
   path: '/blog/$blogSlug',
@@ -304,98 +669,216 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/app': typeof AppRouteWithChildren
-  '/blog': typeof BlogRoute
+  '/blog': typeof BlogRouteWithChildren
   '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/free-trial': typeof FreeTrialRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/request-demo': typeof RequestDemoRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/security': typeof SecurityRoute
   '/solutions': typeof SolutionsRoute
+  '/subscribe': typeof SubscribeRouteWithChildren
+  '/terms': typeof TermsRoute
   '/testimonials': typeof TestimonialsRoute
   '/app/$': typeof AppSplatRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/oauth/callback': typeof OauthCallbackRoute
   '/site/$slug': typeof SiteSlugRouteWithChildren
+  '/subscribe/plans': typeof SubscribePlansRoute
   '/app/': typeof AppIndexRoute
+  '/blog/': typeof BlogIndexRoute
+  '/subscribe/': typeof SubscribeIndexRoute
   '/app/billing/invoices': typeof AppBillingInvoicesRoute
   '/app/clinic/appointments': typeof AppClinicAppointmentsRoute
+  '/app/clinic/availability': typeof AppClinicAvailabilityRoute
+  '/app/clinic/billing': typeof AppClinicBillingRoute
   '/app/clinic/consultations': typeof AppClinicConsultationsRoute
   '/app/clinic/doctors': typeof AppClinicDoctorsRoute
   '/app/clinic/patients': typeof AppClinicPatientsRoute
+  '/app/clinic/prescriptions': typeof AppClinicPrescriptionsRoute
+  '/app/clinic/queue': typeof AppClinicQueueRoute
+  '/app/clinic/reception': typeof AppClinicReceptionRoute
+  '/app/clinic/reports': typeof AppClinicReportsRoute
+  '/app/clinic/walk-in': typeof AppClinicWalkInRoute
   '/app/cms/blogs': typeof AppCmsBlogsRoute
   '/app/cms/branding': typeof AppCmsBrandingRoute
   '/app/cms/enquiries': typeof AppCmsEnquiriesRoute
   '/app/cms/gallery': typeof AppCmsGalleryRoute
   '/app/cms/services': typeof AppCmsServicesRoute
+  '/app/cms/templates': typeof AppCmsTemplatesRoute
   '/app/cms/testimonials': typeof AppCmsTestimonialsRoute
+  '/app/crm/activities': typeof AppCrmActivitiesRoute
+  '/app/crm/follow-ups': typeof AppCrmFollowUpsRoute
+  '/app/crm/leads': typeof AppCrmLeadsRoute
+  '/app/crm/reports': typeof AppCrmReportsRoute
+  '/app/crm/sources': typeof AppCrmSourcesRoute
+  '/app/lab/categories': typeof AppLabCategoriesRoute
   '/app/lab/orders': typeof AppLabOrdersRoute
+  '/app/lab/packages': typeof AppLabPackagesRoute
+  '/app/lab/processing': typeof AppLabProcessingRoute
   '/app/lab/reports': typeof AppLabReportsRoute
   '/app/lab/results': typeof AppLabResultsRoute
+  '/app/lab/review': typeof AppLabReviewRoute
+  '/app/lab/samples': typeof AppLabSamplesRoute
   '/app/lab/tests': typeof AppLabTestsRoute
   '/app/org/branches': typeof AppOrgBranchesRoute
+  '/app/org/communication': typeof AppOrgCommunicationRoute
+  '/app/org/departments': typeof AppOrgDepartmentsRoute
   '/app/org/modules': typeof AppOrgModulesRoute
+  '/app/org/notification-templates': typeof AppOrgNotificationTemplatesRoute
+  '/app/org/notifications': typeof AppOrgNotificationsRoute
+  '/app/org/onboarding': typeof AppOrgOnboardingRoute
+  '/app/org/plans': typeof AppOrgPlansRoute
   '/app/org/roles': typeof AppOrgRolesRoute
   '/app/org/settings': typeof AppOrgSettingsRoute
   '/app/org/users': typeof AppOrgUsersRoute
+  '/app/patient/appointments': typeof AppPatientAppointmentsRoute
   '/app/patient/book': typeof AppPatientBookRoute
+  '/app/patient/invoices': typeof AppPatientInvoicesRoute
+  '/app/patient/prescriptions': typeof AppPatientPrescriptionsRoute
+  '/app/patient/reports': typeof AppPatientReportsRoute
+  '/app/pharmacy/alerts': typeof AppPharmacyAlertsRoute
+  '/app/pharmacy/batches': typeof AppPharmacyBatchesRoute
+  '/app/pharmacy/categories': typeof AppPharmacyCategoriesRoute
   '/app/pharmacy/dispensing': typeof AppPharmacyDispensingRoute
+  '/app/pharmacy/manufacturers': typeof AppPharmacyManufacturersRoute
   '/app/pharmacy/medicines': typeof AppPharmacyMedicinesRoute
   '/app/pharmacy/purchases': typeof AppPharmacyPurchasesRoute
+  '/app/pharmacy/reports': typeof AppPharmacyReportsRoute
   '/app/pharmacy/returns': typeof AppPharmacyReturnsRoute
   '/app/pharmacy/sales': typeof AppPharmacySalesRoute
   '/app/pharmacy/stock': typeof AppPharmacyStockRoute
   '/app/pharmacy/suppliers': typeof AppPharmacySuppliersRoute
+  '/app/platform/audit-logs': typeof AppPlatformAuditLogsRoute
+  '/app/platform/blog': typeof AppPlatformBlogRoute
+  '/app/platform/cms': typeof AppPlatformCmsRoute
+  '/app/platform/content-cards': typeof AppPlatformContentCardsRoute
+  '/app/platform/coupons': typeof AppPlatformCouponsRoute
+  '/app/platform/demo-requests': typeof AppPlatformDemoRequestsRoute
+  '/app/platform/features': typeof AppPlatformFeaturesRoute
+  '/app/platform/leads': typeof AppPlatformLeadsRoute
+  '/app/platform/modules': typeof AppPlatformModulesRoute
+  '/app/platform/organization-types': typeof AppPlatformOrganizationTypesRoute
+  '/app/platform/organizations': typeof AppPlatformOrganizationsRoute
+  '/app/platform/plans': typeof AppPlatformPlansRoute
+  '/app/platform/referrals': typeof AppPlatformReferralsRoute
+  '/app/platform/roles': typeof AppPlatformRolesRoute
+  '/app/platform/subscriptions': typeof AppPlatformSubscriptionsRoute
+  '/app/platform/support': typeof AppPlatformSupportRoute
+  '/app/platform/testimonials': typeof AppPlatformTestimonialsRoute
+  '/app/platform/trials': typeof AppPlatformTrialsRoute
+  '/app/platform/users': typeof AppPlatformUsersRoute
   '/site/$slug/blog/$blogSlug': typeof SiteSlugBlogBlogSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/accept-invite': typeof AcceptInviteRoute
-  '/blog': typeof BlogRoute
   '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/free-trial': typeof FreeTrialRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/request-demo': typeof RequestDemoRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/security': typeof SecurityRoute
   '/solutions': typeof SolutionsRoute
+  '/terms': typeof TermsRoute
   '/testimonials': typeof TestimonialsRoute
   '/app/$': typeof AppSplatRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/oauth/callback': typeof OauthCallbackRoute
   '/site/$slug': typeof SiteSlugRouteWithChildren
+  '/subscribe/plans': typeof SubscribePlansRoute
   '/app': typeof AppIndexRoute
+  '/blog': typeof BlogIndexRoute
+  '/subscribe': typeof SubscribeIndexRoute
   '/app/billing/invoices': typeof AppBillingInvoicesRoute
   '/app/clinic/appointments': typeof AppClinicAppointmentsRoute
+  '/app/clinic/availability': typeof AppClinicAvailabilityRoute
+  '/app/clinic/billing': typeof AppClinicBillingRoute
   '/app/clinic/consultations': typeof AppClinicConsultationsRoute
   '/app/clinic/doctors': typeof AppClinicDoctorsRoute
   '/app/clinic/patients': typeof AppClinicPatientsRoute
+  '/app/clinic/prescriptions': typeof AppClinicPrescriptionsRoute
+  '/app/clinic/queue': typeof AppClinicQueueRoute
+  '/app/clinic/reception': typeof AppClinicReceptionRoute
+  '/app/clinic/reports': typeof AppClinicReportsRoute
+  '/app/clinic/walk-in': typeof AppClinicWalkInRoute
   '/app/cms/blogs': typeof AppCmsBlogsRoute
   '/app/cms/branding': typeof AppCmsBrandingRoute
   '/app/cms/enquiries': typeof AppCmsEnquiriesRoute
   '/app/cms/gallery': typeof AppCmsGalleryRoute
   '/app/cms/services': typeof AppCmsServicesRoute
+  '/app/cms/templates': typeof AppCmsTemplatesRoute
   '/app/cms/testimonials': typeof AppCmsTestimonialsRoute
+  '/app/crm/activities': typeof AppCrmActivitiesRoute
+  '/app/crm/follow-ups': typeof AppCrmFollowUpsRoute
+  '/app/crm/leads': typeof AppCrmLeadsRoute
+  '/app/crm/reports': typeof AppCrmReportsRoute
+  '/app/crm/sources': typeof AppCrmSourcesRoute
+  '/app/lab/categories': typeof AppLabCategoriesRoute
   '/app/lab/orders': typeof AppLabOrdersRoute
+  '/app/lab/packages': typeof AppLabPackagesRoute
+  '/app/lab/processing': typeof AppLabProcessingRoute
   '/app/lab/reports': typeof AppLabReportsRoute
   '/app/lab/results': typeof AppLabResultsRoute
+  '/app/lab/review': typeof AppLabReviewRoute
+  '/app/lab/samples': typeof AppLabSamplesRoute
   '/app/lab/tests': typeof AppLabTestsRoute
   '/app/org/branches': typeof AppOrgBranchesRoute
+  '/app/org/communication': typeof AppOrgCommunicationRoute
+  '/app/org/departments': typeof AppOrgDepartmentsRoute
   '/app/org/modules': typeof AppOrgModulesRoute
+  '/app/org/notification-templates': typeof AppOrgNotificationTemplatesRoute
+  '/app/org/notifications': typeof AppOrgNotificationsRoute
+  '/app/org/onboarding': typeof AppOrgOnboardingRoute
+  '/app/org/plans': typeof AppOrgPlansRoute
   '/app/org/roles': typeof AppOrgRolesRoute
   '/app/org/settings': typeof AppOrgSettingsRoute
   '/app/org/users': typeof AppOrgUsersRoute
+  '/app/patient/appointments': typeof AppPatientAppointmentsRoute
   '/app/patient/book': typeof AppPatientBookRoute
+  '/app/patient/invoices': typeof AppPatientInvoicesRoute
+  '/app/patient/prescriptions': typeof AppPatientPrescriptionsRoute
+  '/app/patient/reports': typeof AppPatientReportsRoute
+  '/app/pharmacy/alerts': typeof AppPharmacyAlertsRoute
+  '/app/pharmacy/batches': typeof AppPharmacyBatchesRoute
+  '/app/pharmacy/categories': typeof AppPharmacyCategoriesRoute
   '/app/pharmacy/dispensing': typeof AppPharmacyDispensingRoute
+  '/app/pharmacy/manufacturers': typeof AppPharmacyManufacturersRoute
   '/app/pharmacy/medicines': typeof AppPharmacyMedicinesRoute
   '/app/pharmacy/purchases': typeof AppPharmacyPurchasesRoute
+  '/app/pharmacy/reports': typeof AppPharmacyReportsRoute
   '/app/pharmacy/returns': typeof AppPharmacyReturnsRoute
   '/app/pharmacy/sales': typeof AppPharmacySalesRoute
   '/app/pharmacy/stock': typeof AppPharmacyStockRoute
   '/app/pharmacy/suppliers': typeof AppPharmacySuppliersRoute
+  '/app/platform/audit-logs': typeof AppPlatformAuditLogsRoute
+  '/app/platform/blog': typeof AppPlatformBlogRoute
+  '/app/platform/cms': typeof AppPlatformCmsRoute
+  '/app/platform/content-cards': typeof AppPlatformContentCardsRoute
+  '/app/platform/coupons': typeof AppPlatformCouponsRoute
+  '/app/platform/demo-requests': typeof AppPlatformDemoRequestsRoute
+  '/app/platform/features': typeof AppPlatformFeaturesRoute
+  '/app/platform/leads': typeof AppPlatformLeadsRoute
+  '/app/platform/modules': typeof AppPlatformModulesRoute
+  '/app/platform/organization-types': typeof AppPlatformOrganizationTypesRoute
+  '/app/platform/organizations': typeof AppPlatformOrganizationsRoute
+  '/app/platform/plans': typeof AppPlatformPlansRoute
+  '/app/platform/referrals': typeof AppPlatformReferralsRoute
+  '/app/platform/roles': typeof AppPlatformRolesRoute
+  '/app/platform/subscriptions': typeof AppPlatformSubscriptionsRoute
+  '/app/platform/support': typeof AppPlatformSupportRoute
+  '/app/platform/testimonials': typeof AppPlatformTestimonialsRoute
+  '/app/platform/trials': typeof AppPlatformTrialsRoute
+  '/app/platform/users': typeof AppPlatformUsersRoute
   '/site/$slug/blog/$blogSlug': typeof SiteSlugBlogBlogSlugRoute
 }
 export interface FileRoutesById {
@@ -404,49 +887,109 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/app': typeof AppRouteWithChildren
-  '/blog': typeof BlogRoute
+  '/blog': typeof BlogRouteWithChildren
   '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/free-trial': typeof FreeTrialRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/request-demo': typeof RequestDemoRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/security': typeof SecurityRoute
   '/solutions': typeof SolutionsRoute
+  '/subscribe': typeof SubscribeRouteWithChildren
+  '/terms': typeof TermsRoute
   '/testimonials': typeof TestimonialsRoute
   '/app/$': typeof AppSplatRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/oauth/callback': typeof OauthCallbackRoute
   '/site/$slug': typeof SiteSlugRouteWithChildren
+  '/subscribe/plans': typeof SubscribePlansRoute
   '/app/': typeof AppIndexRoute
+  '/blog/': typeof BlogIndexRoute
+  '/subscribe/': typeof SubscribeIndexRoute
   '/app/billing/invoices': typeof AppBillingInvoicesRoute
   '/app/clinic/appointments': typeof AppClinicAppointmentsRoute
+  '/app/clinic/availability': typeof AppClinicAvailabilityRoute
+  '/app/clinic/billing': typeof AppClinicBillingRoute
   '/app/clinic/consultations': typeof AppClinicConsultationsRoute
   '/app/clinic/doctors': typeof AppClinicDoctorsRoute
   '/app/clinic/patients': typeof AppClinicPatientsRoute
+  '/app/clinic/prescriptions': typeof AppClinicPrescriptionsRoute
+  '/app/clinic/queue': typeof AppClinicQueueRoute
+  '/app/clinic/reception': typeof AppClinicReceptionRoute
+  '/app/clinic/reports': typeof AppClinicReportsRoute
+  '/app/clinic/walk-in': typeof AppClinicWalkInRoute
   '/app/cms/blogs': typeof AppCmsBlogsRoute
   '/app/cms/branding': typeof AppCmsBrandingRoute
   '/app/cms/enquiries': typeof AppCmsEnquiriesRoute
   '/app/cms/gallery': typeof AppCmsGalleryRoute
   '/app/cms/services': typeof AppCmsServicesRoute
+  '/app/cms/templates': typeof AppCmsTemplatesRoute
   '/app/cms/testimonials': typeof AppCmsTestimonialsRoute
+  '/app/crm/activities': typeof AppCrmActivitiesRoute
+  '/app/crm/follow-ups': typeof AppCrmFollowUpsRoute
+  '/app/crm/leads': typeof AppCrmLeadsRoute
+  '/app/crm/reports': typeof AppCrmReportsRoute
+  '/app/crm/sources': typeof AppCrmSourcesRoute
+  '/app/lab/categories': typeof AppLabCategoriesRoute
   '/app/lab/orders': typeof AppLabOrdersRoute
+  '/app/lab/packages': typeof AppLabPackagesRoute
+  '/app/lab/processing': typeof AppLabProcessingRoute
   '/app/lab/reports': typeof AppLabReportsRoute
   '/app/lab/results': typeof AppLabResultsRoute
+  '/app/lab/review': typeof AppLabReviewRoute
+  '/app/lab/samples': typeof AppLabSamplesRoute
   '/app/lab/tests': typeof AppLabTestsRoute
   '/app/org/branches': typeof AppOrgBranchesRoute
+  '/app/org/communication': typeof AppOrgCommunicationRoute
+  '/app/org/departments': typeof AppOrgDepartmentsRoute
   '/app/org/modules': typeof AppOrgModulesRoute
+  '/app/org/notification-templates': typeof AppOrgNotificationTemplatesRoute
+  '/app/org/notifications': typeof AppOrgNotificationsRoute
+  '/app/org/onboarding': typeof AppOrgOnboardingRoute
+  '/app/org/plans': typeof AppOrgPlansRoute
   '/app/org/roles': typeof AppOrgRolesRoute
   '/app/org/settings': typeof AppOrgSettingsRoute
   '/app/org/users': typeof AppOrgUsersRoute
+  '/app/patient/appointments': typeof AppPatientAppointmentsRoute
   '/app/patient/book': typeof AppPatientBookRoute
+  '/app/patient/invoices': typeof AppPatientInvoicesRoute
+  '/app/patient/prescriptions': typeof AppPatientPrescriptionsRoute
+  '/app/patient/reports': typeof AppPatientReportsRoute
+  '/app/pharmacy/alerts': typeof AppPharmacyAlertsRoute
+  '/app/pharmacy/batches': typeof AppPharmacyBatchesRoute
+  '/app/pharmacy/categories': typeof AppPharmacyCategoriesRoute
   '/app/pharmacy/dispensing': typeof AppPharmacyDispensingRoute
+  '/app/pharmacy/manufacturers': typeof AppPharmacyManufacturersRoute
   '/app/pharmacy/medicines': typeof AppPharmacyMedicinesRoute
   '/app/pharmacy/purchases': typeof AppPharmacyPurchasesRoute
+  '/app/pharmacy/reports': typeof AppPharmacyReportsRoute
   '/app/pharmacy/returns': typeof AppPharmacyReturnsRoute
   '/app/pharmacy/sales': typeof AppPharmacySalesRoute
   '/app/pharmacy/stock': typeof AppPharmacyStockRoute
   '/app/pharmacy/suppliers': typeof AppPharmacySuppliersRoute
+  '/app/platform/audit-logs': typeof AppPlatformAuditLogsRoute
+  '/app/platform/blog': typeof AppPlatformBlogRoute
+  '/app/platform/cms': typeof AppPlatformCmsRoute
+  '/app/platform/content-cards': typeof AppPlatformContentCardsRoute
+  '/app/platform/coupons': typeof AppPlatformCouponsRoute
+  '/app/platform/demo-requests': typeof AppPlatformDemoRequestsRoute
+  '/app/platform/features': typeof AppPlatformFeaturesRoute
+  '/app/platform/leads': typeof AppPlatformLeadsRoute
+  '/app/platform/modules': typeof AppPlatformModulesRoute
+  '/app/platform/organization-types': typeof AppPlatformOrganizationTypesRoute
+  '/app/platform/organizations': typeof AppPlatformOrganizationsRoute
+  '/app/platform/plans': typeof AppPlatformPlansRoute
+  '/app/platform/referrals': typeof AppPlatformReferralsRoute
+  '/app/platform/roles': typeof AppPlatformRolesRoute
+  '/app/platform/subscriptions': typeof AppPlatformSubscriptionsRoute
+  '/app/platform/support': typeof AppPlatformSupportRoute
+  '/app/platform/testimonials': typeof AppPlatformTestimonialsRoute
+  '/app/platform/trials': typeof AppPlatformTrialsRoute
+  '/app/platform/users': typeof AppPlatformUsersRoute
   '/site/$slug/blog/$blogSlug': typeof SiteSlugBlogBlogSlugRoute
 }
 export interface FileRouteTypes {
@@ -463,91 +1006,209 @@ export interface FileRouteTypes {
     | '/free-trial'
     | '/login'
     | '/pricing'
+    | '/privacy'
     | '/request-demo'
     | '/reset-password'
+    | '/security'
     | '/solutions'
+    | '/subscribe'
+    | '/terms'
     | '/testimonials'
     | '/app/$'
+    | '/blog/$slug'
     | '/oauth/callback'
     | '/site/$slug'
+    | '/subscribe/plans'
     | '/app/'
+    | '/blog/'
+    | '/subscribe/'
     | '/app/billing/invoices'
     | '/app/clinic/appointments'
+    | '/app/clinic/availability'
+    | '/app/clinic/billing'
     | '/app/clinic/consultations'
     | '/app/clinic/doctors'
     | '/app/clinic/patients'
+    | '/app/clinic/prescriptions'
+    | '/app/clinic/queue'
+    | '/app/clinic/reception'
+    | '/app/clinic/reports'
+    | '/app/clinic/walk-in'
     | '/app/cms/blogs'
     | '/app/cms/branding'
     | '/app/cms/enquiries'
     | '/app/cms/gallery'
     | '/app/cms/services'
+    | '/app/cms/templates'
     | '/app/cms/testimonials'
+    | '/app/crm/activities'
+    | '/app/crm/follow-ups'
+    | '/app/crm/leads'
+    | '/app/crm/reports'
+    | '/app/crm/sources'
+    | '/app/lab/categories'
     | '/app/lab/orders'
+    | '/app/lab/packages'
+    | '/app/lab/processing'
     | '/app/lab/reports'
     | '/app/lab/results'
+    | '/app/lab/review'
+    | '/app/lab/samples'
     | '/app/lab/tests'
     | '/app/org/branches'
+    | '/app/org/communication'
+    | '/app/org/departments'
     | '/app/org/modules'
+    | '/app/org/notification-templates'
+    | '/app/org/notifications'
+    | '/app/org/onboarding'
+    | '/app/org/plans'
     | '/app/org/roles'
     | '/app/org/settings'
     | '/app/org/users'
+    | '/app/patient/appointments'
     | '/app/patient/book'
+    | '/app/patient/invoices'
+    | '/app/patient/prescriptions'
+    | '/app/patient/reports'
+    | '/app/pharmacy/alerts'
+    | '/app/pharmacy/batches'
+    | '/app/pharmacy/categories'
     | '/app/pharmacy/dispensing'
+    | '/app/pharmacy/manufacturers'
     | '/app/pharmacy/medicines'
     | '/app/pharmacy/purchases'
+    | '/app/pharmacy/reports'
     | '/app/pharmacy/returns'
     | '/app/pharmacy/sales'
     | '/app/pharmacy/stock'
     | '/app/pharmacy/suppliers'
+    | '/app/platform/audit-logs'
+    | '/app/platform/blog'
+    | '/app/platform/cms'
+    | '/app/platform/content-cards'
+    | '/app/platform/coupons'
+    | '/app/platform/demo-requests'
+    | '/app/platform/features'
+    | '/app/platform/leads'
+    | '/app/platform/modules'
+    | '/app/platform/organization-types'
+    | '/app/platform/organizations'
+    | '/app/platform/plans'
+    | '/app/platform/referrals'
+    | '/app/platform/roles'
+    | '/app/platform/subscriptions'
+    | '/app/platform/support'
+    | '/app/platform/testimonials'
+    | '/app/platform/trials'
+    | '/app/platform/users'
     | '/site/$slug/blog/$blogSlug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/accept-invite'
-    | '/blog'
     | '/contact'
     | '/features'
     | '/forgot-password'
     | '/free-trial'
     | '/login'
     | '/pricing'
+    | '/privacy'
     | '/request-demo'
     | '/reset-password'
+    | '/security'
     | '/solutions'
+    | '/terms'
     | '/testimonials'
     | '/app/$'
+    | '/blog/$slug'
     | '/oauth/callback'
     | '/site/$slug'
+    | '/subscribe/plans'
     | '/app'
+    | '/blog'
+    | '/subscribe'
     | '/app/billing/invoices'
     | '/app/clinic/appointments'
+    | '/app/clinic/availability'
+    | '/app/clinic/billing'
     | '/app/clinic/consultations'
     | '/app/clinic/doctors'
     | '/app/clinic/patients'
+    | '/app/clinic/prescriptions'
+    | '/app/clinic/queue'
+    | '/app/clinic/reception'
+    | '/app/clinic/reports'
+    | '/app/clinic/walk-in'
     | '/app/cms/blogs'
     | '/app/cms/branding'
     | '/app/cms/enquiries'
     | '/app/cms/gallery'
     | '/app/cms/services'
+    | '/app/cms/templates'
     | '/app/cms/testimonials'
+    | '/app/crm/activities'
+    | '/app/crm/follow-ups'
+    | '/app/crm/leads'
+    | '/app/crm/reports'
+    | '/app/crm/sources'
+    | '/app/lab/categories'
     | '/app/lab/orders'
+    | '/app/lab/packages'
+    | '/app/lab/processing'
     | '/app/lab/reports'
     | '/app/lab/results'
+    | '/app/lab/review'
+    | '/app/lab/samples'
     | '/app/lab/tests'
     | '/app/org/branches'
+    | '/app/org/communication'
+    | '/app/org/departments'
     | '/app/org/modules'
+    | '/app/org/notification-templates'
+    | '/app/org/notifications'
+    | '/app/org/onboarding'
+    | '/app/org/plans'
     | '/app/org/roles'
     | '/app/org/settings'
     | '/app/org/users'
+    | '/app/patient/appointments'
     | '/app/patient/book'
+    | '/app/patient/invoices'
+    | '/app/patient/prescriptions'
+    | '/app/patient/reports'
+    | '/app/pharmacy/alerts'
+    | '/app/pharmacy/batches'
+    | '/app/pharmacy/categories'
     | '/app/pharmacy/dispensing'
+    | '/app/pharmacy/manufacturers'
     | '/app/pharmacy/medicines'
     | '/app/pharmacy/purchases'
+    | '/app/pharmacy/reports'
     | '/app/pharmacy/returns'
     | '/app/pharmacy/sales'
     | '/app/pharmacy/stock'
     | '/app/pharmacy/suppliers'
+    | '/app/platform/audit-logs'
+    | '/app/platform/blog'
+    | '/app/platform/cms'
+    | '/app/platform/content-cards'
+    | '/app/platform/coupons'
+    | '/app/platform/demo-requests'
+    | '/app/platform/features'
+    | '/app/platform/leads'
+    | '/app/platform/modules'
+    | '/app/platform/organization-types'
+    | '/app/platform/organizations'
+    | '/app/platform/plans'
+    | '/app/platform/referrals'
+    | '/app/platform/roles'
+    | '/app/platform/subscriptions'
+    | '/app/platform/support'
+    | '/app/platform/testimonials'
+    | '/app/platform/trials'
+    | '/app/platform/users'
     | '/site/$slug/blog/$blogSlug'
   id:
     | '__root__'
@@ -562,42 +1223,102 @@ export interface FileRouteTypes {
     | '/free-trial'
     | '/login'
     | '/pricing'
+    | '/privacy'
     | '/request-demo'
     | '/reset-password'
+    | '/security'
     | '/solutions'
+    | '/subscribe'
+    | '/terms'
     | '/testimonials'
     | '/app/$'
+    | '/blog/$slug'
     | '/oauth/callback'
     | '/site/$slug'
+    | '/subscribe/plans'
     | '/app/'
+    | '/blog/'
+    | '/subscribe/'
     | '/app/billing/invoices'
     | '/app/clinic/appointments'
+    | '/app/clinic/availability'
+    | '/app/clinic/billing'
     | '/app/clinic/consultations'
     | '/app/clinic/doctors'
     | '/app/clinic/patients'
+    | '/app/clinic/prescriptions'
+    | '/app/clinic/queue'
+    | '/app/clinic/reception'
+    | '/app/clinic/reports'
+    | '/app/clinic/walk-in'
     | '/app/cms/blogs'
     | '/app/cms/branding'
     | '/app/cms/enquiries'
     | '/app/cms/gallery'
     | '/app/cms/services'
+    | '/app/cms/templates'
     | '/app/cms/testimonials'
+    | '/app/crm/activities'
+    | '/app/crm/follow-ups'
+    | '/app/crm/leads'
+    | '/app/crm/reports'
+    | '/app/crm/sources'
+    | '/app/lab/categories'
     | '/app/lab/orders'
+    | '/app/lab/packages'
+    | '/app/lab/processing'
     | '/app/lab/reports'
     | '/app/lab/results'
+    | '/app/lab/review'
+    | '/app/lab/samples'
     | '/app/lab/tests'
     | '/app/org/branches'
+    | '/app/org/communication'
+    | '/app/org/departments'
     | '/app/org/modules'
+    | '/app/org/notification-templates'
+    | '/app/org/notifications'
+    | '/app/org/onboarding'
+    | '/app/org/plans'
     | '/app/org/roles'
     | '/app/org/settings'
     | '/app/org/users'
+    | '/app/patient/appointments'
     | '/app/patient/book'
+    | '/app/patient/invoices'
+    | '/app/patient/prescriptions'
+    | '/app/patient/reports'
+    | '/app/pharmacy/alerts'
+    | '/app/pharmacy/batches'
+    | '/app/pharmacy/categories'
     | '/app/pharmacy/dispensing'
+    | '/app/pharmacy/manufacturers'
     | '/app/pharmacy/medicines'
     | '/app/pharmacy/purchases'
+    | '/app/pharmacy/reports'
     | '/app/pharmacy/returns'
     | '/app/pharmacy/sales'
     | '/app/pharmacy/stock'
     | '/app/pharmacy/suppliers'
+    | '/app/platform/audit-logs'
+    | '/app/platform/blog'
+    | '/app/platform/cms'
+    | '/app/platform/content-cards'
+    | '/app/platform/coupons'
+    | '/app/platform/demo-requests'
+    | '/app/platform/features'
+    | '/app/platform/leads'
+    | '/app/platform/modules'
+    | '/app/platform/organization-types'
+    | '/app/platform/organizations'
+    | '/app/platform/plans'
+    | '/app/platform/referrals'
+    | '/app/platform/roles'
+    | '/app/platform/subscriptions'
+    | '/app/platform/support'
+    | '/app/platform/testimonials'
+    | '/app/platform/trials'
+    | '/app/platform/users'
     | '/site/$slug/blog/$blogSlug'
   fileRoutesById: FileRoutesById
 }
@@ -606,16 +1327,20 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AcceptInviteRoute: typeof AcceptInviteRoute
   AppRoute: typeof AppRouteWithChildren
-  BlogRoute: typeof BlogRoute
+  BlogRoute: typeof BlogRouteWithChildren
   ContactRoute: typeof ContactRoute
   FeaturesRoute: typeof FeaturesRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   FreeTrialRoute: typeof FreeTrialRoute
   LoginRoute: typeof LoginRoute
   PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
   RequestDemoRoute: typeof RequestDemoRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SecurityRoute: typeof SecurityRoute
   SolutionsRoute: typeof SolutionsRoute
+  SubscribeRoute: typeof SubscribeRouteWithChildren
+  TermsRoute: typeof TermsRoute
   TestimonialsRoute: typeof TestimonialsRoute
   OauthCallbackRoute: typeof OauthCallbackRoute
   SiteSlugRoute: typeof SiteSlugRouteWithChildren
@@ -700,6 +1425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/request-demo': {
       id: '/request-demo'
       path: '/request-demo'
@@ -714,11 +1446,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/security': {
+      id: '/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof SecurityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/solutions': {
       id: '/solutions'
       path: '/solutions'
       fullPath: '/solutions'
       preLoaderRoute: typeof SolutionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/subscribe': {
+      id: '/subscribe'
+      path: '/subscribe'
+      fullPath: '/subscribe'
+      preLoaderRoute: typeof SubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/testimonials': {
@@ -742,6 +1495,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSplatRouteImport
       parentRoute: typeof AppRoute
     }
+    '/blog/': {
+      id: '/blog/'
+      path: '/'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof BlogRoute
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof BlogRoute
+    }
     '/oauth/callback': {
       id: '/oauth/callback'
       path: '/oauth/callback'
@@ -756,6 +1523,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/subscribe/': {
+      id: '/subscribe/'
+      path: '/'
+      fullPath: '/subscribe/'
+      preLoaderRoute: typeof SubscribeIndexRouteImport
+      parentRoute: typeof SubscribeRoute
+    }
+    '/subscribe/plans': {
+      id: '/subscribe/plans'
+      path: '/plans'
+      fullPath: '/subscribe/plans'
+      preLoaderRoute: typeof SubscribePlansRouteImport
+      parentRoute: typeof SubscribeRoute
+    }
     '/app/billing/invoices': {
       id: '/app/billing/invoices'
       path: '/billing/invoices'
@@ -768,6 +1549,20 @@ declare module '@tanstack/react-router' {
       path: '/clinic/appointments'
       fullPath: '/app/clinic/appointments'
       preLoaderRoute: typeof AppClinicAppointmentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clinic/availability': {
+      id: '/app/clinic/availability'
+      path: '/clinic/availability'
+      fullPath: '/app/clinic/availability'
+      preLoaderRoute: typeof AppClinicAvailabilityRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clinic/billing': {
+      id: '/app/clinic/billing'
+      path: '/clinic/billing'
+      fullPath: '/app/clinic/billing'
+      preLoaderRoute: typeof AppClinicBillingRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/clinic/consultations': {
@@ -789,6 +1584,41 @@ declare module '@tanstack/react-router' {
       path: '/clinic/patients'
       fullPath: '/app/clinic/patients'
       preLoaderRoute: typeof AppClinicPatientsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clinic/prescriptions': {
+      id: '/app/clinic/prescriptions'
+      path: '/clinic/prescriptions'
+      fullPath: '/app/clinic/prescriptions'
+      preLoaderRoute: typeof AppClinicPrescriptionsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clinic/queue': {
+      id: '/app/clinic/queue'
+      path: '/clinic/queue'
+      fullPath: '/app/clinic/queue'
+      preLoaderRoute: typeof AppClinicQueueRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clinic/reception': {
+      id: '/app/clinic/reception'
+      path: '/clinic/reception'
+      fullPath: '/app/clinic/reception'
+      preLoaderRoute: typeof AppClinicReceptionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clinic/reports': {
+      id: '/app/clinic/reports'
+      path: '/clinic/reports'
+      fullPath: '/app/clinic/reports'
+      preLoaderRoute: typeof AppClinicReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clinic/walk-in': {
+      id: '/app/clinic/walk-in'
+      path: '/clinic/walk-in'
+      fullPath: '/app/clinic/walk-in'
+      preLoaderRoute: typeof AppClinicWalkInRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/cms/blogs': {
@@ -826,6 +1656,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCmsServicesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/cms/templates': {
+      id: '/app/cms/templates'
+      path: '/cms/templates'
+      fullPath: '/app/cms/templates'
+      preLoaderRoute: typeof AppCmsTemplatesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/cms/testimonials': {
       id: '/app/cms/testimonials'
       path: '/cms/testimonials'
@@ -833,11 +1670,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCmsTestimonialsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/crm/activities': {
+      id: '/app/crm/activities'
+      path: '/crm/activities'
+      fullPath: '/app/crm/activities'
+      preLoaderRoute: typeof AppCrmActivitiesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/crm/follow-ups': {
+      id: '/app/crm/follow-ups'
+      path: '/crm/follow-ups'
+      fullPath: '/app/crm/follow-ups'
+      preLoaderRoute: typeof AppCrmFollowUpsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/crm/leads': {
+      id: '/app/crm/leads'
+      path: '/crm/leads'
+      fullPath: '/app/crm/leads'
+      preLoaderRoute: typeof AppCrmLeadsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/crm/reports': {
+      id: '/app/crm/reports'
+      path: '/crm/reports'
+      fullPath: '/app/crm/reports'
+      preLoaderRoute: typeof AppCrmReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/crm/sources': {
+      id: '/app/crm/sources'
+      path: '/crm/sources'
+      fullPath: '/app/crm/sources'
+      preLoaderRoute: typeof AppCrmSourcesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/lab/categories': {
+      id: '/app/lab/categories'
+      path: '/lab/categories'
+      fullPath: '/app/lab/categories'
+      preLoaderRoute: typeof AppLabCategoriesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/lab/orders': {
       id: '/app/lab/orders'
       path: '/lab/orders'
       fullPath: '/app/lab/orders'
       preLoaderRoute: typeof AppLabOrdersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/lab/packages': {
+      id: '/app/lab/packages'
+      path: '/lab/packages'
+      fullPath: '/app/lab/packages'
+      preLoaderRoute: typeof AppLabPackagesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/lab/processing': {
+      id: '/app/lab/processing'
+      path: '/lab/processing'
+      fullPath: '/app/lab/processing'
+      preLoaderRoute: typeof AppLabProcessingRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/lab/reports': {
@@ -854,6 +1747,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLabResultsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/lab/review': {
+      id: '/app/lab/review'
+      path: '/lab/review'
+      fullPath: '/app/lab/review'
+      preLoaderRoute: typeof AppLabReviewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/lab/samples': {
+      id: '/app/lab/samples'
+      path: '/lab/samples'
+      fullPath: '/app/lab/samples'
+      preLoaderRoute: typeof AppLabSamplesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/lab/tests': {
       id: '/app/lab/tests'
       path: '/lab/tests'
@@ -868,11 +1775,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgBranchesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/org/communication': {
+      id: '/app/org/communication'
+      path: '/org/communication'
+      fullPath: '/app/org/communication'
+      preLoaderRoute: typeof AppOrgCommunicationRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/org/departments': {
+      id: '/app/org/departments'
+      path: '/org/departments'
+      fullPath: '/app/org/departments'
+      preLoaderRoute: typeof AppOrgDepartmentsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/org/modules': {
       id: '/app/org/modules'
       path: '/org/modules'
       fullPath: '/app/org/modules'
       preLoaderRoute: typeof AppOrgModulesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/org/notification-templates': {
+      id: '/app/org/notification-templates'
+      path: '/org/notification-templates'
+      fullPath: '/app/org/notification-templates'
+      preLoaderRoute: typeof AppOrgNotificationTemplatesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/org/notifications': {
+      id: '/app/org/notifications'
+      path: '/org/notifications'
+      fullPath: '/app/org/notifications'
+      preLoaderRoute: typeof AppOrgNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/org/onboarding': {
+      id: '/app/org/onboarding'
+      path: '/org/onboarding'
+      fullPath: '/app/org/onboarding'
+      preLoaderRoute: typeof AppOrgOnboardingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/org/plans': {
+      id: '/app/org/plans'
+      path: '/org/plans'
+      fullPath: '/app/org/plans'
+      preLoaderRoute: typeof AppOrgPlansRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/org/roles': {
@@ -896,6 +1845,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgUsersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/patient/appointments': {
+      id: '/app/patient/appointments'
+      path: '/patient/appointments'
+      fullPath: '/app/patient/appointments'
+      preLoaderRoute: typeof AppPatientAppointmentsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/patient/book': {
       id: '/app/patient/book'
       path: '/patient/book'
@@ -903,11 +1859,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPatientBookRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/patient/invoices': {
+      id: '/app/patient/invoices'
+      path: '/patient/invoices'
+      fullPath: '/app/patient/invoices'
+      preLoaderRoute: typeof AppPatientInvoicesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/patient/prescriptions': {
+      id: '/app/patient/prescriptions'
+      path: '/patient/prescriptions'
+      fullPath: '/app/patient/prescriptions'
+      preLoaderRoute: typeof AppPatientPrescriptionsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/patient/reports': {
+      id: '/app/patient/reports'
+      path: '/patient/reports'
+      fullPath: '/app/patient/reports'
+      preLoaderRoute: typeof AppPatientReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/pharmacy/alerts': {
+      id: '/app/pharmacy/alerts'
+      path: '/pharmacy/alerts'
+      fullPath: '/app/pharmacy/alerts'
+      preLoaderRoute: typeof AppPharmacyAlertsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/pharmacy/batches': {
+      id: '/app/pharmacy/batches'
+      path: '/pharmacy/batches'
+      fullPath: '/app/pharmacy/batches'
+      preLoaderRoute: typeof AppPharmacyBatchesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/pharmacy/categories': {
+      id: '/app/pharmacy/categories'
+      path: '/pharmacy/categories'
+      fullPath: '/app/pharmacy/categories'
+      preLoaderRoute: typeof AppPharmacyCategoriesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/pharmacy/dispensing': {
       id: '/app/pharmacy/dispensing'
       path: '/pharmacy/dispensing'
       fullPath: '/app/pharmacy/dispensing'
       preLoaderRoute: typeof AppPharmacyDispensingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/pharmacy/manufacturers': {
+      id: '/app/pharmacy/manufacturers'
+      path: '/pharmacy/manufacturers'
+      fullPath: '/app/pharmacy/manufacturers'
+      preLoaderRoute: typeof AppPharmacyManufacturersRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/pharmacy/medicines': {
@@ -922,6 +1927,13 @@ declare module '@tanstack/react-router' {
       path: '/pharmacy/purchases'
       fullPath: '/app/pharmacy/purchases'
       preLoaderRoute: typeof AppPharmacyPurchasesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/pharmacy/reports': {
+      id: '/app/pharmacy/reports'
+      path: '/pharmacy/reports'
+      fullPath: '/app/pharmacy/reports'
+      preLoaderRoute: typeof AppPharmacyReportsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/pharmacy/returns': {
@@ -952,6 +1964,139 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPharmacySuppliersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/platform/audit-logs': {
+      id: '/app/platform/audit-logs'
+      path: '/platform/audit-logs'
+      fullPath: '/app/platform/audit-logs'
+      preLoaderRoute: typeof AppPlatformAuditLogsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/blog': {
+      id: '/app/platform/blog'
+      path: '/platform/blog'
+      fullPath: '/app/platform/blog'
+      preLoaderRoute: typeof AppPlatformBlogRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/cms': {
+      id: '/app/platform/cms'
+      path: '/platform/cms'
+      fullPath: '/app/platform/cms'
+      preLoaderRoute: typeof AppPlatformCmsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/content-cards': {
+      id: '/app/platform/content-cards'
+      path: '/platform/content-cards'
+      fullPath: '/app/platform/content-cards'
+      preLoaderRoute: typeof AppPlatformContentCardsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/coupons': {
+      id: '/app/platform/coupons'
+      path: '/platform/coupons'
+      fullPath: '/app/platform/coupons'
+      preLoaderRoute: typeof AppPlatformCouponsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/demo-requests': {
+      id: '/app/platform/demo-requests'
+      path: '/platform/demo-requests'
+      fullPath: '/app/platform/demo-requests'
+      preLoaderRoute: typeof AppPlatformDemoRequestsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/features': {
+      id: '/app/platform/features'
+      path: '/platform/features'
+      fullPath: '/app/platform/features'
+      preLoaderRoute: typeof AppPlatformFeaturesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/leads': {
+      id: '/app/platform/leads'
+      path: '/platform/leads'
+      fullPath: '/app/platform/leads'
+      preLoaderRoute: typeof AppPlatformLeadsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/modules': {
+      id: '/app/platform/modules'
+      path: '/platform/modules'
+      fullPath: '/app/platform/modules'
+      preLoaderRoute: typeof AppPlatformModulesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/organization-types': {
+      id: '/app/platform/organization-types'
+      path: '/platform/organization-types'
+      fullPath: '/app/platform/organization-types'
+      preLoaderRoute: typeof AppPlatformOrganizationTypesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/organizations': {
+      id: '/app/platform/organizations'
+      path: '/platform/organizations'
+      fullPath: '/app/platform/organizations'
+      preLoaderRoute: typeof AppPlatformOrganizationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/plans': {
+      id: '/app/platform/plans'
+      path: '/platform/plans'
+      fullPath: '/app/platform/plans'
+      preLoaderRoute: typeof AppPlatformPlansRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/referrals': {
+      id: '/app/platform/referrals'
+      path: '/platform/referrals'
+      fullPath: '/app/platform/referrals'
+      preLoaderRoute: typeof AppPlatformReferralsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/roles': {
+      id: '/app/platform/roles'
+      path: '/platform/roles'
+      fullPath: '/app/platform/roles'
+      preLoaderRoute: typeof AppPlatformRolesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/subscriptions': {
+      id: '/app/platform/subscriptions'
+      path: '/platform/subscriptions'
+      fullPath: '/app/platform/subscriptions'
+      preLoaderRoute: typeof AppPlatformSubscriptionsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/support': {
+      id: '/app/platform/support'
+      path: '/platform/support'
+      fullPath: '/app/platform/support'
+      preLoaderRoute: typeof AppPlatformSupportRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/testimonials': {
+      id: '/app/platform/testimonials'
+      path: '/platform/testimonials'
+      fullPath: '/app/platform/testimonials'
+      preLoaderRoute: typeof AppPlatformTestimonialsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/trials': {
+      id: '/app/platform/trials'
+      path: '/platform/trials'
+      fullPath: '/app/platform/trials'
+      preLoaderRoute: typeof AppPlatformTrialsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/platform/users': {
+      id: '/app/platform/users'
+      path: '/platform/users'
+      fullPath: '/app/platform/users'
+      preLoaderRoute: typeof AppPlatformUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/site/$slug/blog/$blogSlug': {
       id: '/site/$slug/blog/$blogSlug'
       path: '/blog/$blogSlug'
@@ -967,32 +2112,84 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppBillingInvoicesRoute: typeof AppBillingInvoicesRoute
   AppClinicAppointmentsRoute: typeof AppClinicAppointmentsRoute
+  AppClinicAvailabilityRoute: typeof AppClinicAvailabilityRoute
+  AppClinicBillingRoute: typeof AppClinicBillingRoute
   AppClinicConsultationsRoute: typeof AppClinicConsultationsRoute
   AppClinicDoctorsRoute: typeof AppClinicDoctorsRoute
   AppClinicPatientsRoute: typeof AppClinicPatientsRoute
+  AppClinicPrescriptionsRoute: typeof AppClinicPrescriptionsRoute
+  AppClinicQueueRoute: typeof AppClinicQueueRoute
+  AppClinicReceptionRoute: typeof AppClinicReceptionRoute
+  AppClinicReportsRoute: typeof AppClinicReportsRoute
+  AppClinicWalkInRoute: typeof AppClinicWalkInRoute
   AppCmsBlogsRoute: typeof AppCmsBlogsRoute
   AppCmsBrandingRoute: typeof AppCmsBrandingRoute
   AppCmsEnquiriesRoute: typeof AppCmsEnquiriesRoute
   AppCmsGalleryRoute: typeof AppCmsGalleryRoute
   AppCmsServicesRoute: typeof AppCmsServicesRoute
+  AppCmsTemplatesRoute: typeof AppCmsTemplatesRoute
   AppCmsTestimonialsRoute: typeof AppCmsTestimonialsRoute
+  AppCrmActivitiesRoute: typeof AppCrmActivitiesRoute
+  AppCrmFollowUpsRoute: typeof AppCrmFollowUpsRoute
+  AppCrmLeadsRoute: typeof AppCrmLeadsRoute
+  AppCrmReportsRoute: typeof AppCrmReportsRoute
+  AppCrmSourcesRoute: typeof AppCrmSourcesRoute
+  AppLabCategoriesRoute: typeof AppLabCategoriesRoute
   AppLabOrdersRoute: typeof AppLabOrdersRoute
+  AppLabPackagesRoute: typeof AppLabPackagesRoute
+  AppLabProcessingRoute: typeof AppLabProcessingRoute
   AppLabReportsRoute: typeof AppLabReportsRoute
   AppLabResultsRoute: typeof AppLabResultsRoute
+  AppLabReviewRoute: typeof AppLabReviewRoute
+  AppLabSamplesRoute: typeof AppLabSamplesRoute
   AppLabTestsRoute: typeof AppLabTestsRoute
   AppOrgBranchesRoute: typeof AppOrgBranchesRoute
+  AppOrgCommunicationRoute: typeof AppOrgCommunicationRoute
+  AppOrgDepartmentsRoute: typeof AppOrgDepartmentsRoute
   AppOrgModulesRoute: typeof AppOrgModulesRoute
+  AppOrgNotificationTemplatesRoute: typeof AppOrgNotificationTemplatesRoute
+  AppOrgNotificationsRoute: typeof AppOrgNotificationsRoute
+  AppOrgOnboardingRoute: typeof AppOrgOnboardingRoute
+  AppOrgPlansRoute: typeof AppOrgPlansRoute
   AppOrgRolesRoute: typeof AppOrgRolesRoute
   AppOrgSettingsRoute: typeof AppOrgSettingsRoute
   AppOrgUsersRoute: typeof AppOrgUsersRoute
+  AppPatientAppointmentsRoute: typeof AppPatientAppointmentsRoute
   AppPatientBookRoute: typeof AppPatientBookRoute
+  AppPatientInvoicesRoute: typeof AppPatientInvoicesRoute
+  AppPatientPrescriptionsRoute: typeof AppPatientPrescriptionsRoute
+  AppPatientReportsRoute: typeof AppPatientReportsRoute
+  AppPharmacyAlertsRoute: typeof AppPharmacyAlertsRoute
+  AppPharmacyBatchesRoute: typeof AppPharmacyBatchesRoute
+  AppPharmacyCategoriesRoute: typeof AppPharmacyCategoriesRoute
   AppPharmacyDispensingRoute: typeof AppPharmacyDispensingRoute
+  AppPharmacyManufacturersRoute: typeof AppPharmacyManufacturersRoute
   AppPharmacyMedicinesRoute: typeof AppPharmacyMedicinesRoute
   AppPharmacyPurchasesRoute: typeof AppPharmacyPurchasesRoute
+  AppPharmacyReportsRoute: typeof AppPharmacyReportsRoute
   AppPharmacyReturnsRoute: typeof AppPharmacyReturnsRoute
   AppPharmacySalesRoute: typeof AppPharmacySalesRoute
   AppPharmacyStockRoute: typeof AppPharmacyStockRoute
   AppPharmacySuppliersRoute: typeof AppPharmacySuppliersRoute
+  AppPlatformAuditLogsRoute: typeof AppPlatformAuditLogsRoute
+  AppPlatformBlogRoute: typeof AppPlatformBlogRoute
+  AppPlatformCmsRoute: typeof AppPlatformCmsRoute
+  AppPlatformContentCardsRoute: typeof AppPlatformContentCardsRoute
+  AppPlatformCouponsRoute: typeof AppPlatformCouponsRoute
+  AppPlatformDemoRequestsRoute: typeof AppPlatformDemoRequestsRoute
+  AppPlatformFeaturesRoute: typeof AppPlatformFeaturesRoute
+  AppPlatformLeadsRoute: typeof AppPlatformLeadsRoute
+  AppPlatformModulesRoute: typeof AppPlatformModulesRoute
+  AppPlatformOrganizationTypesRoute: typeof AppPlatformOrganizationTypesRoute
+  AppPlatformOrganizationsRoute: typeof AppPlatformOrganizationsRoute
+  AppPlatformPlansRoute: typeof AppPlatformPlansRoute
+  AppPlatformReferralsRoute: typeof AppPlatformReferralsRoute
+  AppPlatformRolesRoute: typeof AppPlatformRolesRoute
+  AppPlatformSubscriptionsRoute: typeof AppPlatformSubscriptionsRoute
+  AppPlatformSupportRoute: typeof AppPlatformSupportRoute
+  AppPlatformTestimonialsRoute: typeof AppPlatformTestimonialsRoute
+  AppPlatformTrialsRoute: typeof AppPlatformTrialsRoute
+  AppPlatformUsersRoute: typeof AppPlatformUsersRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1000,35 +2197,113 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppBillingInvoicesRoute: AppBillingInvoicesRoute,
   AppClinicAppointmentsRoute: AppClinicAppointmentsRoute,
+  AppClinicAvailabilityRoute: AppClinicAvailabilityRoute,
+  AppClinicBillingRoute: AppClinicBillingRoute,
   AppClinicConsultationsRoute: AppClinicConsultationsRoute,
   AppClinicDoctorsRoute: AppClinicDoctorsRoute,
   AppClinicPatientsRoute: AppClinicPatientsRoute,
+  AppClinicPrescriptionsRoute: AppClinicPrescriptionsRoute,
+  AppClinicQueueRoute: AppClinicQueueRoute,
+  AppClinicReceptionRoute: AppClinicReceptionRoute,
+  AppClinicReportsRoute: AppClinicReportsRoute,
+  AppClinicWalkInRoute: AppClinicWalkInRoute,
   AppCmsBlogsRoute: AppCmsBlogsRoute,
   AppCmsBrandingRoute: AppCmsBrandingRoute,
   AppCmsEnquiriesRoute: AppCmsEnquiriesRoute,
   AppCmsGalleryRoute: AppCmsGalleryRoute,
   AppCmsServicesRoute: AppCmsServicesRoute,
+  AppCmsTemplatesRoute: AppCmsTemplatesRoute,
   AppCmsTestimonialsRoute: AppCmsTestimonialsRoute,
+  AppCrmActivitiesRoute: AppCrmActivitiesRoute,
+  AppCrmFollowUpsRoute: AppCrmFollowUpsRoute,
+  AppCrmLeadsRoute: AppCrmLeadsRoute,
+  AppCrmReportsRoute: AppCrmReportsRoute,
+  AppCrmSourcesRoute: AppCrmSourcesRoute,
+  AppLabCategoriesRoute: AppLabCategoriesRoute,
   AppLabOrdersRoute: AppLabOrdersRoute,
+  AppLabPackagesRoute: AppLabPackagesRoute,
+  AppLabProcessingRoute: AppLabProcessingRoute,
   AppLabReportsRoute: AppLabReportsRoute,
   AppLabResultsRoute: AppLabResultsRoute,
+  AppLabReviewRoute: AppLabReviewRoute,
+  AppLabSamplesRoute: AppLabSamplesRoute,
   AppLabTestsRoute: AppLabTestsRoute,
   AppOrgBranchesRoute: AppOrgBranchesRoute,
+  AppOrgCommunicationRoute: AppOrgCommunicationRoute,
+  AppOrgDepartmentsRoute: AppOrgDepartmentsRoute,
   AppOrgModulesRoute: AppOrgModulesRoute,
+  AppOrgNotificationTemplatesRoute: AppOrgNotificationTemplatesRoute,
+  AppOrgNotificationsRoute: AppOrgNotificationsRoute,
+  AppOrgOnboardingRoute: AppOrgOnboardingRoute,
+  AppOrgPlansRoute: AppOrgPlansRoute,
   AppOrgRolesRoute: AppOrgRolesRoute,
   AppOrgSettingsRoute: AppOrgSettingsRoute,
   AppOrgUsersRoute: AppOrgUsersRoute,
+  AppPatientAppointmentsRoute: AppPatientAppointmentsRoute,
   AppPatientBookRoute: AppPatientBookRoute,
+  AppPatientInvoicesRoute: AppPatientInvoicesRoute,
+  AppPatientPrescriptionsRoute: AppPatientPrescriptionsRoute,
+  AppPatientReportsRoute: AppPatientReportsRoute,
+  AppPharmacyAlertsRoute: AppPharmacyAlertsRoute,
+  AppPharmacyBatchesRoute: AppPharmacyBatchesRoute,
+  AppPharmacyCategoriesRoute: AppPharmacyCategoriesRoute,
   AppPharmacyDispensingRoute: AppPharmacyDispensingRoute,
+  AppPharmacyManufacturersRoute: AppPharmacyManufacturersRoute,
   AppPharmacyMedicinesRoute: AppPharmacyMedicinesRoute,
   AppPharmacyPurchasesRoute: AppPharmacyPurchasesRoute,
+  AppPharmacyReportsRoute: AppPharmacyReportsRoute,
   AppPharmacyReturnsRoute: AppPharmacyReturnsRoute,
   AppPharmacySalesRoute: AppPharmacySalesRoute,
   AppPharmacyStockRoute: AppPharmacyStockRoute,
   AppPharmacySuppliersRoute: AppPharmacySuppliersRoute,
+  AppPlatformAuditLogsRoute: AppPlatformAuditLogsRoute,
+  AppPlatformBlogRoute: AppPlatformBlogRoute,
+  AppPlatformCmsRoute: AppPlatformCmsRoute,
+  AppPlatformContentCardsRoute: AppPlatformContentCardsRoute,
+  AppPlatformCouponsRoute: AppPlatformCouponsRoute,
+  AppPlatformDemoRequestsRoute: AppPlatformDemoRequestsRoute,
+  AppPlatformFeaturesRoute: AppPlatformFeaturesRoute,
+  AppPlatformLeadsRoute: AppPlatformLeadsRoute,
+  AppPlatformModulesRoute: AppPlatformModulesRoute,
+  AppPlatformOrganizationTypesRoute: AppPlatformOrganizationTypesRoute,
+  AppPlatformOrganizationsRoute: AppPlatformOrganizationsRoute,
+  AppPlatformPlansRoute: AppPlatformPlansRoute,
+  AppPlatformReferralsRoute: AppPlatformReferralsRoute,
+  AppPlatformRolesRoute: AppPlatformRolesRoute,
+  AppPlatformSubscriptionsRoute: AppPlatformSubscriptionsRoute,
+  AppPlatformSupportRoute: AppPlatformSupportRoute,
+  AppPlatformTestimonialsRoute: AppPlatformTestimonialsRoute,
+  AppPlatformTrialsRoute: AppPlatformTrialsRoute,
+  AppPlatformUsersRoute: AppPlatformUsersRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+interface BlogRouteChildren {
+  BlogSlugRoute: typeof BlogSlugRoute
+  BlogIndexRoute: typeof BlogIndexRoute
+}
+
+const BlogRouteChildren: BlogRouteChildren = {
+  BlogSlugRoute: BlogSlugRoute,
+  BlogIndexRoute: BlogIndexRoute,
+}
+
+const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
+
+interface SubscribeRouteChildren {
+  SubscribePlansRoute: typeof SubscribePlansRoute
+  SubscribeIndexRoute: typeof SubscribeIndexRoute
+}
+
+const SubscribeRouteChildren: SubscribeRouteChildren = {
+  SubscribePlansRoute: SubscribePlansRoute,
+  SubscribeIndexRoute: SubscribeIndexRoute,
+}
+
+const SubscribeRouteWithChildren = SubscribeRoute._addFileChildren(
+  SubscribeRouteChildren,
+)
 
 interface SiteSlugRouteChildren {
   SiteSlugBlogBlogSlugRoute: typeof SiteSlugBlogBlogSlugRoute
@@ -1047,16 +2322,20 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AcceptInviteRoute: AcceptInviteRoute,
   AppRoute: AppRouteWithChildren,
-  BlogRoute: BlogRoute,
+  BlogRoute: BlogRouteWithChildren,
   ContactRoute: ContactRoute,
   FeaturesRoute: FeaturesRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   FreeTrialRoute: FreeTrialRoute,
   LoginRoute: LoginRoute,
   PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
   RequestDemoRoute: RequestDemoRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SecurityRoute: SecurityRoute,
   SolutionsRoute: SolutionsRoute,
+  SubscribeRoute: SubscribeRouteWithChildren,
+  TermsRoute: TermsRoute,
   TestimonialsRoute: TestimonialsRoute,
   OauthCallbackRoute: OauthCallbackRoute,
   SiteSlugRoute: SiteSlugRouteWithChildren,

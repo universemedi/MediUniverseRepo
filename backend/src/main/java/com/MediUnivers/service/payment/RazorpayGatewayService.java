@@ -49,6 +49,11 @@ public class RazorpayGatewayService implements PaymentGatewayService {
 
     @Override
     public GatewayOrderResult createOrder(BigDecimal amount, String currency, String receipt) {
+        if (properties.mock()) {
+            String mockOrderId = "mock_order_" + java.util.UUID.randomUUID().toString().replace("-", "");
+            log.info("Razorpay mock mode is enabled — returning a synthesized order for receipt {}", receipt);
+            return new GatewayOrderResult(mockOrderId, amount, currency, "mock_key", true);
+        }
         if (!properties.enabled()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Online payments aren't configured for this deployment yet. Ask an administrator to set RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET.");
@@ -76,7 +81,7 @@ public class RazorpayGatewayService implements PaymentGatewayService {
 
             JsonNode json = objectMapper.readTree(response.body());
             String gatewayOrderId = json.get("id").asText();
-            return new GatewayOrderResult(gatewayOrderId, amount, currency, properties.keyId());
+            return new GatewayOrderResult(gatewayOrderId, amount, currency, properties.keyId(), false);
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
@@ -87,6 +92,9 @@ public class RazorpayGatewayService implements PaymentGatewayService {
 
     @Override
     public boolean verifyPayment(String gatewayOrderId, String gatewayPaymentId, String signature) {
+        if (properties.mock()) {
+            return gatewayOrderId != null && gatewayOrderId.startsWith("mock_order_");
+        }
         if (!properties.enabled() || signature == null) return false;
         try {
             String payload = gatewayOrderId + "|" + gatewayPaymentId;

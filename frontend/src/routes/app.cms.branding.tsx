@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ExternalLink, Globe, Lock, Save, ShieldAlert } from "lucide-react";
+import { CalendarCheck, ExternalLink, Globe, Lock, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
-import { apiFetch, ApiError } from "@/lib/api";
+import { apiFetch, apiFetchPublic, ApiError } from "@/lib/api";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/app/cms/branding")({
   head: () => ({
@@ -28,10 +35,14 @@ export const Route = createFileRoute("/app/cms/branding")({
 
 interface WebsiteConfig {
   templateCode: string;
+  templateId: number | null;
   published: boolean;
   logoUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
+  fontFamily: string | null;
+  backgroundColor: string | null;
+  textSizeScale: string;
   tagline: string | null;
   heroHeading: string | null;
   heroSubheading: string | null;
@@ -48,8 +59,19 @@ interface WebsiteConfig {
   seoTitle: string | null;
   seoDescription: string | null;
   seoKeywords: string | null;
+  bannersJson: string | null;
+  navItemsJson: string | null;
+  footerColumnsJson: string | null;
   bookingEnabled: boolean;
   siteUrl: string;
+}
+
+interface WebsiteTemplateOption {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  previewImageUrl: string | null;
 }
 
 function BrandingPage() {
@@ -57,13 +79,22 @@ function BrandingPage() {
   const unavailable = !isPlatform && isUnavailable("cms");
 
   const [config, setConfig] = useState<WebsiteConfig | null>(null);
+  const [templates, setTemplates] = useState<WebsiteTemplateOption[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   function load() {
     if (isPlatform || unavailable) return;
-    apiFetch<WebsiteConfig>("/api/org/website/config")
-      .then(setConfig)
+    Promise.all([
+      apiFetch<WebsiteConfig>("/api/org/website/config"),
+      apiFetchPublic<WebsiteTemplateOption[]>("/api/public/website-templates", {
+        params: { audience: "ORGANIZATION" },
+      }),
+    ])
+      .then(([c, t]) => {
+        setConfig(c);
+        setTemplates(t);
+      })
       .catch((err) =>
         setLoadError(
           err instanceof ApiError ? err.message : "Couldn't load your website settings.",
@@ -179,6 +210,33 @@ function BrandingPage() {
 
       <Card className="space-y-4 p-5">
         <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Template
+        </p>
+        {templates.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No templates available yet.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {templates.map((t) => (
+              <button
+                type="button"
+                key={t.id}
+                onClick={() => setConfig({ ...config, templateId: t.id })}
+                className={`rounded-lg border p-3 text-left text-sm transition-colors ${
+                  config.templateId === t.id ? "border-primary bg-primary/5" : "border-border"
+                }`}
+              >
+                <p className="font-semibold text-foreground">{t.name}</p>
+                {t.description ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{t.description}</p>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card className="space-y-4 p-5">
+        <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Branding
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -219,6 +277,46 @@ function BrandingPage() {
                 onChange={(e) => setConfig({ ...config, secondaryColor: e.target.value })}
               />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Background color</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={config.backgroundColor ?? "#ffffff"}
+                onChange={(e) => setConfig({ ...config, backgroundColor: e.target.value })}
+                className="h-9 w-12 rounded border"
+              />
+              <Input
+                value={config.backgroundColor ?? ""}
+                onChange={(e) => setConfig({ ...config, backgroundColor: e.target.value })}
+                placeholder="#ffffff"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Font family</Label>
+            <Input
+              value={config.fontFamily ?? ""}
+              onChange={(e) => setConfig({ ...config, fontFamily: e.target.value })}
+              placeholder="Inter, sans-serif"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Text size</Label>
+            <Select
+              value={config.textSizeScale}
+              onValueChange={(v) => setConfig({ ...config, textSizeScale: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SMALL">Small</SelectItem>
+                <SelectItem value="MEDIUM">Medium</SelectItem>
+                <SelectItem value="LARGE">Large</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label>Tagline</Label>
@@ -298,12 +396,9 @@ function BrandingPage() {
               onChange={(e) => setConfig({ ...config, whatsappNumber: e.target.value })}
             />
           </div>
-          <div className="flex items-center gap-2 pt-6">
-            <Switch
-              checked={config.bookingEnabled}
-              onCheckedChange={(v) => setConfig({ ...config, bookingEnabled: v })}
-            />
-            <Label>Online appointment booking</Label>
+          <div className="flex items-center gap-2 pt-6 text-xs text-muted-foreground sm:col-span-2">
+            <CalendarCheck className="h-4 w-4 text-primary" />
+            Online appointment booking is always included on your website.
           </div>
         </div>
       </Card>
@@ -346,6 +441,45 @@ function BrandingPage() {
             <Input
               value={config.youtubeUrl ?? ""}
               onChange={(e) => setConfig({ ...config, youtubeUrl: e.target.value })}
+            />
+          </div>
+        </div>
+      </Card>
+
+      <Card className="space-y-4 p-5">
+        <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Advanced layout
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Optional JSON for banners, navigation links and footer columns — leave blank to use the
+          template's defaults.
+        </p>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Banners (JSON)</Label>
+            <Textarea
+              rows={3}
+              value={config.bannersJson ?? ""}
+              onChange={(e) => setConfig({ ...config, bannersJson: e.target.value })}
+              placeholder='[{"imageUrl":"https://…","heading":"Spring health checkup camp"}]'
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Navigation links (JSON)</Label>
+            <Textarea
+              rows={2}
+              value={config.navItemsJson ?? ""}
+              onChange={(e) => setConfig({ ...config, navItemsJson: e.target.value })}
+              placeholder='[{"label":"Careers","url":"#careers"}]'
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Footer columns (JSON)</Label>
+            <Textarea
+              rows={3}
+              value={config.footerColumnsJson ?? ""}
+              onChange={(e) => setConfig({ ...config, footerColumnsJson: e.target.value })}
+              placeholder='[{"title":"Company","links":[{"label":"About","url":"#about"}]}]'
             />
           </div>
         </div>

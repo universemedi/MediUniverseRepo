@@ -190,6 +190,20 @@ function AppLayout() {
 
         if (me.organization) {
           dispatch(hydrateFromOrganization(me.organization));
+
+          // "Not subscribed" (req #4) covers two cases: the subscription
+          // lapsed (SUSPENDED/CANCELLED), or the org was created via the
+          // public /subscribe flow but payment was never completed (DRAFT).
+          // AppUserPrincipal.isEnabled() only lets the Owner log in for any
+          // of these statuses, so only they ever reach this branch — send
+          // them straight to the plans screen instead of the dashboard.
+          const orgStatus = me.organization.status;
+          const isOwner = me.role.code === "ORG_OWNER";
+          const notSubscribed =
+            orgStatus === "SUSPENDED" || orgStatus === "CANCELLED" || orgStatus === "DRAFT";
+          if (isOwner && notSubscribed && pathname !== "/app/org/plans") {
+            navigate({ to: "/app/org/plans", replace: true });
+          }
         }
       })
       .catch(() => {
@@ -198,6 +212,8 @@ function AppLayout() {
       .finally(() => {
         setRehydrating(false);
       });
+    // Runs once (guarded by tried.current above) — navigate/pathname are read at call time, not tracked as deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, dispatch]);
 
   useEffect(() => {

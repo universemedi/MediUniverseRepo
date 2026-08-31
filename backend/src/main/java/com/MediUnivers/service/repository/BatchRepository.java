@@ -22,6 +22,8 @@ public interface BatchRepository extends JpaRepository<Batch, Long> {
 
     List<Batch> findByOrganizationIdAndBranchId(Long organizationId, Long branchId);
 
+    List<Batch> findByOrganizationIdOrderByExpiryDateAsc(Long organizationId);
+
     @Query("select b from Batch b where b.organization.id = :orgId and b.expiryDate <= :cutoff and b.quantityAvailable > 0 order by b.expiryDate asc")
     List<Batch> findExpiringSoon(@Param("orgId") Long organizationId, @Param("cutoff") LocalDate cutoff);
 }

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -10,10 +11,12 @@ import {
   Check,
 } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
-import { PLANS } from "@/lib/plans";
+import { apiFetchPublic } from "@/lib/api";
+import type { PlanApiDto } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -91,7 +94,21 @@ const STEPS = [
   },
 ];
 
+function priceLine(p: PlanApiDto): string {
+  if (p.freeTrial) return `Free / ${p.freeTrialDays} days`;
+  if (!p.priceWithoutTax) return "Custom";
+  return `₹${p.priceWithTax.toLocaleString("en-IN")} / month`;
+}
+
 function Landing() {
+  const [plans, setPlans] = useState<PlanApiDto[] | null>(null);
+
+  useEffect(() => {
+    apiFetchPublic<PlanApiDto[]>("/api/public/plans")
+      .then(setPlans)
+      .catch(() => setPlans([]));
+  }, []);
+
   return (
     <SiteLayout>
       <section className="border-b border-border bg-primary/5">
@@ -179,29 +196,45 @@ function Landing() {
             <Link to="/pricing">See full pricing</Link>
           </Button>
         </div>
-        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {PLANS.map((p) => (
-            <Card key={p.code} className="flex flex-col p-6">
-              <h3 className="text-sm font-semibold text-foreground">{p.name}</h3>
-              <p className="mt-1 text-xl font-semibold text-primary">{p.price}</p>
-              <p className="mt-2 text-sm text-muted-foreground">{p.tagline}</p>
-              <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
-                {p.highlights.map((h) => (
-                  <li key={h} className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {h}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                asChild
-                className="mt-5"
-                variant={p.code === "PROFESSIONAL" ? "default" : "outline"}
-              >
-                <Link to="/request-demo">Talk to sales</Link>
-              </Button>
-            </Card>
-          ))}
-        </div>
+        {!plans ? (
+          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-72 rounded-xl" />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {plans.map((p) => (
+              <Card key={p.code} className="flex flex-col p-6">
+                <h3 className="text-sm font-semibold text-foreground">{p.name}</h3>
+                <p className="mt-1 text-xl font-semibold text-primary">{priceLine(p)}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{p.tagline}</p>
+                <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
+                  {p.highlights.map((h) => (
+                    <li key={h} className="flex items-start gap-2">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {h}
+                    </li>
+                  ))}
+                </ul>
+                {p.freeTrial ? (
+                  <Button asChild className="mt-5">
+                    <Link to="/free-trial">Start free trial</Link>
+                  </Button>
+                ) : (
+                  <Button
+                    asChild
+                    className="mt-5"
+                    variant={p.code === "PROFESSIONAL" ? "default" : "outline"}
+                  >
+                    <Link to="/subscribe" search={{ plan: p.code }}>
+                      Subscribe now
+                    </Link>
+                  </Button>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="border-t border-border bg-primary/5">

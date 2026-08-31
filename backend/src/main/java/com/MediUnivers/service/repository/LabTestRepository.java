@@ -9,6 +9,7 @@ import java.util.List;
 
 public interface LabTestRepository extends JpaRepository<LabTest, Long> {
     List<LabTest> findByOrganizationIdOrderByNameAsc(Long organizationId);
+    long countByOrganizationId(Long organizationId);
 
     @Query("select t from LabTest t where t.organization.id = :orgId "
             + "and (lower(t.name) like lower(concat('%', :term, '%')) or lower(t.code) like lower(concat('%', :term, '%'))) "

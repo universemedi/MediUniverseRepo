@@ -6,10 +6,9 @@ import {
   roleAllowsPath,
   roleCan,
   type Action,
+  type ModuleGroup,
   type RoleDef,
 } from "@/lib/rbac";
-import { planAllowsGroup, planByCode } from "@/lib/plans";
-import { orgTypeAllowsGroup, orgTypeByCode } from "@/lib/orgTypes";
 import { MODULES } from "@/config/modules";
 
 export type AccessReason = "ok" | "role" | "plan" | "portal" | "unavailable";
@@ -36,9 +35,30 @@ export function usePermissions() {
     return ROLES[0] as RoleDef;
   }, [roleKey, tenant.customRoles]);
 
-  const plan = planByCode(tenant.planCode);
-  const orgType = orgTypeByCode(tenant.orgTypeCode);
+  // Real plan/org-type data hydrated from the organization returned at login
+  // (see tenantSlice.hydrateFromOrganization) — not a static lookup table, so
+  // this always agrees with what the backend actually enforces.
+  const plan = {
+    code: tenant.planCode,
+    name: tenant.planName,
+    price: tenant.planPrice,
+    tagline: tenant.planTagline,
+    modules: tenant.planModules,
+    limits: tenant.planLimits,
+    highlights: tenant.planHighlights,
+  };
+  const orgType = {
+    code: tenant.orgTypeCode,
+    name: tenant.orgTypeName,
+    description: tenant.orgTypeDescription,
+    modules: tenant.orgTypeModules,
+  };
   const isPlatform = def.portal === "platform";
+
+  const orgTypeAllowsGroup = (group: string) =>
+    group !== "platform" && tenant.orgTypeModules.includes(group as ModuleGroup);
+  const planAllowsGroup = (group: string) =>
+    group !== "platform" && tenant.planModules.includes(group as ModuleGroup);
 
   /** why a module group is (not) reachable for the current identity */
   const reasonForGroup = (group: string): AccessReason => {
@@ -50,8 +70,8 @@ export function usePermissions() {
       group !== "platform" &&
       group !== "org" &&
       group !== "billing";
-    if (isBusinessModule && !orgTypeAllowsGroup(tenant.orgTypeCode, group)) return "unavailable";
-    if (isBusinessModule && !planAllowsGroup(tenant.planCode, group)) return "plan";
+    if (isBusinessModule && !orgTypeAllowsGroup(group)) return "unavailable";
+    if (isBusinessModule && !planAllowsGroup(group)) return "plan";
     return "ok";
   };
 

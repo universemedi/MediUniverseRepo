@@ -66,6 +66,11 @@ public class ClinicDoctorService {
             branch = branchRepository.findById(request.branchId())
                     .filter(b -> b.getOrganization().getId().equals(organization.getId()))
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Branch does not belong to this organization."));
+            // Doctor seats are capped per branch by the subscription (req #7), separate from the org-wide user seat check above.
+            long doctorsInBranch = doctorRepository.countByBranchId(branch.getId());
+            if (doctorsInBranch >= organization.getPlan().getMaxDoctorsPerBranch()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "This branch has reached its subscription's doctor limit.");
+            }
         }
 
         Role doctorRole = roleRepository.findByCode("DOCTOR")

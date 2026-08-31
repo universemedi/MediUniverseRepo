@@ -1,5 +1,6 @@
 package com.MediUnivers.service.service;
 
+import com.MediUnivers.service.config.AppProperties;
 import com.MediUnivers.service.domain.*;
 import com.MediUnivers.service.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -32,6 +36,8 @@ public class UserInvitationService {
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
+    private final AppProperties appProperties;
 
     public AppUser invite(Organization organization, Portal portal, Role role, String fullName, String email,
                            Branch primaryBranch, BranchScope branchScope, Set<Branch> selectedBranches) {
@@ -54,6 +60,7 @@ public class UserInvitationService {
         stampNewToken(user);
         appUserRepository.save(user);
         logInvitation(user);
+        notifyInvited(user);
         return user;
     }
 
@@ -67,6 +74,7 @@ public class UserInvitationService {
         stampNewToken(user);
         appUserRepository.save(user);
         logInvitation(user);
+        notifyInvited(user);
         return user;
     }
 
@@ -110,5 +118,20 @@ public class UserInvitationService {
     private void logInvitation(AppUser user) {
         log.info("Invitation for {} ({}): accept at /accept-invite?token={} — expires {}",
                 user.getEmail(), user.getRole().getName(), user.getInviteToken(), user.getInviteExpiresAt());
+    }
+
+    /** Routes the actual invite email through the Communication Engine — platform-staff invites (no organization) skip it: there's no org to pull channel settings/templates from. */
+    private void notifyInvited(AppUser user) {
+        if (user.getOrganization() == null) return;
+        Map<String, String> vars = new HashMap<>();
+        vars.put("fullName", user.getFullName());
+        vars.put("organizationName", user.getOrganization().getName());
+        vars.put("roleName", user.getRole().getName());
+        vars.put("inviteLink", appProperties.frontendBaseUrl() + "/accept-invite?token=" + user.getInviteToken());
+        vars.put("expiresAt", user.getInviteExpiresAt() != null
+                ? DateTimeFormatter.ISO_INSTANT.format(user.getInviteExpiresAt()) : "");
+        notificationService.notify(user.getOrganization(), NotificationEventType.USER_INVITED,
+                NotificationRecipient.of(user.getFullName(), user.getEmail(), null),
+                vars, NotificationPriority.HIGH, "APP_USER", user.getId(), null);
     }
 }

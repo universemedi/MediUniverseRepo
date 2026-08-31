@@ -3,8 +3,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout, PageHero } from "@/components/site/SiteLayout";
-import { FormBuilder } from "@/components/form/FormBuilder";
+import { FormBuilder, type FormValues } from "@/components/form/FormBuilder";
 import { col } from "@/config/types";
+import { apiFetchPublic } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -77,6 +78,26 @@ const FIELDS = [
   }),
 ];
 
+async function submitDemoRequest(values: FormValues) {
+  await apiFetchPublic("/api/public/leads", {
+    method: "POST",
+    data: {
+      source: "REQUEST_DEMO",
+      name: values["name"],
+      email: values["email"],
+      phone: values["phone"],
+      organizationName: values["organization"],
+      organizationType: values["orgType"],
+      city: values["city"],
+      expectedBranches: values["branches"] ? Number(values["branches"]) : null,
+      expectedUsers: values["users"] ? Number(values["users"]) : null,
+      modulesOfInterest: values["modules"],
+      preferredDemoDate: values["preferredDate"] || null,
+      message: values["notes"],
+    },
+  });
+}
+
 function DemoPage() {
   const [done, setDone] = useState(false);
 
@@ -118,7 +139,8 @@ function DemoPage() {
               <FormBuilder
                 columns={FIELDS}
                 submitLabel="Request demo"
-                onSubmit={() => {
+                onSubmit={async (values) => {
+                  await submitDemoRequest(values);
                   setDone(true);
                   toast.success("Demo requested", {
                     description: "Our sales team will contact you shortly.",

@@ -114,6 +114,15 @@ public class ClinicConsultationService {
                 .toList();
     }
 
+    /** Every consultation that actually issued a prescription — the clinic side's read-only view; dispensing itself happens in Pharmacy. */
+    @Transactional(readOnly = true)
+    public List<ConsultationDto> listPrescriptions(Organization organization) {
+        accessService.requireModuleEnabled(organization, ModuleGroup.CLINIC);
+        return consultationRepository.findByOrganizationIdAndPharmacyStatusIn(organization.getId(),
+                        List.of(PharmacyQueueStatus.PENDING, PharmacyQueueStatus.PARTIALLY_DISPENSED, PharmacyQueueStatus.DISPENSED))
+                .stream().map(this::toDto).toList();
+    }
+
     Consultation requireOwned(Organization organization, Long consultationId) {
         Consultation c = consultationRepository.findById(consultationId)
                 .orElseThrow(() -> new EntityNotFoundException("Consultation not found: " + consultationId));
@@ -132,7 +141,8 @@ public class ClinicConsultationService {
         return new ConsultationDto(c.getId(), c.getAppointment().getId(), c.getStatus().name(),
                 c.getChiefComplaint(), c.getClinicalNotes(), c.getDiagnosis(),
                 c.getHeightCm(), c.getWeightKg(), c.bmi(), c.getTemperatureF(), c.getBloodPressure(),
-                c.getPulseBpm(), c.getSpo2Percent(), items, c.getFollowUpDate(), c.getFollowUpNotes(),
+                c.getPulseBpm(), c.getSpo2Percent(), items, c.getPharmacyStatus().name(),
+                c.getFollowUpDate(), c.getFollowUpNotes(),
                 new PatientSummaryDto(p.getId(), p.getPatientNumber(), p.fullName(), p.getPhone()),
                 new DoctorSummaryDto(d.getId(), d.getFullName()),
                 c.getStartedAt(), c.getCompletedAt());

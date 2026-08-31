@@ -179,13 +179,16 @@ function PublicSitePage() {
               Contact
             </a>
           </nav>
-          {config.bookingEnabled ? (
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/login">Sign in</Link>
+            </Button>
             <Button asChild size="sm" style={{ backgroundColor: primary }}>
               <a href="#book">
                 <CalendarCheck className="h-4 w-4" /> Book appointment
               </a>
             </Button>
-          ) : null}
+          </div>
         </div>
       </header>
 
@@ -328,10 +331,8 @@ function PublicSitePage() {
         </section>
       ) : null}
 
-      {/* Book appointment */}
-      {config.bookingEnabled ? (
-        <BookingSection slug={slug} doctors={site.doctors} primary={primary} />
-      ) : null}
+      {/* Book appointment — mandatory on every organization website (req #11) */}
+      <BookingSection slug={slug} doctors={site.doctors} primary={primary} />
 
       {/* Contact */}
       <section id="contact" className="bg-slate-50 px-6 py-16">

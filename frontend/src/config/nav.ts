@@ -70,16 +70,21 @@ const ITEM_ICONS: Record<string, string> = {
   "platform/roles": "KeyRound",
   "platform/audit-logs": "ScrollText",
   "platform/cms": "Globe",
+  "platform/testimonials": "Quote",
+  "platform/blog": "Newspaper",
+  "platform/content-cards": "LayoutGrid",
   /* org */
   "org/modules": "Blocks",
   "org/settings": "Settings",
-  "org/clinics": "Hospital",
   "org/branches": "MapPin",
   "org/departments": "Network",
   "org/users": "Users",
   "org/roles": "KeyRound",
   "org/subscription": "CreditCard",
   "org/onboarding": "Rocket",
+  "org/communication": "MessageSquare",
+  "org/notification-templates": "MessageSquareText",
+  "org/notifications": "Bell",
   /* billing */
   "billing/invoices": "Receipt",
   /* clinic */
@@ -126,13 +131,11 @@ const ITEM_ICONS: Record<string, string> = {
   /* cms */
   "cms/templates": "LayoutTemplate",
   "cms/branding": "Palette",
-  "cms/pages": "FileText",
   "cms/services": "Sparkles",
   "cms/gallery": "Images",
   "cms/testimonials": "Quote",
   "cms/blogs": "Newspaper",
   "cms/enquiries": "Inbox",
-  "cms/seo": "Search",
   /* patient */
   "patient/book": "CalendarPlus",
   "patient/appointments": "CalendarDays",
@@ -158,6 +161,9 @@ export const NAV_SECTIONS: NavSection[] = Object.keys(SECTION_LABELS).map((group
 /** module paths that have a dedicated route file instead of the /app/$ catch-all */
 const DEDICATED: Record<string, string> = {
   "org/roles": "/app/org/roles",
+  "org/communication": "/app/org/communication",
+  "org/notification-templates": "/app/org/notification-templates",
+  "org/notifications": "/app/org/notifications",
   "patient/book": "/app/patient/book",
 };
 

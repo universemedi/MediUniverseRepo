@@ -1,13 +1,18 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { MODULES } from "@/config/modules";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAppSelector } from "@/store";
+import { apiFetch } from "@/lib/api";
+import type { LeadApiDto, SubscriptionApiDto } from "@/lib/types";
 import { StatCards } from "@/components/common/StatCards";
 import { ChartCard } from "@/components/common/ChartCard";
+import { WebsiteSetupBanner } from "@/components/layout/WebsiteSetupBanner";
 import { Icon } from "@/components/common/Icon";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { NAV_SECTIONS, moduleLinkProps } from "@/config/nav";
 
 export const Route = createFileRoute("/app/")({
@@ -70,20 +75,6 @@ const TENANT_CHARTS = [
   },
 ];
 
-const PIPELINE = [
-  { stage: "Demo requests", count: "64", note: "18 awaiting first call" },
-  { stage: "Active trials", count: "27", note: "9 expiring this week" },
-  { stage: "Won this month", count: "12", note: "₹ 1.1L new MRR" },
-  { stage: "Churn risk", count: "5", note: "Past due invoices" },
-];
-
-const PLAN_MIX = [
-  { name: "Starter", orgs: 186, share: 39 },
-  { name: "Professional", orgs: 214, share: 44 },
-  { name: "Enterprise", orgs: 58, share: 12 },
-  { name: "Trial", orgs: 24, share: 5 },
-];
-
 function Dashboard() {
   const { canAccessPath, roleName, isPlatform, plan, orgType, orgName, reasonForPath } =
     usePermissions();
@@ -94,6 +85,80 @@ function Dashboard() {
   })).filter((s) => s.items.length);
   const stats = isPlatform ? STATS : TENANT_STATS;
   const charts = isPlatform ? CHARTS : TENANT_CHARTS;
+
+  const [leads, setLeads] = useState<LeadApiDto[] | null>(null);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionApiDto[] | null>(null);
+  const [trials, setTrials] = useState<SubscriptionApiDto[] | null>(null);
+
+  useEffect(() => {
+    if (!isPlatform) return;
+    Promise.all([
+      apiFetch<LeadApiDto[]>("/api/platform/leads"),
+      apiFetch<SubscriptionApiDto[]>("/api/platform/subscriptions"),
+      apiFetch<SubscriptionApiDto[]>("/api/platform/subscriptions/trials"),
+    ])
+      .then(([l, s, t]) => {
+        setLeads(l);
+        setSubscriptions(s);
+        setTrials(t);
+      })
+      .catch(() => {
+        setLeads([]);
+        setSubscriptions([]);
+        setTrials([]);
+      });
+  }, [isPlatform]);
+
+  const pipelineLoading = isPlatform && (!leads || !subscriptions || !trials);
+  const demoLeads = (leads ?? []).filter((l) => l.source === "REQUEST_DEMO");
+  const openDemoLeads = demoLeads.filter((l) => l.status !== "WON" && l.status !== "LOST");
+  const newDemoLeads = demoLeads.filter((l) => l.status === "NEW_LEAD");
+  const now = new Date();
+  const expiringSoon = (trials ?? []).filter((t) => {
+    if (!t.endDate) return false;
+    const days = (new Date(t.endDate).getTime() - now.getTime()) / 86_400_000;
+    return days <= 7;
+  });
+  const wonThisMonth = (leads ?? []).filter((l) => {
+    if (l.status !== "WON") return false;
+    const d = new Date(l.updatedAt);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  });
+  const lapsedSubscriptions = (subscriptions ?? []).filter(
+    (s) => s.status === "CANCELLED" || s.status === "EXPIRED",
+  );
+
+  const pipeline = [
+    {
+      stage: "Demo requests",
+      count: String(openDemoLeads.length),
+      note: `${newDemoLeads.length} awaiting first contact`,
+    },
+    {
+      stage: "Active trials",
+      count: String((trials ?? []).length),
+      note: `${expiringSoon.length} expiring within 7 days`,
+    },
+    { stage: "Won this month", count: String(wonThisMonth.length), note: "Leads marked Won" },
+    {
+      stage: "Lapsed subscriptions",
+      count: String(lapsedSubscriptions.length),
+      note: "Cancelled or expired",
+    },
+  ];
+
+  const activeSubscriptions = (subscriptions ?? []).filter((s) => s.status === "ACTIVE");
+  const planCounts = new Map<string, number>();
+  for (const s of activeSubscriptions) {
+    planCounts.set(s.planName, (planCounts.get(s.planName) ?? 0) + 1);
+  }
+  const planMix = Array.from(planCounts.entries())
+    .map(([name, orgs]) => ({
+      name,
+      orgs,
+      share: activeSubscriptions.length ? Math.round((orgs / activeSubscriptions.length) * 100) : 0,
+    }))
+    .sort((a, b) => b.orgs - a.orgs);
 
   return (
     <div className="space-y-6">
@@ -112,6 +177,8 @@ function Dashboard() {
         </Badge>
       </div>
 
+      {!isPlatform ? <WebsiteSetupBanner /> : null}
+
       <StatCards stats={stats} />
 
       {isPlatform ? (
@@ -120,38 +187,52 @@ function Dashboard() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Demo → Trial → Subscription pipeline
             </h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-4">
-              {PIPELINE.map((p) => (
-                <div key={p.stage} className="rounded-xl border border-border bg-muted/30 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {p.stage}
-                  </p>
-                  <p className="mt-1 text-xl font-semibold text-foreground">{p.count}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">{p.note}</p>
-                </div>
-              ))}
-            </div>
+            {pipelineLoading ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 rounded-xl" />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                {pipeline.map((p) => (
+                  <div key={p.stage} className="rounded-xl border border-border bg-muted/30 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {p.stage}
+                    </p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">{p.count}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{p.note}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
           <Card className="p-5">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Plan distribution
             </h2>
-            <ul className="mt-4 space-y-3">
-              {PLAN_MIX.map((p) => (
-                <li key={p.name} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-foreground">{p.name}</span>
-                    <span className="text-muted-foreground">{p.orgs} orgs</span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${p.share}%` }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
+            {pipelineLoading ? (
+              <Skeleton className="mt-4 h-32 rounded-xl" />
+            ) : planMix.length === 0 ? (
+              <p className="mt-4 text-sm text-muted-foreground">No active subscriptions yet.</p>
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {planMix.map((p) => (
+                  <li key={p.name} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-foreground">{p.name}</span>
+                      <span className="text-muted-foreground">{p.orgs} orgs</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${p.share}%` }}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
         </div>
       ) : (

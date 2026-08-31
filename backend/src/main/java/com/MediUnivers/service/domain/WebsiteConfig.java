@@ -26,9 +26,13 @@ public class WebsiteConfig {
     @JoinColumn(name = "organization_id", unique = true)
     private Organization organization;
 
-    /** Phase 1 ships one template; the field exists so more can be added without a schema change. */
+    /** Kept for backward compatibility; templateId is the live reference into the WebsiteTemplate catalog (req #9). */
     @Column(name = "template_code", nullable = false, length = 30)
     private String templateCode = "CLASSIC";
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "template_id")
+    private WebsiteTemplate template;
 
     @Column(nullable = false)
     private boolean published = false;
@@ -41,6 +45,24 @@ public class WebsiteConfig {
 
     @Column(name = "secondary_color", nullable = false, length = 20)
     private String secondaryColor = "#0f172a";
+
+    @Column(name = "font_family", length = 60)
+    private String fontFamily;
+
+    @Column(name = "background_color", length = 20)
+    private String backgroundColor;
+
+    @Column(name = "text_size_scale", nullable = false, length = 10)
+    private String textSizeScale = "MEDIUM";
+
+    @Column(name = "banners_json", length = 4000)
+    private String bannersJson;
+
+    @Column(name = "nav_items_json", length = 2000)
+    private String navItemsJson;
+
+    @Column(name = "footer_columns_json", length = 2000)
+    private String footerColumnsJson;
 
     @Column(length = 200)
     private String tagline;

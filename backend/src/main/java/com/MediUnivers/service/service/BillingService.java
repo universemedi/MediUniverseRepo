@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -50,14 +51,17 @@ public class BillingService {
     private final InvoiceRepository invoiceRepository;
     private final NumberSeriesService numberSeriesService;
     private final CurrentUserService currentUserService;
+    private final NotificationService notificationService;
     private final Map<String, PaymentGatewayService> gateways;
     private static final String DEFAULT_GATEWAY = "razorpay";
 
     public BillingService(InvoiceRepository invoiceRepository, NumberSeriesService numberSeriesService,
-                           CurrentUserService currentUserService, List<PaymentGatewayService> gatewayBeans) {
+                           CurrentUserService currentUserService, NotificationService notificationService,
+                           List<PaymentGatewayService> gatewayBeans) {
         this.invoiceRepository = invoiceRepository;
         this.numberSeriesService = numberSeriesService;
         this.currentUserService = currentUserService;
+        this.notificationService = notificationService;
         // Keyed by each gateway's own gatewayName() — not the Spring bean name — so the
         // API surface (and any request body) can use a short, stable identifier like
         // "razorpay" regardless of how the implementation class happens to be named.
@@ -111,7 +115,9 @@ public class BillingService {
         invoice.setTaxTotal(taxTotal);
         invoice.setGrandTotal(subtotal.subtract(discountTotal).add(taxTotal));
         invoice.setStatus(InvoiceStatus.UNPAID);
-        return invoiceRepository.save(invoice);
+        invoice = invoiceRepository.save(invoice);
+        notifyInvoiceGenerated(organization, invoice);
+        return invoice;
     }
 
     public Invoice recordPayment(Organization organization, Long invoiceId, RecordPaymentRequest request) {
@@ -145,7 +151,9 @@ public class BillingService {
 
         invoice.setAmountPaid(invoice.getAmountPaid().add(request.amount()));
         invoice.setStatus(invoice.balanceDue().compareTo(BigDecimal.ZERO) <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID);
-        return invoiceRepository.save(invoice);
+        invoice = invoiceRepository.save(invoice);
+        notifyPaymentReceived(organization, invoice, payment.getAmount());
+        return invoice;
     }
 
     /** Convenience for modules (like Pharmacy) that collect full payment inline at the point of sale. */
@@ -167,7 +175,7 @@ public class BillingService {
         }
         PaymentGatewayService gateway = resolveGateway(request == null ? null : request.gateway());
         GatewayOrderResult result = gateway.createOrder(invoice.balanceDue(), "INR", invoice.getInvoiceNumber());
-        return new GatewayOrderDto(invoice.getId(), gateway.gatewayName(), result.gatewayOrderId(), result.amount(), result.currency(), result.publicKey());
+        return new GatewayOrderDto(invoice.getId(), gateway.gatewayName(), result.gatewayOrderId(), result.amount(), result.currency(), result.publicKey(), result.mock());
     }
 
     /** Step 2: the frontend hands back what the gateway returned after checkout — verify it, then record the payment. */
@@ -197,7 +205,42 @@ public class BillingService {
 
         invoice.setAmountPaid(invoice.getAmountPaid().add(amount));
         invoice.setStatus(InvoiceStatus.PAID);
-        return invoiceRepository.save(invoice);
+        invoice = invoiceRepository.save(invoice);
+        notifyPaymentReceived(organization, invoice, amount);
+        return invoice;
+    }
+
+    // ---------------- Communication Engine hooks ----------------
+
+    private void notifyInvoiceGenerated(Organization organization, Invoice invoice) {
+        Patient patient = invoice.getPatient();
+        if (patient == null || (isBlank(patient.getEmail()) && isBlank(patient.getPhone()))) return;
+        notificationService.notify(organization, NotificationEventType.INVOICE_GENERATED,
+                NotificationRecipient.of(patient.fullName(), patient.getEmail(), patient.getPhone()),
+                invoiceVariables(organization, invoice, invoice.getGrandTotal()),
+                NotificationPriority.NORMAL, "INVOICE", invoice.getId(), null);
+    }
+
+    private void notifyPaymentReceived(Organization organization, Invoice invoice, BigDecimal amount) {
+        Patient patient = invoice.getPatient();
+        if (patient == null || (isBlank(patient.getEmail()) && isBlank(patient.getPhone()))) return;
+        notificationService.notify(organization, NotificationEventType.PAYMENT_RECEIVED,
+                NotificationRecipient.of(patient.fullName(), patient.getEmail(), patient.getPhone()),
+                invoiceVariables(organization, invoice, amount),
+                NotificationPriority.NORMAL, "INVOICE", invoice.getId(), null);
+    }
+
+    private Map<String, String> invoiceVariables(Organization organization, Invoice invoice, BigDecimal amount) {
+        Map<String, String> vars = new HashMap<>();
+        vars.put("patientName", invoice.getPatient() != null ? invoice.getPatient().fullName() : "");
+        vars.put("organizationName", organization.getName());
+        vars.put("invoiceNumber", invoice.getInvoiceNumber());
+        vars.put("amount", amount.toPlainString());
+        return vars;
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     private PaymentGatewayService resolveGateway(String name) {
@@ -211,10 +254,17 @@ public class BillingService {
 
     @Transactional(readOnly = true)
     public List<InvoiceDto> list(Organization organization, InvoiceStatus status) {
+        return list(organization, status, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<InvoiceDto> list(Organization organization, InvoiceStatus status, SourceModule sourceModule) {
         List<Invoice> invoices = status == null
                 ? invoiceRepository.findByOrganizationIdOrderByCreatedAtDesc(organization.getId())
                 : invoiceRepository.findByOrganizationIdAndStatusOrderByCreatedAtDesc(organization.getId(), status);
-        return invoices.stream().map(this::toDto).toList();
+        return invoices.stream()
+                .filter(i -> sourceModule == null || i.getSourceModule() == sourceModule)
+                .map(this::toDto).toList();
     }
 
     @Transactional(readOnly = true)

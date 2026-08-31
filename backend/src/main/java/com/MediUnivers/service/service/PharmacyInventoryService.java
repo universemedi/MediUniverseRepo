@@ -167,6 +167,35 @@ public class PharmacyInventoryService {
                 .toList();
     }
 
+    /** Every batch across every medicine and branch — the org-wide "pharmacy/batches" view. */
+    @Transactional(readOnly = true)
+    public List<OrgBatchDto> listAllBatches(Organization organization) {
+        accessService.requireModuleEnabled(organization, ModuleGroup.PHARMACY);
+        return batchRepository.findByOrganizationIdOrderByExpiryDateAsc(organization.getId()).stream()
+                .map(b -> new OrgBatchDto(b.getId(), b.getBatchNumber(), b.getMedicine().getName(), b.getBranch().getName(),
+                        b.getExpiryDate(), b.getMrp(), b.getQuantityAvailable(), b.isExpired()))
+                .toList();
+    }
+
+    /** Low-stock alerts across every branch — the same reorder-level check as {@link #lowStock}, just not scoped to one branch. */
+    @Transactional(readOnly = true)
+    public List<LowStockAlertDto> lowStockAllBranches(Organization organization) {
+        accessService.requireModuleEnabled(organization, ModuleGroup.PHARMACY);
+        List<Batch> batches = batchRepository.findByOrganizationIdOrderByExpiryDateAsc(organization.getId());
+        Map<String, List<Batch>> byBranchAndMedicine = batches.stream()
+                .collect(Collectors.groupingBy(b -> b.getBranch().getId() + ":" + b.getMedicine().getId()));
+        return byBranchAndMedicine.values().stream()
+                .map(group -> {
+                    Batch first = group.get(0);
+                    int stock = group.stream().mapToInt(Batch::getQuantityAvailable).sum();
+                    return new LowStockAlertDto(first.getMedicine().getId(), first.getMedicine().getName(),
+                            first.getBranch().getName(), first.getMedicine().getReorderLevel(), stock);
+                })
+                .filter(a -> a.currentStock() < a.reorderLevel())
+                .sorted((a, b) -> Integer.compare(a.currentStock(), b.currentStock()))
+                .toList();
+    }
+
     // ---------------- Stock transfers ----------------
 
     public StockTransferDto transferStock(Organization organization, CreateStockTransferRequest request) {

@@ -316,6 +316,30 @@ export const MODULES: ModulePageDef[] = [
       col("status", "Status", "badge", { options: ["Published", "Draft"] }),
     ],
   },
+  {
+    path: "platform/testimonials",
+    title: "Testimonials",
+    description: "Customer quotes shown on MediUnivers' own public website.",
+    group: "platform",
+    singular: "Testimonial",
+    columns: [],
+  },
+  {
+    path: "platform/blog",
+    title: "Blog",
+    description: "Articles published on MediUnivers' own public website.",
+    group: "platform",
+    singular: "Blog Post",
+    columns: [],
+  },
+  {
+    path: "platform/content-cards",
+    title: "Features & Solutions",
+    description: "Feature, solution, value and team cards shown on the public website.",
+    group: "platform",
+    singular: "Content Card",
+    columns: [],
+  },
 
   /* ------------------------------- Billing --------------------------------- */
   {
@@ -366,23 +390,6 @@ export const MODULES: ModulePageDef[] = [
     ],
   },
   {
-    path: "org/clinics",
-    title: "Clinics",
-    description: "All clinics under this organization.",
-    group: "org",
-    singular: "Clinic",
-    rowCount: 18,
-    columns: [
-      col("name", "Clinic", "org", { required: true }),
-      col("code", "Code", "code"),
-      col("city", "City", "city"),
-      col("phone", "Phone", "phone"),
-      col("branches", "Branches", "number"),
-      col("doctors", "Doctors", "number"),
-      col("status", "Status", "badge", { options: STATUS }),
-    ],
-  },
-  {
     path: "org/branches",
     title: "Branches",
     description: "Branch-level configuration and working hours.",
@@ -391,7 +398,6 @@ export const MODULES: ModulePageDef[] = [
     rowCount: 24,
     columns: [
       col("name", "Branch", "org", { required: true }),
-      col("clinic", "Clinic", "org"),
       col("city", "City", "city"),
       col("phone", "Phone", "phone"),
       col("openTime", "Opens", "text", { secondary: true }),
@@ -402,16 +408,13 @@ export const MODULES: ModulePageDef[] = [
   {
     path: "org/departments",
     title: "Departments",
-    description: "Departments available across clinics and branches.",
+    description: "Departments available across your organization.",
     group: "org",
     singular: "Department",
     rowCount: 16,
     columns: [
       col("name", "Department", "text", { required: true }),
       col("code", "Code", "code"),
-      col("clinic", "Clinic", "org"),
-      col("head", "Head", "name"),
-      col("doctors", "Doctors", "number"),
       col("status", "Status", "badge", { options: STATUS }),
     ],
   },
@@ -481,17 +484,47 @@ export const MODULES: ModulePageDef[] = [
   },
   {
     path: "org/onboarding",
-    title: "Onboarding Status",
-    description: "Track every customer through the go-live journey.",
+    title: "Onboarding Checklist",
+    description: "Your organization's own go-live checklist.",
     group: "org",
     singular: "Onboarding Step",
-    rowCount: 10,
+    columns: [],
+  },
+  {
+    path: "org/communication",
+    title: "Communication Settings",
+    description:
+      "Turn Email, SMS and WhatsApp on or off and configure your own provider credentials.",
+    group: "org",
+    singular: "Channel",
     columns: [
-      col("name", "Step", "text", { required: true }),
-      col("owner", "Owner", "name"),
-      col("dueDate", "Due", "date"),
-      col("progress", "Progress", "percent"),
-      col("status", "Status", "badge", { options: ONBOARDING }),
+      col("name", "Channel", "text", { required: true }),
+      col("status", "Status", "badge", { options: ["Enabled", "Disabled"] }),
+    ],
+  },
+  {
+    path: "org/notification-templates",
+    title: "Notification Templates",
+    description:
+      "Edit the wording of every notification this organization sends — nothing is hardcoded.",
+    group: "org",
+    singular: "Template",
+    columns: [
+      col("name", "Template", "text", { required: true }),
+      col("channel", "Channel", "badge", { options: ["EMAIL", "SMS", "WHATSAPP", "IN_APP"] }),
+      col("status", "Status", "badge", { options: ["Active", "Inactive"] }),
+    ],
+  },
+  {
+    path: "org/notifications",
+    title: "Notification Logs",
+    description: "Every email, SMS, WhatsApp and in-app send attempt, most recent first.",
+    group: "org",
+    singular: "Notification",
+    columns: [
+      col("event", "Event", "text", { required: true }),
+      col("channel", "Channel", "badge", { options: ["EMAIL", "SMS", "WHATSAPP", "IN_APP"] }),
+      col("status", "Status", "badge", { options: ["PENDING", "SENT", "FAILED", "EXPIRED"] }),
     ],
   },
 
@@ -1214,19 +1247,10 @@ export const MODULES: ModulePageDef[] = [
   {
     path: "cms/templates",
     title: "Website Templates",
-    description: "Ready-made templates for customer websites.",
+    description: "Curated templates you can apply to your public site from Branding.",
     group: "cms",
     singular: "Template",
-    rowCount: 9,
-    columns: [
-      col("name", "Template", "text", { required: true }),
-      col("category", "Category", "badge", {
-        options: ["Clinic", "Dental", "Diagnostic", "Multi-Speciality"],
-      }),
-      col("pages", "Pages", "number"),
-      col("usage", "Used By", "number"),
-      col("status", "Status", "badge", { options: ["Published", "Draft"] }),
-    ],
+    columns: [],
   },
   {
     path: "cms/branding",
@@ -1240,24 +1264,6 @@ export const MODULES: ModulePageDef[] = [
       col("value", "Value", "text", { required: true }),
       col("category", "Group", "badge", { options: ["Logo", "Colour", "Typography", "Favicon"] }),
       col("status", "Status", "badge", { options: ["Applied", "Draft"] }),
-    ],
-  },
-  {
-    path: "cms/pages",
-    title: "Pages",
-    description: "Website pages with SEO metadata.",
-    group: "cms",
-    singular: "Page",
-    rowCount: 14,
-    columns: [
-      col("title", "Page", "text", { required: true }),
-      col("slug", "Slug", "code", { required: true }),
-      col("metaDescription", "Meta Description", "text", {
-        secondary: true,
-        fieldType: "textarea",
-      }),
-      col("updatedAt", "Updated", "date"),
-      col("status", "Status", "badge", { options: ["Published", "Draft"] }),
     ],
   },
   {
@@ -1338,24 +1344,6 @@ export const MODULES: ModulePageDef[] = [
       col("subject", "Subject", "text"),
       col("createdAt", "Received", "date"),
       col("status", "Status", "badge", { options: ["New", "Responded", "Closed"] }),
-    ],
-  },
-  {
-    path: "cms/seo",
-    title: "SEO Settings",
-    description: "Titles, descriptions, keywords and social preview images.",
-    group: "cms",
-    singular: "SEO Entry",
-    rowCount: 12,
-    columns: [
-      col("page", "Page", "text", { required: true }),
-      col("title", "Meta Title", "text", { required: true }),
-      col("metaDescription", "Meta Description", "text", {
-        fieldType: "textarea",
-        secondary: true,
-      }),
-      col("keywords", "Keywords", "text", { secondary: true }),
-      col("visibility", "Indexing", "badge", { options: ["Allowed", "Blocked"] }),
     ],
   },
 

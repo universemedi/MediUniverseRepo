@@ -43,6 +43,11 @@ public class ClinicConsultationController {
         return consultationService.historyForPatient(requireOrgUser().getOrganization(), patientId);
     }
 
+    @GetMapping("/prescriptions")
+    public List<ConsultationDto> listPrescriptions() {
+        return consultationService.listPrescriptions(requireOrgUser().getOrganization());
+    }
+
     private AppUser requireOrgUser() {
         AppUser me = currentUserService.require();
         if (me.getOrganization() == null) {

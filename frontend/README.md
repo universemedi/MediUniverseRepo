@@ -2,9 +2,12 @@
 
 Healthcare SaaS frontend built with React 19, TypeScript, TanStack Start, TanStack Router, Redux Toolkit,
 Tailwind CSS and shadcn/ui. This build talks to a real backend (see `/service`) for authentication —
-sign-in is genuine OAuth2 (Authorization Code + PKCE), not a client-side mock. Business-module data
-(clinic/pharmacy/lab/crm) is still mocked in the browser (`src/lib/mock.ts` / `src/lib/rows.ts`) since
-those APIs aren't built yet — see the backend README for exactly what's implemented.
+sign-in is genuine OAuth2 (Authorization Code + PKCE), not a client-side mock. Clinic, Pharmacy,
+Laboratory, Billing, Website Builder, the Subscription Engine, self-serve signup, and the lead/
+demo-request pipeline are all wired to the real backend. What's still mocked in the browser
+(`src/lib/mock.ts`, `src/lib/rows.ts`, the generic `app.$.tsx` catch-all): `platform/coupons`, `platform/referrals`,
+`platform/support`, `platform/audit-logs`, platform user/role admin, and full CRM (follow-ups,
+campaigns) — none of these have a backend yet. See the backend README for exactly what's implemented.
 
 ## Running it
 
@@ -72,6 +75,51 @@ permissions and will be rejected if they don't match. This is intentional — th
 authority, not this switcher.
 
 ## What changed in this pass
+
+- **Subscription Engine + self-serve signup, wired end to end**:
+  - `/pricing` and the homepage's plan section now fetch live `GET /api/public/plans`
+    instead of the old hardcoded `lib/plans.ts` array — real numeric pricing, tax, and
+    per-plan limits.
+  - **Account creation and plan purchase are now two separate pages**, not one combined
+    step: `/subscribe` collects only organization + owner details and creates the
+    account (no plan chosen yet); `/subscribe/plans` is a new page showing full plan
+    detail cards (price with/without tax, every highlight, unlocked modules, branch/
+    user/doctor limits) where the customer actually picks a plan and pays via Razorpay.
+    The signup session (organization id + a short-lived signup token) carries between
+    the two pages via `sessionStorage` (`src/lib/signupSession.ts`), not the URL.
+  - `/free-trial` now submits to the real `POST /api/public/organizations/free-trial`
+    endpoint and shows the live trial plan's details instead of a static mock card.
+  - `/request-demo` now submits to the real `POST /api/public/leads` endpoint.
+  - `forgot-password` / `reset-password` — these pages already existed and called
+    `/api/public/auth/forgot-password` / `/reset-password`, but **the backend didn't
+    implement either endpoint** — every attempt was a 404 until this pass.
+  - New `/app/org/plans` — the authenticated fallback for an Org Owner whose
+    organization isn't subscribed (unsubscribed `DRAFT`, or lapsed `SUSPENDED`/
+    `CANCELLED`): copy adapts to which case it is, and picking a plan there reuses the
+    same Razorpay checkout pattern. `/app`'s post-login routing now redirects an Owner
+    straight here instead of the dashboard whenever their org isn't in good standing —
+    this also means an Owner **can** log in immediately after creating an account, even
+    before paying for a plan, and gets routed to finish subscribing rather than being
+    locked out.
+  - New `/app/platform/plans`, `/app/platform/subscriptions`, `/app/platform/trials` —
+    real screens replacing the mock catch-all versions; plan create/edit/deactivate is
+    restricted client-side to Super Admin, matching the backend.
+  - New `/app/platform/organizations` — real table of every tenant with a working
+    "New organization" dialog, replacing the mock catch-all version.
+  - New `/app/platform/leads` and `/app/platform/demo-requests` — real pipeline boards
+    (status, assignment, notes) against the real backend, replacing mock data.
+  - `app.index.tsx`'s platform dashboard "Demo → Trial → Subscription pipeline" and
+    "Plan distribution" cards are now computed from real leads/subscriptions data
+    instead of hardcoded numbers.
+  - Website Builder's branding page (`/app/cms/branding`) gained a template picker
+    (fetches the real `WebsiteTemplate` catalog) plus font/background-color/text-size
+    fields; the "online booking" toggle was removed since booking is now mandatory on
+    every published site. New `/app/platform/cms` — real editor for MediUnivers' own
+    site content plus a template catalog CRUD panel (both audiences), replacing the mock
+    catch-all version.
+  - `/site/$slug` (the public organization site) always shows the booking section now
+    (previously gated by a config toggle) and has a "Sign in" link to `/login` in the
+    header.
 
 - **Website Builder — the frontend didn't exist until this pass** (the backend was
   already fully built): six new admin screens under `/app/cms/*`
@@ -199,11 +247,16 @@ authority, not this switcher.
 Phase 1 (Foundation, auth, platform console, org/subscription management, marketing
 site), the **Clinic module**, the **Pharmacy module**, the **Laboratory module**, the
 **centralized Billing Engine**, the full **Organization Foundation** (lifecycle, branches,
-invitations), and now the **Website Builder** (branding, pages, services, gallery,
-testimonials, blog, contact forms, online booking, and a real public site template) are
-all real, backend-backed features — not mock data. CRM is the one module still
-scaffolded as a definition (`src/config/modules.ts`) with generic table/detail UI backed
-by mock data.
+invitations), the **Website Builder** (branding, pages, services, gallery, testimonials,
+blog, contact forms, mandatory online booking, a real public site template, and a
+platform-managed template catalog for both audiences), and now the **Subscription
+Engine + self-serve signup** (real plan pricing/admin, separated account-creation and
+plan-purchase flows, free trial, forgot/reset password, and a real demo-request/lead
+pipeline) are all real, backend-backed features — not mock data.
+
+Still mock, no backend built yet: `platform/coupons`, `platform/referrals`,
+`platform/support`, `platform/audit-logs`, platform user/role admin CRUD, and full CRM
+(follow-up scheduling, campaigns, activity timelines) beyond the lead pipeline above.
 
 ## Stack
 

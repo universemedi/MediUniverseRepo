@@ -39,4 +39,7 @@ public class OrgType {
     @Column(name = "module_group")
     @Enumerated(EnumType.STRING)
     private Set<ModuleGroup> modules = new HashSet<>();
+
+    @Column(nullable = false)
+    private boolean active = true;
 }

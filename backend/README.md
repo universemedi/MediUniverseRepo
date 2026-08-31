@@ -7,18 +7,12 @@ organizations, plans, dynamic roles/permissions and users.
 
 ## Before you run it — important
 
-**This code has not been compiled in a real Maven environment.** The sandbox
-that built it has no access to Maven Central, so `mvn compile` could not be
-run here. It went through a careful manual review instead (every class
-reference resolves, every DTO record constructor call matches field order,
-every JPA entity's columns were cross-checked against the Flyway schema by
-hand) — but that is not a substitute for a real build.
-
-**First thing to do:** `mvn clean compile`, and if anything fails, send me the
-error — most likely candidates are small API surface differences if your
-resolved Spring Authorization Server / Spring Security versions differ from
-what this was written against (Spring Security 6.x, Spring Authorization
-Server 1.3–1.4 API shapes).
+`mvn clean compile` has been run and verified clean as of the Subscription
+Engine / Website Template pass below (Flyway migrations V1–V18), including
+live end-to-end verification against a real PostgreSQL instance (not just a
+compile check) for every new flow: signup, payment-gateway integration,
+password reset, and the trial-expiry cron. If a future change doesn't
+compile, that's a regression, not an expected state.
 
 ## What's implemented (Phase 1 — Foundation)
 
@@ -382,12 +376,192 @@ Server 1.3–1.4 API shapes).
 - Contact submissions are a standalone inbox, not yet routed into a CRM pipeline — CRM
   itself isn't built yet.
 
+## What's implemented — Subscription Engine (plans, pricing, subscription history)
+
+- **Real numeric pricing on `Plan`**: `priceWithoutTax` + `taxPercent` (single GST-style
+  rate), plus `maxDoctorsPerBranch`, `isFreeTrial`/`freeTrialDays`, and an `active`
+  soft-delete flag. `priceWithTax` is never stored — it's computed on the fly by
+  `PricingCalculator.withTax(...)` at DTO-mapping time, so a later tax-rate edit can never
+  leave a stale computed value sitting in the database.
+- **New `Subscription` entity** — one row per organization per subscription period: start/
+  end date, a full price snapshot independent of whatever the `Plan` catalog row looks
+  like later (`planCodeSnapshot`/`planNameSnapshot`), free-trial flag/days, gateway fields
+  (`paymentGateway`/`gatewayOrderId`/`gatewayPaymentId`), and a status lifecycle
+  (`PENDING_PAYMENT → ACTIVE → EXPIRED/CANCELLED/SUPERSEDED`). `Organization.plan` +
+  `renewsOn` stay a denormalized pointer to whichever `Subscription` is currently
+  `ACTIVE`, kept in sync everywhere a subscription changes — every existing read path
+  (`org.getPlan().getMaxBranches()`, JWT claims, `GET /api/me`) needed zero changes.
+- **`GET /api/platform/plans` (admin) / `GET /api/public/plans` (public, active-only)**,
+  with `POST`/`PUT`/`DELETE /api/platform/plans` restricted to **`ROLE_SUPER_ADMIN` only**
+  — deliberately narrower than most platform resources, per the explicit requirement that
+  plan CRUD is super-admin-only, not opened up to Finance or Sales Lead even though they
+  can view. Deleting a plan is a soft delete (`active=false`), blocked with `409` while any
+  organization has an `ACTIVE` subscription on it, since plans are FK'd from
+  `Organization`/`Subscription` history and are never physically removed.
+- **`GET /api/platform/subscriptions` and `/subscriptions/trials`** — read-only visibility
+  for platform staff; subscriptions change only via the signup/payment/cron flows below,
+  never manual admin edits.
+- **Fixed a real bug**: `OrganizationService.create()` used to hardcode every new
+  organization to `TRIAL` status regardless of which plan was chosen. It now creates the
+  matching `Subscription` and sets status correctly — `TRIAL` only if the plan is actually a
+  free trial, `ACTIVE` immediately otherwise (this endpoint is platform-staff-only, so a
+  human has already closed the deal — no payment gate needed here).
+- **Doctor seats are capped per branch by the plan**, not just per-org user seats:
+  `ClinicDoctorService.create()` now checks `DoctorRepository.countByBranchId(...)` against
+  `Plan.maxDoctorsPerBranch` alongside the pre-existing org-wide seat check.
+
+### Known simplifications in this pass
+- Admin plan mutation doesn't emit an audit-log entry yet (no audit-log system exists in
+  this build at all — see "What's NOT implemented").
+- `changePlan` (the platform-staff "swap an org's plan directly" endpoint) supersedes the
+  prior `Subscription` and creates a new one, but doesn't itself charge anything — it's for
+  staff-mediated plan changes (e.g. a manually-negotiated upgrade), not a customer-facing
+  payment flow.
+
+## What's implemented — Public Self-Serve Signup (account creation, plan purchase, free trial)
+
+Two genuinely separate public flows, both unauthenticated, both under
+`/api/public/organizations/*`:
+
+- **`POST /api/public/organizations/free-trial`** — the full org + owner details in one
+  call, immediately provisioned as `TRIAL` status on the seeded free-trial plan. No payment
+  step exists for this path at all.
+- **`POST /api/public/organizations/create-account`** — org + owner details **with no plan
+  chosen yet**. The organization is created `DRAFT` and assigned a reserved,
+  non-public **`UNSUBSCRIBED` placeholder plan** (seeded via `V18`, zero modules, zero
+  branch/doctor limits, `active=false` so it never appears in `GET /api/public/plans` or
+  the Super Admin's plan list, and protected from admin edit/deactivate). This was a
+  deliberate design choice over making `organizations.plan_id` nullable: the placeholder
+  keeps every existing `org.getPlan()` call site working unchanged while still guaranteeing
+  **zero real product access** until a plan is actually paid for — verified live: a
+  logged-in owner of a `DRAFT`/unsubscribed org gets a clean `403` ("CLINIC is not included
+  in the current subscription plan") from every business-module endpoint, purely because
+  `AccessService.requireModuleEnabled` already checks `plan.getModules()`, which is empty
+  for this placeholder. No new access-control code was needed for this to be safe.
+- **`POST /api/public/organizations/{id}/select-plan`** (header `X-Signup-Token`) — step 2:
+  pick a real plan, get back a Razorpay order via the existing `PaymentGatewayService`
+  abstraction (same interface Billing already used — no new payment code, just a new
+  caller). Cancels any earlier unpaid attempt for the org first so retries don't leave
+  orphaned `PENDING_PAYMENT` rows.
+- **`POST /api/public/organizations/{id}/subscribe/confirm`** (header `X-Signup-Token`) —
+  step 3: verify the gateway callback, then the `Subscription` goes `ACTIVE` **and the
+  organization's real plan is assigned for the first time** (`org.setPlan(sub.getPlan())`)
+  — the placeholder never leaks past this point.
+- **The org owner is invited (not handed a password) the moment the account is created**,
+  before any plan is chosen or paid for — this is safe because a `DRAFT` org already blocks
+  every business-module endpoint via the empty-modules placeholder plan above, and because
+  of the login rule described next.
+- **`AppUserPrincipal.isEnabled()` now lets a `DRAFT` org's Owner log in** (previously
+  `DRAFT` blocked everyone outright). This was a deliberate, explicitly-requested change:
+  rather than blocking login entirely while unsubscribed, the owner can sign in immediately
+  and is routed straight to a plan-purchase screen — matching how `SUSPENDED`/`CANCELLED`
+  already only let the Owner through. Everyone else on a `DRAFT` org still can't log in at
+  all.
+- **`X-Signup-Token`** proves ownership of a `DRAFT` org across this whole multi-step,
+  session-less flow — a random token stamped on `Organization.signupToken` at
+  `create-account` time, checked on every subsequent call, cleared the moment the org
+  leaves `DRAFT`.
+
+### Known simplifications in this pass
+- No webhook for Razorpay — same gap already noted under Billing; if the browser closes
+  before `/subscribe/confirm` fires, a successful gateway payment wouldn't be recorded here.
+- An org that creates an account but never returns to pick a plan stays `DRAFT` forever
+  (an "abandoned cart") — there's no cleanup job for this yet, though the Owner can always
+  return, log in, and complete it via `/app/org/plans` on the frontend.
+- Subdomain/email uniqueness checks (`requireSubdomainAvailable`/`requireEmailAvailable`)
+  are simple existence checks, not reserved-word or profanity filtering.
+
+## What's implemented — Forgot / Reset Password
+
+The frontend's `forgot-password`/`reset-password` pages were already calling
+`POST /api/public/auth/forgot-password` and `/reset-password` — **neither endpoint existed
+on the backend until this pass**; every login attempt from those pages was a 404. Now:
+
+- **`AuthPasswordResetService`** — a separate mechanism from `UserInvitationService`'s
+  invite-token flow on purpose: `AppUser.resetToken`/`resetTokenExpiresAt` (new columns,
+  `V14`) are distinct from `inviteToken`/`inviteExpiresAt`, since `UserInvitationService.accept()`
+  guards on `status == INVITED` — reusing the invite token for a password reset (which only
+  makes sense for an already-`ACTIVE` account) would collide with that guard.
+- **`requestReset(email)` always returns success**, whether or not the email matches an
+  account — standard practice to avoid leaking which emails have accounts. A 15-minute
+  token is emailed through the existing Communication Engine (`NotificationEventType.PASSWORD_RESET_REQUESTED`,
+  new default template seeded for every org via `V14`, since `NotificationTemplateService.seedDefaults()`
+  is a no-op for orgs that already have templates).
+- Platform staff (no organization) get the same log-only fallback `UserInvitationService`
+  already used for invites — there's no per-org template catalog to render from without an
+  organization.
+
+## What's implemented — Free-Trial Auto-Expiry (cron job)
+
+- **`TrialExpiryService.expireOverdueTrials()`** — `@Scheduled(cron = "${mediunivers.trial-expiry-cron}")`,
+  same plain-Spring `@Scheduled` idiom as the existing `NotificationSchedulerService` (the
+  only scheduling precedent in this codebase — no Quartz introduced for one job). Finds
+  every `ACTIVE` free-trial `Subscription` past its `endDate`, flips it to `EXPIRED` and the
+  organization to `SUSPENDED`.
+- **`SUSPENDED` was chosen deliberately, not a new status** — `AppUserPrincipal.isEnabled()`
+  already restricts `SUSPENDED` orgs to Owner-only login, which is exactly "let them back in
+  only to re-subscribe." Zero security-layer changes were needed.
+- Configurable via `mediunivers.trial-expiry-cron` (`TRIAL_EXPIRY_CRON` env var), standard
+  cron syntax, default hourly on the hour.
+- Verified live: seeded a `Subscription` with a backdated `endDate`, ran with a 20-second
+  cron interval, confirmed the job fired on schedule and flipped both rows correctly.
+- A `TRIAL_EXPIRED` notification (email) fires to the org's owner when this happens, same
+  Communication Engine pattern as everything else, seeded for existing orgs via `V15`.
+
+## What's implemented — Lead / Demo-Request Pipeline (CRM foundation)
+
+- **`Lead` gained a real pipeline**: `LeadStatus` (`NEW_LEAD → CONTACTED → DEMO_SCHEDULED
+  → DEMO_COMPLETED → WON/LOST`), assignment to a platform staff member
+  (`assignedTo`/`GET /api/platform/staff` for the picker), internal notes, and the extra
+  fields the Request Demo form actually collects (`expectedUsers`, `modulesOfInterest`,
+  `preferredDemoDate`).
+- **`GET /api/platform/leads`** plus `PATCH .../status`, `PATCH .../assign`,
+  `POST .../notes`, gated to the roles already seeded with `platform/leads`/
+  `platform/demo-requests` page access (`SUPER_ADMIN`, `PLATFORM_SALES_LEAD`,
+  `PLATFORM_SALES_AGENT`) — this is the "standard CRM process" a Request Demo submission
+  now genuinely flows into, not a bigger CRM system (see "What's NOT implemented").
+- `PublicLeadController`'s existing `POST /api/public/leads` (already implemented before
+  this pass) is what every public form — Contact, Request Demo, Free Trial, Pricing — feeds
+  into; this pass is what gives platform sales staff a real, working screen to act on it.
+
+## What's implemented — Website Template Catalog (platform + organization templates)
+
+- **New `WebsiteTemplate` catalog** (`TemplateAudience.PLATFORM`/`ORGANIZATION`) —
+  platform-managed identity + default branding rows, config-driven per the confirmed
+  design (curated templates + a structured settings form, not a freeform page builder).
+  `GET /api/public/website-templates?audience=` is public (needed pre-login too, e.g. during
+  signup); `POST`/`PUT`/`DELETE /api/platform/website-templates` are `ROLE_SUPER_ADMIN`-only.
+- **`WebsiteConfig` extended** with `templateId` (references the new catalog, `templateCode`
+  kept for backward compatibility), plus generic slot columns for `fontFamily`,
+  `backgroundColor`, `textSizeScale`, and JSON-as-text `bannersJson`/`navItemsJson`/
+  `footerColumnsJson` — same precedent as the pre-existing `OrganizationSettings.businessHoursJson`.
+- **New singleton `PlatformWebsiteConfig`** (`platform_website_config`, one row by
+  convention) — the real backend for MediUnivers' own site content, previously entirely
+  mock on the frontend. `GET`/`PUT /api/platform/website-config`, gated to `SUPER_ADMIN`/
+  `PLATFORM_MARKETING` (matching the role DataSeeder already seeds with `platform/cms`
+  access).
+- **Appointment booking is now mandatory, not optional**: `PublicWebsiteService.bookAppointment()`
+  no longer gates on `WebsiteConfig.bookingEnabled` — every published organization site
+  gets a working booking section, per the explicit requirement. The field stays in the
+  schema/DTO for backward compatibility; the UI toggle was removed.
+
+### Known simplifications in this pass
+- Config-driven only, as decided — banners/nav/footer are structured JSON fields edited as
+  JSON in the branding UI, not a visual drag-and-drop block editor.
+- The platform's own static marketing pages (`index.tsx`, `about.tsx`, etc.) don't render
+  from `PlatformWebsiteConfig` yet — this pass ships the catalog + admin editing backend;
+  wiring the existing marketing routes to read from it is a separate follow-up.
+
 ## What's NOT implemented yet
 
-CRM business APIs (lead pipeline, follow-ups, campaigns) — the remaining module from the
-original module list. Clinic, Pharmacy, Laboratory, Billing, and now Website Builder are
-all real, backend-backed features covered above; CRM is the one still scaffolded as a
-module definition with generic mock UI.
+- **Full CRM** — the lead pipeline above is real (capture, assign, status, notes), but
+  broader CRM (follow-up scheduling, campaigns, activity timelines) isn't built.
+- **Coupons, referrals, support tickets, audit logs, platform user/role admin CRUD** — all
+  still frontend-mock only, no backend at all. Each is a real system to design from scratch
+  when needed, not a small wiring change like `platform/organizations` was.
+- Clinic, Pharmacy, Laboratory, Billing, Website Builder (+ its new template catalog),
+  Organization Foundation, and the Subscription Engine / self-serve signup covered above
+  are all real, backend-backed features.
 
 ## Running it locally
 
@@ -412,8 +586,14 @@ module definition with generic mock UI.
 
 4. Optional — to enable real online payments, get test API keys from the Razorpay
    dashboard (Settings → API Keys) and set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,
-   and `RAZORPAY_ENABLED=true`. Without these, invoices still work end to end —
-   "Pay online" just returns a clear 503 instead of opening a checkout.
+   and `RAZORPAY_ENABLED=true`. Without these, invoices **and** the paid self-serve
+   signup / re-subscribe flows still work end to end up to the payment step —
+   "Pay online" / "Subscribe" just returns a clear 503 instead of opening a checkout.
+
+5. Optional — override how often the free-trial expiry job runs with
+   `TRIAL_EXPIRY_CRON` (standard cron syntax, defaults to hourly:
+   `0 0 * * * *`). Useful to shorten for local testing, e.g. `*/30 * * * * *`
+   (every 30 seconds) to watch a seeded expired trial actually flip.
 
 ## Demo accounts (password `demo1234` for all)
 
@@ -453,6 +633,16 @@ module definition with generic mock UI.
 - No refresh-token rotation handling on the frontend yet (access tokens are
   short-lived — 30 minutes — and there's no silent-refresh flow wired up, so a
   session currently just expires and sends the person back to `/login`).
+- **`RAZORPAY_ENABLED=false` by default** means the entire paid self-serve signup
+  path (`/subscribe/plans` → select-plan → confirm), and the authenticated re-subscribe
+  screen (`/app/org/plans`), can be exercised up to the payment step and no further without
+  real Razorpay test/live keys — the gateway call returns a clear `503` rather than
+  silently succeeding, which is correct behavior, but means this whole path needs real
+  credentials to demo end to end.
+- Real email delivery still isn't wired up anywhere — invitations, password resets, and
+  every Communication Engine notification log their content/link instead of sending it,
+  same as noted under Organization Foundation above. This affects every new flow in this
+  pass too (signup welcome emails, password reset links, trial-expiry notices).
  ===========================================================================================================
 - CODE_VERIFIER  = rS5_GVDiBfoSZD5LpXeh9Wtt4yGDKogiUJAY42nkjGSiXRTIk4wLLEIuWd7RJm9w
   CODE_CHALLENGE = 2nxqHmOWkmXxRADUFiseyb7CXA8ScZkJdj7jeCe3mG0

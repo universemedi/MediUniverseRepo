@@ -9,4 +9,6 @@ import java.util.Optional;
 public interface DoctorRepository extends JpaRepository<Doctor, Long> {
     List<Doctor> findByOrganizationId(Long organizationId);
     Optional<Doctor> findByAppUserId(Long appUserId);
+    long countByBranchId(Long branchId);
+    long countByOrganizationId(Long organizationId);
 }

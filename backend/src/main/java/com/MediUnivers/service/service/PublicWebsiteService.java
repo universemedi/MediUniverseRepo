@@ -36,6 +36,7 @@ public class PublicWebsiteService {
     private final ClinicAppointmentService appointmentService;
     private final BranchRepository branchRepository;
     private final WebsiteContentService websiteContentService;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public PublicWebsiteDto getSite(String slug) {
@@ -90,15 +91,22 @@ public class PublicWebsiteService {
         submission.setEmail(request.email());
         submission.setPhone(request.phone());
         submission.setMessage(request.message());
-        contactRepository.save(submission);
+        submission = contactRepository.save(submission);
+
+        // Notify the organization itself (not the visitor) that a new enquiry has landed.
+        java.util.Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("visitorName", request.name());
+        vars.put("visitorEmail", request.email() != null ? request.email() : "");
+        vars.put("visitorPhone", request.phone() != null ? request.phone() : "");
+        vars.put("message", request.message() != null ? request.message() : "");
+        notificationService.notify(org, NotificationEventType.WEBSITE_CONTACT_RECEIVED,
+                NotificationRecipient.of(org.getName(), org.getEmail(), org.getPhone()),
+                vars, NotificationPriority.NORMAL, "WEBSITE_CONTACT", submission.getId(), null);
     }
 
+    /** Booking is mandatory on every organization website (req #11) — no config gate here. */
     public AppointmentDto bookAppointment(String slug, PublicBookAppointmentRequest request) {
         Organization org = requirePublishedOrg(slug);
-        WebsiteConfig config = configRepository.findByOrganizationId(org.getId()).orElse(null);
-        if (config == null || !config.isBookingEnabled()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Online booking isn't enabled for this organization.");
-        }
 
         Patient patient = patientService.findOrCreateByPhone(org, request.patientFirstName(), request.patientLastName(),
                 request.phone(), request.email());

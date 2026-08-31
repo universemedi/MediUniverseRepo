@@ -97,6 +97,10 @@ public class Organization {
     @Column(name = "renews_on")
     private LocalDate renewsOn;
 
+    /** Proves ownership of a DRAFT org across the public two-step subscribe flow (create -> pay); cleared once the org leaves DRAFT. */
+    @Column(name = "signup_token", length = 100)
+    private String signupToken;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 

@@ -46,6 +46,33 @@ public class Plan {
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
+    @Column(name = "price_without_tax", nullable = false, precision = 12, scale = 2)
+    private java.math.BigDecimal priceWithoutTax = java.math.BigDecimal.ZERO;
+
+    @Column(name = "tax_percent", nullable = false, precision = 5, scale = 2)
+    private java.math.BigDecimal taxPercent = java.math.BigDecimal.ZERO;
+
+    /** Doctor seats per branch — enforced the same way maxUsers already is (spec extension for req #7). */
+    @Column(name = "max_doctors_per_branch", nullable = false)
+    private int maxDoctorsPerBranch = 999;
+
+    @Column(name = "is_free_trial", nullable = false)
+    private boolean freeTrial = false;
+
+    @Column(name = "free_trial_days", nullable = false)
+    private int freeTrialDays = 0;
+
+    /** Soft-delete flag — deactivated plans are hidden from GET /api/public/plans but never physically removed (they're FK'd from Organization/Subscription history). */
+    @Column(nullable = false)
+    private boolean active = true;
+
+    /** Optional availability window — null means always available. Existing subscribers already on this plan are unaffected once it lapses. */
+    @Column(name = "valid_from")
+    private java.time.LocalDate validFrom;
+
+    @Column(name = "valid_to")
+    private java.time.LocalDate validTo;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "plan_modules", joinColumns = @JoinColumn(name = "plan_id"))
     @Column(name = "module_group")

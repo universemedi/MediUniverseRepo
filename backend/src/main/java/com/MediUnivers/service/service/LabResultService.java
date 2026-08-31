@@ -14,6 +14,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Result entry and verification. Technician enters -> Lab Incharge verifies
@@ -30,6 +32,7 @@ public class LabResultService {
     private final LabOrderService orderService;
     private final CurrentUserService currentUserService;
     private final AccessService accessService;
+    private final NotificationService notificationService;
 
     public LabOrderDto enterResult(Organization organization, Long orderId, EnterResultRequest request) {
         LabOrder order = orderService.requireOwned(organization, orderId);
@@ -75,7 +78,26 @@ public class LabResultService {
         }
 
         orderService.refreshStatusAfterResultsChanged(order);
+        if (order.getStatus() == LabOrderStatus.VERIFIED) {
+            notifyReportReady(organization, order);
+        }
         return orderService.toDto(order);
+    }
+
+    private void notifyReportReady(Organization organization, LabOrder order) {
+        Patient patient = order.getPatient();
+        if (patient == null || (isBlank(patient.getEmail()) && isBlank(patient.getPhone()))) return;
+        Map<String, String> vars = new HashMap<>();
+        vars.put("patientName", patient.fullName());
+        vars.put("organizationName", organization.getName());
+        vars.put("orderNumber", order.getOrderNumber());
+        notificationService.notify(organization, NotificationEventType.LAB_REPORT_READY,
+                NotificationRecipient.of(patient.fullName(), patient.getEmail(), patient.getPhone()),
+                vars, NotificationPriority.NORMAL, "LAB_ORDER", order.getId(), null);
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     /** LOW/NORMAL/HIGH/CRITICAL against the first matching reference range for this patient's gender/age, or UNKNOWN if no numeric match. */
