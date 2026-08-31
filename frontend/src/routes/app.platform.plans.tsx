@@ -61,7 +61,6 @@ interface FormState {
   freeTrial: boolean;
   freeTrialDays: string;
   active: boolean;
-  /** Availability window for new signups — empty string means unset (always available). */
   validFrom: string;
   validTo: string;
   modules: string[];
