@@ -25,6 +25,7 @@ function toRow(u: PlatformStaffApiDto): Row {
     id: String(u.id),
     name: u.fullName,
     email: u.email,
+    phone: u.phone ?? "",
     role: u.roleName,
     status: STATUS_LABELS[u.status] ?? u.status,
   };
@@ -45,6 +46,7 @@ function PlatformUsersPage() {
     () => [
       col("name", "Name", "name", { required: true }),
       col("email", "Email", "email", { required: true }),
+      col("phone", "Phone", "phone"),
       col("role", "Role", "badge", {
         required: true,
         fieldType: "select",
@@ -62,12 +64,16 @@ function PlatformUsersPage() {
     return {
       fullName: values["name"],
       email: values["email"],
+      phone: values["phone"] || null,
       roleCode: roleCodeByName.get(values["role"] ?? "") ?? values["role"],
     };
   }
 
   function toUpdateBody(values: Record<string, string>) {
     return {
+      fullName: values["name"],
+      email: values["email"],
+      phone: values["phone"] || null,
       roleCode: roleCodeByName.get(values["role"] ?? "") ?? values["role"],
       status: codeFromLabel(STATUS_LABELS, values["status"] ?? ""),
     };

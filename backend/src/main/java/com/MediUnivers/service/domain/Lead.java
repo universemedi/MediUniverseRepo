@@ -41,6 +41,9 @@ public class Lead {
     @Column(length = 120)
     private String city;
 
+    @Column(length = 120)
+    private String state;
+
     @Column(name = "expected_branches")
     private Integer expectedBranches;
 

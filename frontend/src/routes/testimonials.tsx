@@ -45,6 +45,7 @@ function TestimonialsPage() {
         eyebrow="Testimonials"
         title="Trusted by clinics, pharmacies and labs"
         subtitle="Real workflows, real teams — here is what organizations say after moving to MediUnivers."
+        bannerKey="testimonials"
       />
       <section className="mx-auto max-w-6xl px-4 py-16">
         {loadError ? (

@@ -78,40 +78,6 @@ export const MODULES: ModulePageDef[] = [
     ],
   },
   {
-    path: "platform/modules",
-    title: "Modules",
-    description: "Feature modules that can be enabled per plan and per organization.",
-    group: "platform",
-    singular: "Module",
-    rowCount: 12,
-    columns: [
-      col("name", "Module", "text", { required: true }),
-      col("code", "Code", "code", { required: true }),
-      col("category", "Category", "badge", {
-        options: ["Core", "Clinical", "Commerce", "Marketing"],
-      }),
-      col("features", "Features", "number"),
-      col("status", "Status", "badge", { options: STATUS }),
-    ],
-  },
-  {
-    path: "platform/features",
-    title: "Features",
-    description: "Granular feature flags belonging to each module.",
-    group: "platform",
-    singular: "Feature",
-    rowCount: 40,
-    columns: [
-      col("name", "Feature", "text", { required: true }),
-      col("module", "Module", "badge", {
-        options: ["Clinic", "Pharmacy", "Laboratory", "CRM", "Website"],
-      }),
-      col("code", "Code", "code"),
-      col("type", "Type", "badge", { options: ["Boolean", "Limit", "Quota"] }),
-      col("status", "Status", "badge", { options: STATUS }),
-    ],
-  },
-  {
     path: "platform/subscriptions",
     title: "Subscriptions",
     description: "Active, pending and cancelled subscriptions across tenants.",
@@ -315,6 +281,15 @@ export const MODULES: ModulePageDef[] = [
       col("visibility", "Search Visibility", "badge", { options: ["Visible", "Hidden"] }),
       col("status", "Status", "badge", { options: ["Published", "Draft"] }),
     ],
+  },
+  {
+    path: "platform/communication",
+    title: "Platform Communication",
+    description:
+      "MediUnivers' own outgoing email/SMS settings, and the wording of every account-security message it sends.",
+    group: "platform",
+    singular: "Template",
+    columns: [],
   },
   {
     path: "platform/testimonials",

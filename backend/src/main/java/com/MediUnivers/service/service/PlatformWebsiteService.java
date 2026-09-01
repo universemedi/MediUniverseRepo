@@ -60,6 +60,7 @@ public class PlatformWebsiteService {
         config.setPrivacyContent(request.privacyContent());
         config.setTermsContent(request.termsContent());
         config.setSecurityContent(request.securityContent());
+        config.setPageBannersJson(request.pageBannersJson());
         configRepository.save(config);
         return toDto(config);
     }
@@ -78,6 +79,6 @@ public class PlatformWebsiteService {
                 c.getFacebookUrl(), c.getInstagramUrl(), c.getLinkedinUrl(), c.getYoutubeUrl(),
                 c.getSeoTitle(), c.getSeoDescription(), c.getSeoKeywords(),
                 c.getBannersJson(), c.getNavItemsJson(), c.getFooterColumnsJson(), c.getStatsJson(),
-                c.getPrivacyContent(), c.getTermsContent(), c.getSecurityContent());
+                c.getPrivacyContent(), c.getTermsContent(), c.getSecurityContent(), c.getPageBannersJson());
     }
 }

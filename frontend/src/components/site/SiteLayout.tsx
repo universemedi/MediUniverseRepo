@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/common/Logo";
 import { PlatformSiteProvider, usePlatformSite } from "@/lib/platformSite";
+import { resolveUploadUrl } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { usePageBanner, type PageBannerKey } from "@/lib/pageBanners";
 
 export const SITE_NAV = [
   { to: "/", label: "Home" },
@@ -19,9 +22,10 @@ export const SITE_NAV = [
 ] as const;
 
 function Brand() {
+  const { site } = usePlatformSite();
   return (
     <Link to="/" aria-label="MediUnivers home">
-      <Logo size="sm" />
+      <Logo size="sm" logoUrl={site?.logoUrl ? resolveUploadUrl(site.logoUrl) : null} />
     </Link>
   );
 }
@@ -233,21 +237,57 @@ export function PageHero({
   eyebrow,
   title,
   subtitle,
+  bannerKey,
 }: {
   eyebrow: string;
   title: string;
   subtitle: string;
+  /** Which page's configured banner (Super Admin → Website Content → Page banners) to show behind this
+   * hero — resolved here, not by the caller, so it stays correctly nested inside <SiteLayout>'s site-config
+   * context regardless of where the page puts <PageHero>. Omit for a flat brand-colour background. */
+  bannerKey?: PageBannerKey;
 }) {
+  const imageUrl = usePageBanner(bannerKey);
   return (
-    <section className="border-b border-border bg-primary/5">
-      <div className="mx-auto max-w-6xl px-4 py-14 text-center sm:py-20">
-        <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
+    <section
+      className={cn(
+        "relative overflow-hidden border-b border-border",
+        imageUrl ? "bg-slate-900" : "bg-primary/5",
+      )}
+    >
+      {imageUrl ? (
+        <>
+          <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/75 via-slate-950/65 to-slate-950/80" />
+        </>
+      ) : null}
+      <div className="relative mx-auto max-w-6xl px-4 py-14 text-center sm:py-20">
+        <Badge
+          variant="outline"
+          className={
+            imageUrl
+              ? "border-white/30 bg-white/10 text-white"
+              : "border-primary/25 bg-primary/10 text-primary"
+          }
+        >
           {eyebrow}
         </Badge>
-        <h1 className="mx-auto mt-4 max-w-3xl text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+        <h1
+          className={cn(
+            "mx-auto mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl",
+            imageUrl ? "text-white" : "text-foreground",
+          )}
+        >
           {title}
         </h1>
-        <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground">{subtitle}</p>
+        <p
+          className={cn(
+            "mx-auto mt-3 max-w-2xl text-base",
+            imageUrl ? "text-white/85" : "text-muted-foreground",
+          )}
+        >
+          {subtitle}
+        </p>
       </div>
     </section>
   );

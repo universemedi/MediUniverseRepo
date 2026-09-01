@@ -33,15 +33,19 @@ export function ChartCard({
   def,
   seedKey,
   loading,
+  data: realData,
 }: {
   def: ChartDef;
   seedKey: string;
   loading?: boolean;
+  /** Real, already-fetched rows shaped `{name, ...seriesValues}` — when provided, no fake data is generated. */
+  data?: Array<Record<string, string | number>>;
 }) {
-  const data = useMemo(
+  const fallback = useMemo(
     () => buildChartData(def.categories, def.dataKeys, `${seedKey}-${def.title}`),
     [def, seedKey],
   );
+  const data = realData ?? fallback;
 
   const axis = { stroke: "var(--muted-foreground)", fontSize: 12 };
   const tooltip = (

@@ -29,6 +29,8 @@ interface LogoProps {
   subtitle?: string;
   className?: string;
   wordmarkClassName?: string;
+  /** Super-Admin-uploaded logo image — falls back to the built-in mark when not set. */
+  logoUrl?: string | null;
 }
 
 const SIZES: Record<NonNullable<LogoProps["size"]>, string> = {
@@ -43,11 +45,16 @@ export function Logo({
   subtitle,
   className,
   wordmarkClassName,
+  logoUrl,
 }: LogoProps) {
   return (
     <span className={cn("flex items-center gap-2", className)}>
       <span className={cn("shrink-0 overflow-hidden rounded-lg shadow-sm", SIZES[size])}>
-        <LogoMark />
+        {logoUrl ? (
+          <img src={logoUrl} alt="MediUnivers" className="h-full w-full object-cover" />
+        ) : (
+          <LogoMark />
+        )}
       </span>
       {withWordmark ? (
         <span className="min-w-0 leading-tight">

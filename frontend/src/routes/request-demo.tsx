@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout, PageHero } from "@/components/site/SiteLayout";
 import { FormBuilder, type FormValues } from "@/components/form/FormBuilder";
-import { col } from "@/config/types";
+import { col, type ColumnDef } from "@/config/types";
 import { apiFetchPublic } from "@/lib/api";
+import { fetchIndiaCities, useIndiaStates } from "@/lib/indiaLocations";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -28,55 +29,62 @@ export const Route = createFileRoute("/request-demo")({
   component: DemoPage,
 });
 
-const FIELDS = [
-  col("name", "Full name", "name", { required: true, placeholder: "Dr. Kavya Nair" }),
-  col("email", "Work email", "email", {
-    required: true,
-    fieldType: "email",
-    placeholder: "you@clinic.com",
-  }),
-  col("phone", "Phone", "phone", {
-    required: true,
-    fieldType: "phone",
-    placeholder: "+91 98765 43210",
-  }),
-  col("organization", "Organization name", "org", {
-    required: true,
-    placeholder: "Nair Family Clinic",
-  }),
-  col("orgType", "Organization type", "badge", {
-    required: true,
-    fieldType: "select",
-    options: [
-      "Single clinic",
-      "Multi-branch group",
-      "Hospital / polyclinic",
-      "Pharmacy",
-      "Diagnostic laboratory",
-    ],
-  }),
-  col("city", "City", "city", { required: true, placeholder: "Bengaluru" }),
-  col("branches", "Number of branches", "number", {
-    required: true,
-    fieldType: "number",
-    placeholder: "2",
-  }),
-  col("users", "Expected users", "number", {
-    required: true,
-    fieldType: "number",
-    placeholder: "15",
-  }),
-  col("modules", "Primary interest", "badge", {
-    required: true,
-    fieldType: "select",
-    options: ["Clinic", "Pharmacy", "Laboratory", "Patient CRM", "Website & CMS", "Everything"],
-  }),
-  col("preferredDate", "Preferred demo date", "date", { required: true, fieldType: "date" }),
-  col("notes", "Anything we should prepare?", "text", {
-    fieldType: "textarea",
-    placeholder: "Current software, pain points, must-have workflows…",
-  }),
-];
+function buildFields(states: string[]): ColumnDef[] {
+  return [
+    col("name", "Full name", "name", { required: true, placeholder: "Dr. Kavya Nair" }),
+    col("email", "Work email", "email", {
+      required: true,
+      fieldType: "email",
+      placeholder: "you@clinic.com",
+    }),
+    col("phone", "Phone", "phone", {
+      required: true,
+      fieldType: "phone",
+      placeholder: "+91 98765 43210",
+    }),
+    col("organization", "Organization name", "org", {
+      required: true,
+      placeholder: "Nair Family Clinic",
+    }),
+    col("orgType", "Organization type", "badge", {
+      required: true,
+      fieldType: "select",
+      options: [
+        "Single clinic",
+        "Multi-branch group",
+        "Hospital / polyclinic",
+        "Pharmacy",
+        "Diagnostic laboratory",
+      ],
+    }),
+    col("state", "State", "badge", { required: true, options: states }),
+    col("city", "City", "badge", {
+      required: true,
+      dependsOn: "state",
+      optionsFor: (state) => fetchIndiaCities(state),
+    }),
+    col("branches", "Number of branches", "number", {
+      required: true,
+      fieldType: "number",
+      placeholder: "2",
+    }),
+    col("users", "Expected users", "number", {
+      required: true,
+      fieldType: "number",
+      placeholder: "15",
+    }),
+    col("modules", "Primary interest", "badge", {
+      required: true,
+      fieldType: "select",
+      options: ["Clinic", "Pharmacy", "Laboratory", "Patient CRM", "Website & CMS", "Everything"],
+    }),
+    col("preferredDate", "Preferred demo date", "date", { required: true, fieldType: "date" }),
+    col("notes", "Anything we should prepare?", "text", {
+      fieldType: "textarea",
+      placeholder: "Current software, pain points, must-have workflows…",
+    }),
+  ];
+}
 
 async function submitDemoRequest(values: FormValues) {
   await apiFetchPublic("/api/public/leads", {
@@ -89,6 +97,7 @@ async function submitDemoRequest(values: FormValues) {
       organizationName: values["organization"],
       organizationType: values["orgType"],
       city: values["city"],
+      state: values["state"],
       expectedBranches: values["branches"] ? Number(values["branches"]) : null,
       expectedUsers: values["users"] ? Number(values["users"]) : null,
       modulesOfInterest: values["modules"],
@@ -100,6 +109,8 @@ async function submitDemoRequest(values: FormValues) {
 
 function DemoPage() {
   const [done, setDone] = useState(false);
+  const states = useIndiaStates();
+  const fields = useMemo(() => buildFields(states), [states]);
 
   return (
     <SiteLayout>
@@ -137,7 +148,7 @@ function DemoPage() {
                 required.
               </p>
               <FormBuilder
-                columns={FIELDS}
+                columns={fields}
                 submitLabel="Request demo"
                 onSubmit={async (values) => {
                   await submitDemoRequest(values);

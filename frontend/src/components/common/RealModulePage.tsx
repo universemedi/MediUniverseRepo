@@ -19,6 +19,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Link } from "@tanstack/react-router";
 
 interface RealModulePageProps<T> {
@@ -34,6 +44,8 @@ interface RealModulePageProps<T> {
   toUpdateBody?: (values: Record<string, string>, row: Row) => unknown;
   /** false hides the delete action even when the role would otherwise allow it (e.g. append-only/transactional records) */
   supportsDelete?: boolean;
+  /** Extra row actions between Edit and Delete — e.g. "Share via email". */
+  rowActions?: (row: Row) => { label: string; icon: React.ReactNode; onClick: () => void }[];
 }
 
 function Shell({
@@ -65,6 +77,7 @@ export function RealModulePage<T>({
   toCreateBody,
   toUpdateBody,
   supportsDelete = true,
+  rowActions,
 }: RealModulePageProps<T>) {
   const mod = moduleByPath(path);
   const { reasonForPath, can, plan, isPlatform } = usePermissions();
@@ -72,6 +85,7 @@ export function RealModulePage<T>({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Row | null>(null);
   const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState<Row | null>(null);
 
   function load() {
     apiFetch<T[]>(basePath)
@@ -159,13 +173,16 @@ export function RealModulePage<T>({
     load();
   }
 
-  async function handleDelete(row: Row) {
+  async function confirmDelete() {
+    if (!deleting) return;
     try {
-      await apiFetch(`${basePath}/${row.id}`, { method: "DELETE" });
+      await apiFetch(`${basePath}/${deleting.id}`, { method: "DELETE" });
       toast.success(`${mod!.singular} removed`);
+      setDeleting(null);
       load();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Couldn't remove this record.");
+      setDeleting(null);
     }
   }
 
@@ -204,7 +221,8 @@ export function RealModulePage<T>({
             setEditing(row);
             setOpen(true);
           }}
-          onDelete={handleDelete}
+          onDelete={(row) => setDeleting(row)}
+          {...(rowActions ? { rowActions } : {})}
         />
       )}
 
@@ -225,6 +243,25 @@ export function RealModulePage<T>({
           />
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete this {mod.singular.toLowerCase()}
+              {deleting ? ` "${deleting[columns[0]?.key ?? "id"]}"` : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              It will no longer be available for use. If this type of record supports a Status
+              field, you can restore it later by editing that status back to Active.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

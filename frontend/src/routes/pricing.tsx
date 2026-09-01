@@ -68,6 +68,7 @@ function PricingPage() {
         eyebrow="Pricing"
         title="Pay for the modules your organization uses"
         subtitle="Start with a 14-day free trial, or subscribe right away — new modules appear instantly in the console."
+        bannerKey="pricing"
       />
 
       <section className="mx-auto max-w-6xl px-4 py-16">

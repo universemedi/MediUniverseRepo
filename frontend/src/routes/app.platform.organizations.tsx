@@ -1,10 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Building2, Plus, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
+import ReactSelect from "react-select";
 import { apiFetch, ApiError } from "@/lib/api";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { OrganizationApiDto, OrgTypeApiDto, PlanApiDto } from "@/lib/types";
+import { COUNTRIES, fetchIndiaCities, useIndiaStates } from "@/lib/indiaLocations";
+import { cn } from "@/lib/utils";
+import { col } from "@/config/types";
+import type { Row } from "@/lib/rows";
+import { DataTable } from "@/components/common/DataTable";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,14 +31,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 export const Route = createFileRoute("/app/platform/organizations")({
   head: () => ({
@@ -55,6 +53,18 @@ const STATUS_STYLE: Record<string, string> = {
   ARCHIVED: "text-muted-foreground",
 };
 
+const ALL_STATUSES = Object.keys(STATUS_STYLE);
+const MANUAL_STATUSES = ["ACTIVE", "SUSPENDED", "CANCELLED"] as const;
+
+const PAYMENT_METHODS = [
+  { value: "CASH", label: "Cash" },
+  { value: "BANK_TRANSFER", label: "Bank transfer" },
+  { value: "UPI", label: "UPI" },
+  { value: "CHEQUE", label: "Cheque" },
+  { value: "CARD_OFFLINE", label: "Card (offline / POS)" },
+  { value: "ONLINE", label: "Online (payment link)" },
+];
+
 interface CreateForm {
   organizationName: string;
   subdomain: string;
@@ -63,6 +73,11 @@ interface CreateForm {
   headBranchName: string;
   ownerFullName: string;
   ownerEmail: string;
+  ownerPhone: string;
+  country: string;
+  state: string;
+  city: string;
+  paymentMethod: string;
 }
 
 const EMPTY_FORM: CreateForm = {
@@ -73,11 +88,44 @@ const EMPTY_FORM: CreateForm = {
   headBranchName: "Head Office",
   ownerFullName: "",
   ownerEmail: "",
+  ownerPhone: "",
+  country: "India",
+  state: "",
+  city: "",
+  paymentMethod: "",
 };
+
+type FieldErrors = Partial<Record<keyof CreateForm, string>>;
+
+const selectStyles = {
+  control: (base: Record<string, unknown>, state: { isFocused: boolean }) => ({
+    ...base,
+    minHeight: "36px",
+    borderColor: state.isFocused ? "var(--ring)" : "var(--input)",
+    boxShadow: "none",
+  }),
+  menu: (base: Record<string, unknown>) => ({ ...base, zIndex: 50 }),
+};
+
+function toRow(o: OrganizationApiDto): Row {
+  return {
+    id: String(o.id),
+    organization: o.name,
+    code: o.organizationCode,
+    email: o.email ?? "",
+    type: o.orgType.name,
+    plan: o.plan.name,
+    city: o.city ?? "",
+    branches: o.branches.length,
+    renews: o.renewsOn ?? "",
+    status: o.status,
+  };
+}
 
 function OrganizationsPage() {
   const { isPlatform, role } = usePermissions();
   const canCreate = role === "SUPER_ADMIN" || role === "PLATFORM_SALES_LEAD";
+  const canChangeStatus = role === "SUPER_ADMIN" || role === "PLATFORM_FINANCE";
 
   const [orgs, setOrgs] = useState<OrganizationApiDto[] | null>(null);
   const [orgTypes, setOrgTypes] = useState<OrgTypeApiDto[]>([]);
@@ -86,8 +134,31 @@ function OrganizationsPage() {
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<CreateForm>(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const states = useIndiaStates();
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+
+  useEffect(() => {
+    if (!form.state) {
+      setCityOptions([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingCities(true);
+    fetchIndiaCities(form.state)
+      .then((cities) => {
+        if (!cancelled) setCityOptions(cities);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCities(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.state]);
 
   function load() {
     if (!isPlatform) return;
@@ -107,6 +178,62 @@ function OrganizationsPage() {
   }
   useEffect(load, [isPlatform]);
 
+  async function changeStatus(org: OrganizationApiDto, status: string) {
+    try {
+      await apiFetch(`/api/platform/organizations/${org.id}/status`, {
+        method: "PATCH",
+        data: { status },
+      });
+      toast.success(`${org.name} → ${status.replace("_", " ").toLowerCase()}`);
+      load();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't update this organization.");
+    }
+  }
+
+  const columns = useMemo(
+    () => [
+      col("organization", "Organization", "org", { required: true }),
+      col("code", "Code", "code", { secondary: true }),
+      col("email", "Email", "email", { secondary: true }),
+      col("type", "Type", "badge", { options: orgTypes.map((t) => t.name) }),
+      col("plan", "Plan", "badge", { options: plans.map((p) => p.name) }),
+      col("city", "City", "city"),
+      col("branches", "Branches", "number"),
+      col("renews", "Renews", "date"),
+      col("status", "Status", "badge", {
+        options: ALL_STATUSES,
+        render: (r) => {
+          const org = (orgs ?? []).find((o) => String(o.id) === r["id"]);
+          if (!org) return null;
+          if (!canChangeStatus) {
+            return (
+              <Badge variant="outline" className={STATUS_STYLE[org.status] ?? ""}>
+                {org.status.replace("_", " ")}
+              </Badge>
+            );
+          }
+          return (
+            <Select value={org.status} onValueChange={(v) => changeStatus(org, v)}>
+              <SelectTrigger className="h-8 w-[150px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[org.status, ...MANUAL_STATUSES.filter((s) => s !== org.status)].map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s.replace("_", " ")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        },
+      }),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [orgs, orgTypes, plans, canChangeStatus],
+  );
+
   if (!isPlatform) {
     return (
       <Card className="mx-auto max-w-md p-10 text-center">
@@ -120,26 +247,44 @@ function OrganizationsPage() {
   }
 
   function openCreate() {
-    setForm({
-      ...EMPTY_FORM,
-      orgTypeCode: orgTypes[0]?.code ?? "",
-      planCode: plans[0]?.code ?? "",
-    });
+    // No org type / plan preselected — a platform staff member must explicitly
+    // choose both rather than silently inheriting whatever happens to load first.
+    setForm(EMPTY_FORM);
+    setFieldErrors({});
     setError(null);
     setOpen(true);
   }
 
+  const selectedPlan = plans.find((p) => p.code === form.planCode);
+  const paymentMethodRequired = Boolean(form.planCode) && !selectedPlan?.freeTrial;
+
+  function validate(f: CreateForm): FieldErrors {
+    const errs: FieldErrors = {};
+    if (!f.organizationName.trim()) errs.organizationName = "Organization name is required.";
+    if (!f.orgTypeCode) errs.orgTypeCode = "Choose an organization type.";
+    if (!f.planCode) errs.planCode = "Choose a plan.";
+    if (!f.headBranchName.trim()) errs.headBranchName = "Head branch name is required.";
+    if (!f.ownerFullName.trim()) errs.ownerFullName = "Owner full name is required.";
+    if (!f.ownerEmail.trim()) errs.ownerEmail = "Owner email is required.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.ownerEmail.trim()))
+      errs.ownerEmail = "Enter a valid email address.";
+    if (!/^\d{10}$/.test(f.ownerPhone.replace(/\D/g, "")))
+      errs.ownerPhone = "Enter a valid 10-digit phone number.";
+    if (!f.country) errs.country = "Country is required.";
+    if (!f.state) errs.state = "State is required.";
+    if (!f.city) errs.city = "City is required.";
+    const plan = plans.find((p) => p.code === f.planCode);
+    if (f.planCode && !plan?.freeTrial && !f.paymentMethod)
+      errs.paymentMethod = "Select how this deal was paid.";
+    return errs;
+  }
+
   async function submitCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (
-      !form.organizationName.trim() ||
-      !form.orgTypeCode ||
-      !form.planCode ||
-      !form.headBranchName.trim() ||
-      !form.ownerFullName.trim() ||
-      !form.ownerEmail.trim()
-    ) {
-      setError("Please fill in every required field.");
+    const errs = validate(form);
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setError("Please fix the highlighted fields.");
       return;
     }
     setError(null);
@@ -155,6 +300,11 @@ function OrganizationsPage() {
           headBranchName: form.headBranchName.trim(),
           ownerFullName: form.ownerFullName.trim(),
           ownerEmail: form.ownerEmail.trim(),
+          ownerPhone: form.ownerPhone.replace(/\D/g, ""),
+          country: form.country,
+          state: form.state,
+          city: form.city,
+          paymentMethod: selectedPlan?.freeTrial ? null : form.paymentMethod,
           creationSource: "DIRECT_SALES",
         },
       });
@@ -194,47 +344,17 @@ function OrganizationsPage() {
           No organizations yet.
         </Card>
       ) : (
-        <Card className="overflow-x-auto p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Organization</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Branches</TableHead>
-                <TableHead>Renews</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orgs.map((o) => (
-                <TableRow key={o.id}>
-                  <TableCell>
-                    <p className="font-medium">{o.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {o.organizationCode} · {o.email ?? "—"}
-                    </p>
-                  </TableCell>
-                  <TableCell>{o.orgType.name}</TableCell>
-                  <TableCell>{o.plan.name}</TableCell>
-                  <TableCell>{o.city ?? "—"}</TableCell>
-                  <TableCell>{o.branches.length}</TableCell>
-                  <TableCell>{o.renewsOn ?? "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={STATUS_STYLE[o.status] ?? ""}>
-                      {o.status.replace("_", " ")}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+        <DataTable
+          id="platform/organizations"
+          title="Organizations"
+          rows={orgs.map(toRow)}
+          columns={columns}
+          canExport
+        />
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>New organization</DialogTitle>
             <DialogDescription>
@@ -250,9 +370,17 @@ function OrganizationsPage() {
                 </Label>
                 <Input
                   value={form.organizationName}
+                  aria-invalid={!!fieldErrors.organizationName}
+                  className={cn(fieldErrors.organizationName && "border-destructive")}
                   onChange={(e) => setForm({ ...form, organizationName: e.target.value })}
                 />
+                {fieldErrors.organizationName ? (
+                  <p className="text-xs font-medium text-destructive">
+                    {fieldErrors.organizationName}
+                  </p>
+                ) : null}
               </div>
+
               <div className="space-y-1.5">
                 <Label>
                   Organization type<span className="ml-1 font-bold text-destructive">*</span>
@@ -261,8 +389,8 @@ function OrganizationsPage() {
                   value={form.orgTypeCode}
                   onValueChange={(v) => setForm({ ...form, orgTypeCode: v })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className={cn(fieldErrors.orgTypeCode && "border-destructive")}>
+                    <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
                     {orgTypes.map((t) => (
@@ -272,35 +400,51 @@ function OrganizationsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldErrors.orgTypeCode ? (
+                  <p className="text-xs font-medium text-destructive">{fieldErrors.orgTypeCode}</p>
+                ) : null}
               </div>
+
               <div className="space-y-1.5">
                 <Label>
                   Plan<span className="ml-1 font-bold text-destructive">*</span>
                 </Label>
                 <Select
                   value={form.planCode}
-                  onValueChange={(v) => setForm({ ...form, planCode: v })}
+                  onValueChange={(v) => setForm({ ...form, planCode: v, paymentMethod: "" })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className={cn(fieldErrors.planCode && "border-destructive")}>
+                    <SelectValue placeholder="Select plan" />
                   </SelectTrigger>
                   <SelectContent>
                     {plans.map((p) => (
                       <SelectItem key={p.code} value={p.code}>
                         {p.name}
+                        {p.freeTrial ? " (free trial)" : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldErrors.planCode ? (
+                  <p className="text-xs font-medium text-destructive">{fieldErrors.planCode}</p>
+                ) : null}
               </div>
+
               <div className="space-y-1.5">
                 <Label>
                   Head branch name<span className="ml-1 font-bold text-destructive">*</span>
                 </Label>
                 <Input
                   value={form.headBranchName}
+                  aria-invalid={!!fieldErrors.headBranchName}
+                  className={cn(fieldErrors.headBranchName && "border-destructive")}
                   onChange={(e) => setForm({ ...form, headBranchName: e.target.value })}
                 />
+                {fieldErrors.headBranchName ? (
+                  <p className="text-xs font-medium text-destructive">
+                    {fieldErrors.headBranchName}
+                  </p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label>Preferred subdomain</Label>
@@ -309,14 +453,56 @@ function OrganizationsPage() {
                   onChange={(e) => setForm({ ...form, subdomain: e.target.value })}
                 />
               </div>
+
+              {paymentMethodRequired ? (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>
+                    Payment method<span className="ml-1 font-bold text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={form.paymentMethod}
+                    onValueChange={(v) => setForm({ ...form, paymentMethod: v })}
+                  >
+                    <SelectTrigger
+                      className={cn(fieldErrors.paymentMethod && "border-destructive")}
+                    >
+                      <SelectValue placeholder="How did they pay for this?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map((m) => (
+                        <SelectItem key={m.value} value={m.value}>
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldErrors.paymentMethod ? (
+                    <p className="text-xs font-medium text-destructive">
+                      {fieldErrors.paymentMethod}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className="space-y-1.5 sm:col-span-2 border-t pt-4">
+                <p className="text-sm font-medium text-foreground">Owner contact details</p>
+              </div>
+
               <div className="space-y-1.5">
                 <Label>
                   Owner full name<span className="ml-1 font-bold text-destructive">*</span>
                 </Label>
                 <Input
                   value={form.ownerFullName}
+                  aria-invalid={!!fieldErrors.ownerFullName}
+                  className={cn(fieldErrors.ownerFullName && "border-destructive")}
                   onChange={(e) => setForm({ ...form, ownerFullName: e.target.value })}
                 />
+                {fieldErrors.ownerFullName ? (
+                  <p className="text-xs font-medium text-destructive">
+                    {fieldErrors.ownerFullName}
+                  </p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label>
@@ -325,8 +511,104 @@ function OrganizationsPage() {
                 <Input
                   type="email"
                   value={form.ownerEmail}
+                  aria-invalid={!!fieldErrors.ownerEmail}
+                  className={cn(fieldErrors.ownerEmail && "border-destructive")}
                   onChange={(e) => setForm({ ...form, ownerEmail: e.target.value })}
                 />
+                {fieldErrors.ownerEmail ? (
+                  <p className="text-xs font-medium text-destructive">{fieldErrors.ownerEmail}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label>
+                  Owner phone<span className="ml-1 font-bold text-destructive">*</span>
+                </Label>
+                <div
+                  className={cn(
+                    "flex w-full overflow-hidden rounded-md border bg-background",
+                    fieldErrors.ownerPhone ? "border-destructive" : "border-input",
+                  )}
+                >
+                  <div className="flex shrink-0 items-center gap-1 border-r bg-muted/40 px-3 text-sm font-medium text-foreground">
+                    <span aria-hidden="true">🇮🇳</span>
+                    +91
+                  </div>
+                  <Input
+                    type="tel"
+                    inputMode="numeric"
+                    className="border-0 focus-visible:ring-0"
+                    value={form.ownerPhone}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        ownerPhone: e.target.value.replace(/\D/g, "").slice(0, 10),
+                      })
+                    }
+                    placeholder="9876543210"
+                  />
+                </div>
+                {fieldErrors.ownerPhone ? (
+                  <p className="text-xs font-medium text-destructive">{fieldErrors.ownerPhone}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>
+                  Country<span className="ml-1 font-bold text-destructive">*</span>
+                </Label>
+                <Select
+                  value={form.country}
+                  onValueChange={(v) => setForm({ ...form, country: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>
+                  State<span className="ml-1 font-bold text-destructive">*</span>
+                </Label>
+                <ReactSelect
+                  inputId="org-state"
+                  instanceId="org-state"
+                  isSearchable
+                  options={states.map((s) => ({ label: s, value: s }))}
+                  value={form.state ? { label: form.state, value: form.state } : null}
+                  onChange={(opt) => setForm({ ...form, state: opt?.value ?? "", city: "" })}
+                  placeholder="Select state"
+                  styles={selectStyles}
+                />
+                {fieldErrors.state ? (
+                  <p className="text-xs font-medium text-destructive">{fieldErrors.state}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label>
+                  City<span className="ml-1 font-bold text-destructive">*</span>
+                </Label>
+                <ReactSelect
+                  inputId="org-city"
+                  instanceId="org-city"
+                  isSearchable
+                  isDisabled={!form.state}
+                  isLoading={loadingCities}
+                  options={cityOptions.map((c) => ({ label: c, value: c }))}
+                  value={form.city ? { label: form.city, value: form.city } : null}
+                  onChange={(opt) => setForm({ ...form, city: opt?.value ?? "" })}
+                  placeholder={form.state ? "Select city" : "Select a state first"}
+                  styles={selectStyles}
+                />
+                {fieldErrors.city ? (
+                  <p className="text-xs font-medium text-destructive">{fieldErrors.city}</p>
+                ) : null}
               </div>
             </div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}

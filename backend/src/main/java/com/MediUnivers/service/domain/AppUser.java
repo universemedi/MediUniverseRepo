@@ -27,6 +27,12 @@ public class AppUser {
     @Column(name = "full_name", nullable = false, length = 160)
     private String fullName;
 
+    @Column(length = 20)
+    private String phone;
+
+    @Column(name = "date_of_birth")
+    private java.time.LocalDate dateOfBirth;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Portal portal;

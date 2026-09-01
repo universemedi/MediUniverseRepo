@@ -27,7 +27,7 @@ public final class DtoMapper {
 
     public static LeadDto toDto(Lead l) {
         return new LeadDto(l.getId(), l.getSource(), l.getName(), l.getEmail(), l.getPhone(),
-                l.getOrganizationName(), l.getOrganizationType(), l.getCity(), l.getExpectedBranches(),
+                l.getOrganizationName(), l.getOrganizationType(), l.getCity(), l.getState(), l.getExpectedBranches(),
                 l.getExpectedUsers(), l.getModulesOfInterest(), l.getPreferredDemoDate(), l.getMessage(),
                 l.getInternalNotes(), l.getAssignedTo() != null ? l.getAssignedTo().getId() : null,
                 l.getAssignedTo() != null ? l.getAssignedTo().getFullName() : null,

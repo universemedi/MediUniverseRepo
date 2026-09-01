@@ -150,6 +150,7 @@ function ContactPage() {
         eyebrow="Contact"
         title="Talk to the MediUnivers team"
         subtitle="Sales, onboarding or support — send us a note and we get back within one business day."
+        bannerKey="contact"
       />
       <ContactBody />
     </SiteLayout>

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export type ColumnType =
   | "text"
   | "name"
@@ -28,6 +30,12 @@ export interface ColumnDef {
     "text" | "textarea" | "select" | "number" | "date" | "switch" | "email" | "phone" | "money";
   placeholder?: string;
   help?: string;
+  /** Key of another field this one cascades from (e.g. a city field depending on a state field) — its current value is passed to `optionsFor`. */
+  dependsOn?: string;
+  /** Computes this field's options from its `dependsOn` field's current value — takes priority over `options` when set. Disables the field while the dependency is empty. May return a Promise (e.g. an API call) — the field shows its loading state until it resolves. */
+  optionsFor?: (dependencyValue: string) => string[] | Promise<string[]>;
+  /** Custom table-cell content — takes over from the default text/badge rendering when set. The table (create/edit form) is unaffected. */
+  render?: (row: Record<string, string | number>) => ReactNode;
 }
 
 export interface StatDef {

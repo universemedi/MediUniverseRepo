@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ArrowUpDown,
   CalendarDays,
@@ -54,6 +54,8 @@ export interface DataTableProps {
   onCreate?: () => void;
   onEdit?: (row: Row) => void;
   onDelete?: (row: Row) => void;
+  /** Extra row actions between Edit and Delete — e.g. "Share via email". Omit for the default Edit/Delete-only menu. */
+  rowActions?: (row: Row) => { label: string; icon: ReactNode; onClick: () => void }[];
 }
 
 function cellClass(type: ColumnDef["type"]) {
@@ -74,11 +76,22 @@ function badgeTone(value: string) {
 }
 
 export function DataTable(props: DataTableProps) {
-  const { id, title, rows, columns, canCreate, canUpdate, canDelete, canExport, createLabel } =
-    props;
+  const {
+    id,
+    title,
+    rows,
+    columns,
+    canCreate,
+    canUpdate,
+    canDelete,
+    canExport,
+    createLabel,
+    rowActions,
+  } = props;
   const t = useDataTable({ id, rows, columns });
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  const showActions = Boolean(canUpdate || canDelete || rowActions);
   const filterable = columns.filter((c) => c.options?.length);
   const hasDateFilter = columns.some((c) => c.type === "date");
   const activeFilters = Object.entries(t.filters).filter(([, v]) => v && v !== "__all");
@@ -255,6 +268,9 @@ export function DataTable(props: DataTableProps) {
                   aria-label="Select all rows"
                 />
               </th>
+              <th className="w-12 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                #
+              </th>
               {t.visibleColumns.map((c) => (
                 <th
                   key={c.key}
@@ -275,13 +291,16 @@ export function DataTable(props: DataTableProps) {
                   </button>
                 </th>
               ))}
-              <th className="w-12 px-4 py-3" />
+              {showActions ? <th className="w-12 px-4 py-3" /> : null}
             </tr>
           </thead>
           <tbody>
             {t.loading
               ? Array.from({ length: t.pageSize > 10 ? 10 : t.pageSize }).map((_, i) => (
                   <tr key={i} className="border-b border-border/60">
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-4" />
+                    </td>
                     <td className="px-4 py-3">
                       <Skeleton className="h-4 w-4" />
                     </td>
@@ -293,12 +312,14 @@ export function DataTable(props: DataTableProps) {
                         <Skeleton className="h-4 w-24" />
                       </td>
                     ))}
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-4" />
-                    </td>
+                    {showActions ? (
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-4 w-4" />
+                      </td>
+                    ) : null}
                   </tr>
                 ))
-              : t.rows.map((r) => (
+              : t.rows.map((r, rowIndex) => (
                   <tr
                     key={r.id}
                     className={cn(
@@ -313,6 +334,12 @@ export function DataTable(props: DataTableProps) {
                         aria-label="Select row"
                       />
                     </td>
+                    <td
+                      className="px-4 text-sm text-muted-foreground tabular-nums"
+                      style={{ paddingBlock: "var(--row-py)" }}
+                    >
+                      {(t.page - 1) * t.pageSize + rowIndex + 1}
+                    </td>
                     {t.visibleColumns.map((c) => (
                       <td
                         key={c.key}
@@ -323,7 +350,9 @@ export function DataTable(props: DataTableProps) {
                         )}
                         style={{ paddingBlock: "var(--row-py)" }}
                       >
-                        {c.type === "badge" ? (
+                        {c.render ? (
+                          c.render(r)
+                        ) : c.type === "badge" ? (
                           <Badge
                             variant="outline"
                             className={cn("font-medium", badgeTone(String(r[c.key])))}
@@ -335,39 +364,53 @@ export function DataTable(props: DataTableProps) {
                         )}
                       </td>
                     ))}
-                    <td className="px-4" style={{ paddingBlock: "var(--row-py)" }}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            aria-label="Row actions"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => props.onEdit?.(r)} disabled={!canUpdate}>
-                            <Pencil className="h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => props.onDelete?.(r)}
-                            disabled={!canDelete}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
+                    {showActions ? (
+                      <td className="px-4" style={{ paddingBlock: "var(--row-py)" }}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              aria-label="Row actions"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => props.onEdit?.(r)}
+                              disabled={!canUpdate}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            {rowActions?.(r).map((a) => (
+                              <DropdownMenuItem key={a.label} onClick={a.onClick}>
+                                {a.icon}
+                                {a.label}
+                              </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuItem
+                              onClick={() => props.onDelete?.(r)}
+                              disabled={!canDelete}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
             {!t.loading && t.rows.length === 0 ? (
               <tr>
-                <td colSpan={t.visibleColumns.length + 2} className="px-4 py-16 text-center">
+                <td
+                  colSpan={t.visibleColumns.length + (showActions ? 3 : 2)}
+                  className="px-4 py-16 text-center"
+                >
                   <p className="text-sm font-medium text-foreground">No records found</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Try a different search term or clear the filters.
@@ -403,32 +446,40 @@ export function DataTable(props: DataTableProps) {
                       />
                       <p className="font-medium text-foreground">{String(r[first?.key ?? "id"])}</p>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          aria-label="Row actions"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => props.onEdit?.(r)} disabled={!canUpdate}>
-                          <Pencil className="h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => props.onDelete?.(r)}
-                          disabled={!canDelete}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {showActions ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label="Row actions"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => props.onEdit?.(r)} disabled={!canUpdate}>
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          {rowActions?.(r).map((a) => (
+                            <DropdownMenuItem key={a.label} onClick={a.onClick}>
+                              {a.icon}
+                              {a.label}
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuItem
+                            onClick={() => props.onDelete?.(r)}
+                            disabled={!canDelete}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
                   </div>
                   <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 pl-7">
                     {rest.map((c) => (
@@ -437,7 +488,9 @@ export function DataTable(props: DataTableProps) {
                           {c.label}
                         </dt>
                         <dd className={cn("truncate text-sm", cellClass(c.type))}>
-                          {c.type === "badge" ? (
+                          {c.render ? (
+                            c.render(r)
+                          ) : c.type === "badge" ? (
                             <Badge
                               variant="outline"
                               className={cn("font-medium", badgeTone(String(r[c.key])))}

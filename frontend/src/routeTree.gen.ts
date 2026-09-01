@@ -30,6 +30,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TestimonialsRouteImport } from './routes/testimonials'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppSplatRouteImport } from './routes/app.$'
+import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as OauthCallbackRouteImport } from './routes/oauth.callback'
@@ -100,12 +101,11 @@ import { Route as AppPharmacySuppliersRouteImport } from './routes/app.pharmacy.
 import { Route as AppPlatformAuditLogsRouteImport } from './routes/app.platform.audit-logs'
 import { Route as AppPlatformBlogRouteImport } from './routes/app.platform.blog'
 import { Route as AppPlatformCmsRouteImport } from './routes/app.platform.cms'
+import { Route as AppPlatformCommunicationRouteImport } from './routes/app.platform.communication'
 import { Route as AppPlatformContentCardsRouteImport } from './routes/app.platform.content-cards'
 import { Route as AppPlatformCouponsRouteImport } from './routes/app.platform.coupons'
 import { Route as AppPlatformDemoRequestsRouteImport } from './routes/app.platform.demo-requests'
-import { Route as AppPlatformFeaturesRouteImport } from './routes/app.platform.features'
 import { Route as AppPlatformLeadsRouteImport } from './routes/app.platform.leads'
-import { Route as AppPlatformModulesRouteImport } from './routes/app.platform.modules'
 import { Route as AppPlatformOrganizationTypesRouteImport } from './routes/app.platform.organization-types'
 import { Route as AppPlatformOrganizationsRouteImport } from './routes/app.platform.organizations'
 import { Route as AppPlatformPlansRouteImport } from './routes/app.platform.plans'
@@ -221,6 +221,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppSplatRoute = AppSplatRouteImport.update({
   id: '/$',
   path: '/$',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => AppRoute,
 } as any)
 const BlogIndexRoute = BlogIndexRouteImport.update({
@@ -575,6 +580,12 @@ const AppPlatformCmsRoute = AppPlatformCmsRouteImport.update({
   path: '/platform/cms',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPlatformCommunicationRoute =
+  AppPlatformCommunicationRouteImport.update({
+    id: '/platform/communication',
+    path: '/platform/communication',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppPlatformContentCardsRoute = AppPlatformContentCardsRouteImport.update({
   id: '/platform/content-cards',
   path: '/platform/content-cards',
@@ -590,19 +601,9 @@ const AppPlatformDemoRequestsRoute = AppPlatformDemoRequestsRouteImport.update({
   path: '/platform/demo-requests',
   getParentRoute: () => AppRoute,
 } as any)
-const AppPlatformFeaturesRoute = AppPlatformFeaturesRouteImport.update({
-  id: '/platform/features',
-  path: '/platform/features',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppPlatformLeadsRoute = AppPlatformLeadsRouteImport.update({
   id: '/platform/leads',
   path: '/platform/leads',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPlatformModulesRoute = AppPlatformModulesRouteImport.update({
-  id: '/platform/modules',
-  path: '/platform/modules',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPlatformOrganizationTypesRoute =
@@ -685,6 +686,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/testimonials': typeof TestimonialsRoute
   '/app/$': typeof AppSplatRoute
+  '/app/profile': typeof AppProfileRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/oauth/callback': typeof OauthCallbackRoute
   '/site/$slug': typeof SiteSlugRouteWithChildren
@@ -756,12 +758,11 @@ export interface FileRoutesByFullPath {
   '/app/platform/audit-logs': typeof AppPlatformAuditLogsRoute
   '/app/platform/blog': typeof AppPlatformBlogRoute
   '/app/platform/cms': typeof AppPlatformCmsRoute
+  '/app/platform/communication': typeof AppPlatformCommunicationRoute
   '/app/platform/content-cards': typeof AppPlatformContentCardsRoute
   '/app/platform/coupons': typeof AppPlatformCouponsRoute
   '/app/platform/demo-requests': typeof AppPlatformDemoRequestsRoute
-  '/app/platform/features': typeof AppPlatformFeaturesRoute
   '/app/platform/leads': typeof AppPlatformLeadsRoute
-  '/app/platform/modules': typeof AppPlatformModulesRoute
   '/app/platform/organization-types': typeof AppPlatformOrganizationTypesRoute
   '/app/platform/organizations': typeof AppPlatformOrganizationsRoute
   '/app/platform/plans': typeof AppPlatformPlansRoute
@@ -792,6 +793,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/testimonials': typeof TestimonialsRoute
   '/app/$': typeof AppSplatRoute
+  '/app/profile': typeof AppProfileRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/oauth/callback': typeof OauthCallbackRoute
   '/site/$slug': typeof SiteSlugRouteWithChildren
@@ -863,12 +865,11 @@ export interface FileRoutesByTo {
   '/app/platform/audit-logs': typeof AppPlatformAuditLogsRoute
   '/app/platform/blog': typeof AppPlatformBlogRoute
   '/app/platform/cms': typeof AppPlatformCmsRoute
+  '/app/platform/communication': typeof AppPlatformCommunicationRoute
   '/app/platform/content-cards': typeof AppPlatformContentCardsRoute
   '/app/platform/coupons': typeof AppPlatformCouponsRoute
   '/app/platform/demo-requests': typeof AppPlatformDemoRequestsRoute
-  '/app/platform/features': typeof AppPlatformFeaturesRoute
   '/app/platform/leads': typeof AppPlatformLeadsRoute
-  '/app/platform/modules': typeof AppPlatformModulesRoute
   '/app/platform/organization-types': typeof AppPlatformOrganizationTypesRoute
   '/app/platform/organizations': typeof AppPlatformOrganizationsRoute
   '/app/platform/plans': typeof AppPlatformPlansRoute
@@ -903,6 +904,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/testimonials': typeof TestimonialsRoute
   '/app/$': typeof AppSplatRoute
+  '/app/profile': typeof AppProfileRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/oauth/callback': typeof OauthCallbackRoute
   '/site/$slug': typeof SiteSlugRouteWithChildren
@@ -974,12 +976,11 @@ export interface FileRoutesById {
   '/app/platform/audit-logs': typeof AppPlatformAuditLogsRoute
   '/app/platform/blog': typeof AppPlatformBlogRoute
   '/app/platform/cms': typeof AppPlatformCmsRoute
+  '/app/platform/communication': typeof AppPlatformCommunicationRoute
   '/app/platform/content-cards': typeof AppPlatformContentCardsRoute
   '/app/platform/coupons': typeof AppPlatformCouponsRoute
   '/app/platform/demo-requests': typeof AppPlatformDemoRequestsRoute
-  '/app/platform/features': typeof AppPlatformFeaturesRoute
   '/app/platform/leads': typeof AppPlatformLeadsRoute
-  '/app/platform/modules': typeof AppPlatformModulesRoute
   '/app/platform/organization-types': typeof AppPlatformOrganizationTypesRoute
   '/app/platform/organizations': typeof AppPlatformOrganizationsRoute
   '/app/platform/plans': typeof AppPlatformPlansRoute
@@ -1015,6 +1016,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/testimonials'
     | '/app/$'
+    | '/app/profile'
     | '/blog/$slug'
     | '/oauth/callback'
     | '/site/$slug'
@@ -1086,12 +1088,11 @@ export interface FileRouteTypes {
     | '/app/platform/audit-logs'
     | '/app/platform/blog'
     | '/app/platform/cms'
+    | '/app/platform/communication'
     | '/app/platform/content-cards'
     | '/app/platform/coupons'
     | '/app/platform/demo-requests'
-    | '/app/platform/features'
     | '/app/platform/leads'
-    | '/app/platform/modules'
     | '/app/platform/organization-types'
     | '/app/platform/organizations'
     | '/app/platform/plans'
@@ -1122,6 +1123,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/testimonials'
     | '/app/$'
+    | '/app/profile'
     | '/blog/$slug'
     | '/oauth/callback'
     | '/site/$slug'
@@ -1193,12 +1195,11 @@ export interface FileRouteTypes {
     | '/app/platform/audit-logs'
     | '/app/platform/blog'
     | '/app/platform/cms'
+    | '/app/platform/communication'
     | '/app/platform/content-cards'
     | '/app/platform/coupons'
     | '/app/platform/demo-requests'
-    | '/app/platform/features'
     | '/app/platform/leads'
-    | '/app/platform/modules'
     | '/app/platform/organization-types'
     | '/app/platform/organizations'
     | '/app/platform/plans'
@@ -1232,6 +1233,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/testimonials'
     | '/app/$'
+    | '/app/profile'
     | '/blog/$slug'
     | '/oauth/callback'
     | '/site/$slug'
@@ -1303,12 +1305,11 @@ export interface FileRouteTypes {
     | '/app/platform/audit-logs'
     | '/app/platform/blog'
     | '/app/platform/cms'
+    | '/app/platform/communication'
     | '/app/platform/content-cards'
     | '/app/platform/coupons'
     | '/app/platform/demo-requests'
-    | '/app/platform/features'
     | '/app/platform/leads'
-    | '/app/platform/modules'
     | '/app/platform/organization-types'
     | '/app/platform/organizations'
     | '/app/platform/plans'
@@ -1493,6 +1494,13 @@ declare module '@tanstack/react-router' {
       path: '/$'
       fullPath: '/app/$'
       preLoaderRoute: typeof AppSplatRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/profile': {
+      id: '/app/profile'
+      path: '/profile'
+      fullPath: '/app/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
     }
     '/blog/': {
@@ -1985,6 +1993,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPlatformCmsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/platform/communication': {
+      id: '/app/platform/communication'
+      path: '/platform/communication'
+      fullPath: '/app/platform/communication'
+      preLoaderRoute: typeof AppPlatformCommunicationRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/platform/content-cards': {
       id: '/app/platform/content-cards'
       path: '/platform/content-cards'
@@ -2006,25 +2021,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPlatformDemoRequestsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/platform/features': {
-      id: '/app/platform/features'
-      path: '/platform/features'
-      fullPath: '/app/platform/features'
-      preLoaderRoute: typeof AppPlatformFeaturesRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/app/platform/leads': {
       id: '/app/platform/leads'
       path: '/platform/leads'
       fullPath: '/app/platform/leads'
       preLoaderRoute: typeof AppPlatformLeadsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/platform/modules': {
-      id: '/app/platform/modules'
-      path: '/platform/modules'
-      fullPath: '/app/platform/modules'
-      preLoaderRoute: typeof AppPlatformModulesRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/platform/organization-types': {
@@ -2109,6 +2110,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppSplatRoute: typeof AppSplatRoute
+  AppProfileRoute: typeof AppProfileRoute
   AppIndexRoute: typeof AppIndexRoute
   AppBillingInvoicesRoute: typeof AppBillingInvoicesRoute
   AppClinicAppointmentsRoute: typeof AppClinicAppointmentsRoute
@@ -2174,12 +2176,11 @@ interface AppRouteChildren {
   AppPlatformAuditLogsRoute: typeof AppPlatformAuditLogsRoute
   AppPlatformBlogRoute: typeof AppPlatformBlogRoute
   AppPlatformCmsRoute: typeof AppPlatformCmsRoute
+  AppPlatformCommunicationRoute: typeof AppPlatformCommunicationRoute
   AppPlatformContentCardsRoute: typeof AppPlatformContentCardsRoute
   AppPlatformCouponsRoute: typeof AppPlatformCouponsRoute
   AppPlatformDemoRequestsRoute: typeof AppPlatformDemoRequestsRoute
-  AppPlatformFeaturesRoute: typeof AppPlatformFeaturesRoute
   AppPlatformLeadsRoute: typeof AppPlatformLeadsRoute
-  AppPlatformModulesRoute: typeof AppPlatformModulesRoute
   AppPlatformOrganizationTypesRoute: typeof AppPlatformOrganizationTypesRoute
   AppPlatformOrganizationsRoute: typeof AppPlatformOrganizationsRoute
   AppPlatformPlansRoute: typeof AppPlatformPlansRoute
@@ -2194,6 +2195,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppSplatRoute: AppSplatRoute,
+  AppProfileRoute: AppProfileRoute,
   AppIndexRoute: AppIndexRoute,
   AppBillingInvoicesRoute: AppBillingInvoicesRoute,
   AppClinicAppointmentsRoute: AppClinicAppointmentsRoute,
@@ -2259,12 +2261,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppPlatformAuditLogsRoute: AppPlatformAuditLogsRoute,
   AppPlatformBlogRoute: AppPlatformBlogRoute,
   AppPlatformCmsRoute: AppPlatformCmsRoute,
+  AppPlatformCommunicationRoute: AppPlatformCommunicationRoute,
   AppPlatformContentCardsRoute: AppPlatformContentCardsRoute,
   AppPlatformCouponsRoute: AppPlatformCouponsRoute,
   AppPlatformDemoRequestsRoute: AppPlatformDemoRequestsRoute,
-  AppPlatformFeaturesRoute: AppPlatformFeaturesRoute,
   AppPlatformLeadsRoute: AppPlatformLeadsRoute,
-  AppPlatformModulesRoute: AppPlatformModulesRoute,
   AppPlatformOrganizationTypesRoute: AppPlatformOrganizationTypesRoute,
   AppPlatformOrganizationsRoute: AppPlatformOrganizationsRoute,
   AppPlatformPlansRoute: AppPlatformPlansRoute,

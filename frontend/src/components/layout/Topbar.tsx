@@ -1,10 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Bell, Check, ChevronDown, LogOut, Menu, Moon, Search, Sun, User } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { formatDistanceToNowStrict } from "date-fns";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { logout, setBranch, setRole } from "@/store/slices/authSlice";
-import { markAllRead, markRead } from "@/store/slices/notificationsSlice";
 import { toggleMode } from "@/store/slices/themeSlice";
+import { apiFetch } from "@/lib/api";
+import type { MyNotificationApiDto } from "@/lib/types";
 import {
   ROLES,
   PORTAL_LABEL,
@@ -285,9 +287,45 @@ export function Topbar() {
   const user = useAppSelector((s) => s.auth.user);
   const authenticatedRole = useAppSelector((s) => s.auth.authenticatedRole);
   const mode = useAppSelector((s) => s.theme.mode);
-  const notifications = useAppSelector((s) => s.notifications.items);
   const { canAccessPath, roleName, isPlatform, plan, orgName } = usePermissions();
   const [open, setOpen] = useState(false);
+  const [notifications, setNotifications] = useState<MyNotificationApiDto[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  function loadNotifications() {
+    apiFetch<MyNotificationApiDto[]>("/api/me/notifications?limit=20")
+      .then(setNotifications)
+      .catch(() => {});
+    apiFetch<{ count: number }>("/api/me/notifications/unread-count")
+      .then((r) => setUnreadCount(r.count))
+      .catch(() => {});
+  }
+
+  useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  async function handleMarkRead(id: number) {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      await apiFetch(`/api/me/notifications/${id}/read`, { method: "POST" });
+    } catch {
+      loadNotifications();
+    }
+  }
+
+  async function handleMarkAllRead() {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+    try {
+      await apiFetch("/api/me/notifications/read-all", { method: "POST" });
+    } catch {
+      loadNotifications();
+    }
+  }
 
   // The demo role/plan/branch preview tool is a testing aid for the platform
   // owner only — real tenant users (Org Owner/Admin included) never get an
@@ -297,7 +335,6 @@ export function Topbar() {
   const showDemoSwitcher = authenticatedRole === "SUPER_ADMIN";
   const showOrgContext = authenticatedRole === "ORG_OWNER" || authenticatedRole === "ORG_ADMIN";
 
-  const unread = notifications.filter((n) => !n.read).length;
   const searchable = MODULES.filter((m) => canAccessPath(m.path));
 
   return (
@@ -342,9 +379,9 @@ export function Topbar() {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon" className="relative" aria-label="Notifications">
               <Bell className="h-4 w-4" />
-              {unread ? (
+              {unreadCount ? (
                 <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-white">
-                  {unread}
+                  {unreadCount}
                 </span>
               ) : null}
             </Button>
@@ -356,7 +393,8 @@ export function Topbar() {
                 variant="ghost"
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => dispatch(markAllRead())}
+                onClick={handleMarkAllRead}
+                disabled={!notifications.some((n) => !n.read)}
               >
                 <Check className="h-3 w-3" />
                 Mark all read
@@ -364,22 +402,30 @@ export function Topbar() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <div className="max-h-80 overflow-y-auto">
-              {notifications.map((n) => (
-                <DropdownMenuItem
-                  key={n.id}
-                  onClick={() => dispatch(markRead(n.id))}
-                  className={cn(
-                    "flex flex-col items-start gap-0.5 py-2",
-                    !n.read && "bg-primary/5",
-                  )}
-                >
-                  <span className="text-sm font-medium">{n.title}</span>
-                  <span className="text-xs text-muted-foreground">{n.body}</span>
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    {n.time}
-                  </span>
-                </DropdownMenuItem>
-              ))}
+              {notifications.length === 0 ? (
+                <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+                  No notifications yet.
+                </p>
+              ) : (
+                notifications.map((n) => (
+                  <DropdownMenuItem
+                    key={n.id}
+                    onClick={() => handleMarkRead(n.id)}
+                    className={cn(
+                      "flex flex-col items-start gap-0.5 py-2",
+                      !n.read && "bg-primary/5",
+                    )}
+                  >
+                    <span className="text-sm font-medium">
+                      {n.subject ?? n.eventType.replace(/_/g, " ")}
+                    </span>
+                    <span className="text-xs text-muted-foreground line-clamp-2">{n.body}</span>
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {formatDistanceToNowStrict(new Date(n.createdAt), { addSuffix: true })}
+                    </span>
+                  </DropdownMenuItem>
+                ))
+              )}
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -427,6 +473,12 @@ export function Topbar() {
               <Link to="/app">
                 <User className="h-4 w-4" />
                 My workspace
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/app/profile">
+                <User className="h-4 w-4" />
+                My profile
               </Link>
             </DropdownMenuItem>
             {/* <DropdownMenuItem

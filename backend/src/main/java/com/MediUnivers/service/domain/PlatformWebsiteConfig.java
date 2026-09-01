@@ -113,4 +113,10 @@ public class PlatformWebsiteConfig {
 
     @Column(name = "security_content", columnDefinition = "text")
     private String securityContent;
+
+    /** Per-page hero banner image URLs, e.g. `{"home":"https://…","features":"https://…"}` — one entry per
+     * marketing page (home/features/solutions/pricing/testimonials/blog/about/contact). A page with no entry
+     * (or an empty string) falls back to the flat brand-colour hero background. */
+    @Column(name = "page_banners_json", length = 3000)
+    private String pageBannersJson;
 }

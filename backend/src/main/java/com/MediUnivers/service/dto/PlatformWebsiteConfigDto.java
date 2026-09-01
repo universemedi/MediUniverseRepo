@@ -8,6 +8,6 @@ public record PlatformWebsiteConfigDto(
         String facebookUrl, String instagramUrl, String linkedinUrl, String youtubeUrl,
         String seoTitle, String seoDescription, String seoKeywords,
         String bannersJson, String navItemsJson, String footerColumnsJson, String statsJson,
-        String privacyContent, String termsContent, String securityContent
+        String privacyContent, String termsContent, String securityContent, String pageBannersJson
 ) {
 }

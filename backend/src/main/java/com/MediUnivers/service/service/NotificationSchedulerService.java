@@ -27,6 +27,7 @@ public class NotificationSchedulerService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
+    private final PlatformNotificationService platformNotificationService;
 
     private static final List<NotificationStatus> DISPATCHABLE = List.of(NotificationStatus.PENDING, NotificationStatus.QUEUED);
 
@@ -38,6 +39,8 @@ public class NotificationSchedulerService {
                 .forEach(n -> notificationService.dispatch(n.getId()));
         notificationRepository.findTop100ByStatusInAndScheduledForLessThanEqualOrderByCreatedAtAsc(DISPATCHABLE, now)
                 .forEach(n -> notificationService.dispatch(n.getId()));
+        platformNotificationService.dueImmediate(DISPATCHABLE)
+                .forEach(n -> platformNotificationService.dispatch(n.getId()));
     }
 
     /** Retry Strategy (spec §15): failed deliveries whose backoff has elapsed get one more attempt. Runs every minute. */
@@ -47,6 +50,11 @@ public class NotificationSchedulerService {
                 .forEach(n -> {
                     notificationService.requeueForRetry(n);
                     notificationService.dispatch(n.getId());
+                });
+        platformNotificationService.dueRetries(Instant.now())
+                .forEach(n -> {
+                    platformNotificationService.requeueForRetry(n);
+                    platformNotificationService.dispatch(n.getId());
                 });
     }
 

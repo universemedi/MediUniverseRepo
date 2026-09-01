@@ -31,7 +31,7 @@ export function AppSidebar() {
     const items = section.items.filter((i) => reasonForPath(i.path) === "ok");
     return { ...section, groupReason, items };
   }).filter((section) => {
-    if (section.portal !== portal && !(isPlatform && section.group === "cms")) return false;
+    if (section.portal !== portal) return false;
     // not part of this org's business at all — don't even hint it exists
     if (section.groupReason === "unavailable") return false;
     // plan-locked sections stay visible (as an upgrade hint) for org owners/admins

@@ -54,6 +54,7 @@ function BlogPage() {
         eyebrow="Blog"
         title="Ideas for running a better practice"
         subtitle="Operational playbooks from the teams building and using MediUnivers."
+        bannerKey="blog"
       />
       <section className="mx-auto max-w-6xl px-4 py-16">
         {loadError ? (

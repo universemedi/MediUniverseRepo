@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -52,6 +53,7 @@ public class OrganizationService {
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentGatewayService paymentGatewayService;
     private final ModulePriceRepository modulePriceRepository;
+    private final PlatformNotificationService platformNotificationService;
 
     private static final java.math.BigDecimal CUSTOM_PLAN_TAX_PERCENT = java.math.BigDecimal.valueOf(18);
 
@@ -86,6 +88,13 @@ public class OrganizationService {
             }
         }
 
+        // A directly-sold (non-free-trial) deal has to have been paid somehow — cash,
+        // bank transfer, UPI, cheque — so the platform staff member closing it records
+        // how, same as an online gateway payment records its own gatewayPaymentId.
+        if (!plan.isFreeTrial() && (request.paymentMethod() == null || request.paymentMethod().isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment method is required for a paid plan.");
+        }
+
         Organization org = new Organization();
         org.setOrganizationCode(generateOrganizationCode());
         org.setSlug(generateUniqueSlug(request.organizationName()));
@@ -94,6 +103,10 @@ public class OrganizationService {
         org.setOrgType(orgType);
         org.setCreationSource(source);
         org.setEmail(request.ownerEmail());
+        org.setPhone(request.ownerPhone());
+        org.setCountry(request.country());
+        org.setState(request.state());
+        org.setCity(request.city());
 
         // A platform staff member is provisioning this org directly — they've
         // already closed the deal (or approved the trial), so there's no
@@ -101,6 +114,7 @@ public class OrganizationService {
         // else starts ACTIVE immediately (previously this was hardcoded to
         // TRIAL regardless of plan, which was wrong for paid direct sales).
         Subscription sub = newSubscriptionFor(plan);
+        sub.setPaymentMethod(plan.isFreeTrial() ? null : request.paymentMethod());
         org.setStatus(plan.isFreeTrial() ? OrgStatus.TRIAL : OrgStatus.ACTIVE);
         org.setPlan(plan);
         org.setRenewsOn(sub.getEndDate());
@@ -110,7 +124,7 @@ public class OrganizationService {
         subscriptionRepository.save(sub);
 
         Branch head = provisionSettingsAndHeadBranch(org, request.headBranchName());
-        inviteOwner(org, head, request.ownerFullName(), request.ownerEmail());
+        inviteOwner(org, head, request.ownerFullName(), request.ownerEmail(), request.ownerPhone());
 
         return DtoMapper.toDto(org, List.of(head));
     }
@@ -140,6 +154,32 @@ public class OrganizationService {
         return DtoMapper.toDto(org, branchRepository.findByOrganizationId(organizationId));
     }
 
+    private static final Set<OrgStatus> MANUAL_STATUSES = Set.of(OrgStatus.ACTIVE, OrgStatus.SUSPENDED, OrgStatus.CANCELLED);
+
+    /**
+     * Lets a platform admin manually suspend a lapsed/abusive tenant, cancel
+     * one that's off-boarding, or reactivate a suspended one — the three
+     * transitions an admin would ever need to trigger by hand (every other
+     * OrgStatus is reached automatically by the signup/payment/trial-expiry
+     * flows and shouldn't be settable directly).
+     */
+    public OrganizationDto changeStatus(Long organizationId, OrgStatus status) {
+        if (!MANUAL_STATUSES.contains(status)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status must be one of " + MANUAL_STATUSES);
+        }
+        Organization org = organizationRepository.findById(organizationId)
+                .orElseThrow(() -> new EntityNotFoundException("Organization not found: " + organizationId));
+        org.setStatus(status);
+        organizationRepository.save(org);
+
+        platformNotificationService.notify(PlatformNotificationEventType.ORGANIZATION_STATUS_CHANGED,
+                NotificationRecipient.of(org.getName(), org.getEmail(), org.getPhone()),
+                Map.of("organizationName", org.getName(), "newStatus", status.name()),
+                NotificationPriority.HIGH, "ORGANIZATION", org.getId());
+
+        return DtoMapper.toDto(org, branchRepository.findByOrganizationId(organizationId));
+    }
+
     // ---------------- Public self-serve signup (req #3, #5, #6) ----------------
 
     /** No payment gate at all — the org is TRIAL and the owner can accept their invite the moment it arrives. */
@@ -163,7 +203,7 @@ public class OrganizationService {
         subscriptionRepository.save(sub);
 
         Branch head = provisionSettingsAndHeadBranch(org, request.headBranchName());
-        inviteOwner(org, head, request.ownerFullName(), request.ownerEmail());
+        inviteOwner(org, head, request.ownerFullName(), request.ownerEmail(), request.phone());
 
         return DtoMapper.toDto(org, List.of(head));
     }
@@ -193,7 +233,7 @@ public class OrganizationService {
         org = organizationRepository.save(org);
 
         Branch head = provisionSettingsAndHeadBranch(org, request.headBranchName());
-        inviteOwner(org, head, request.ownerFullName(), request.ownerEmail());
+        inviteOwner(org, head, request.ownerFullName(), request.ownerEmail(), request.phone());
 
         return new PublicSignupResultDto(org.getId(), org.getOrganizationCode(), org.getSignupToken(), org.getStatus().name());
     }
@@ -325,6 +365,7 @@ public class OrganizationService {
         org.setRenewsOn(sub.getEndDate());
         org.setSignupToken(null);
         organizationRepository.save(org);
+        notifyRenewed(org, sub);
 
         return DtoMapper.toDto(org, branchRepository.findByOrganizationId(org.getId()));
     }
@@ -387,8 +428,20 @@ public class OrganizationService {
         organization.setStatus(OrgStatus.ACTIVE);
         organization.setRenewsOn(sub.getEndDate());
         organizationRepository.save(organization);
+        notifyRenewed(organization, sub);
 
         return DtoMapper.toDto(organization, branchRepository.findByOrganizationId(organization.getId()));
+    }
+
+    /** Fires on every successful activation/renewal — first paid signup and every later plan change/renewal alike. */
+    private void notifyRenewed(Organization org, Subscription sub) {
+        Map<String, String> vars = Map.of(
+                "organizationName", org.getName(),
+                "planName", sub.getPlanNameSnapshot(),
+                "renewsOn", sub.getEndDate() != null ? sub.getEndDate().format(java.time.format.DateTimeFormatter.ISO_DATE) : "");
+        platformNotificationService.notify(PlatformNotificationEventType.SUBSCRIPTION_RENEWED,
+                NotificationRecipient.of(org.getName(), org.getEmail(), org.getPhone()),
+                vars, NotificationPriority.NORMAL, "ORGANIZATION", org.getId());
     }
 
     private Organization requireDraftOrgByToken(Long organizationId, String signupToken) {
@@ -610,11 +663,15 @@ public class OrganizationService {
         return branchRepository.save(head);
     }
 
-    private void inviteOwner(Organization org, Branch head, String ownerFullName, String ownerEmail) {
+    private void inviteOwner(Organization org, Branch head, String ownerFullName, String ownerEmail, String ownerPhone) {
         Role ownerRole = roleRepository.findByCode("ORG_OWNER")
                 .orElseThrow(() -> new IllegalStateException("System role ORG_OWNER is missing — check DataSeeder"));
-        userInvitationService.invite(org, Portal.TENANT, ownerRole, ownerFullName, ownerEmail,
+        AppUser owner = userInvitationService.invite(org, Portal.TENANT, ownerRole, ownerFullName, ownerEmail,
                 head, BranchScope.ALL_BRANCHES, Set.of());
+        if (ownerPhone != null && !ownerPhone.isBlank()) {
+            owner.setPhone(ownerPhone);
+            appUserRepository.save(owner);
+        }
     }
 
     private void requireEmailAvailable(String email) {

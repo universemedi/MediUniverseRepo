@@ -6,6 +6,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 import { resolveIcon } from "@/lib/iconMap";
+import { IconPickerField } from "@/components/common/IconPickerField";
 import type { PlatformContentCardDto, PlatformContentSection } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -375,23 +376,12 @@ function ContentCardsPage() {
                   <p className="text-xs font-medium text-destructive">{fieldErrors.title}</p>
                 ) : null}
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="c-icon">Icon</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="c-icon"
-                    value={form.icon}
-                    onChange={(e) => setForm({ ...form, icon: e.target.value })}
-                    placeholder="HeartPulse"
-                  />
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border text-primary">
-                    {(() => {
-                      const Icon = resolveIcon(form.icon || null);
-                      return <Icon className="h-4 w-4" />;
-                    })()}
-                  </span>
-                </div>
-              </div>
+              <IconPickerField
+                id="c-icon"
+                label="Icon"
+                value={form.icon}
+                onChange={(name) => setForm({ ...form, icon: name })}
+              />
               {sectionDef.hasTag ? (
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="c-tag">Tag (plan label)</Label>

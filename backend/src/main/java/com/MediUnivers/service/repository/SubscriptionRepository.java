@@ -20,4 +20,10 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     List<Subscription> findByStatusAndFreeTrialTrue(SubscriptionStatus status);
 
     boolean existsByPlanIdAndStatus(Long planId, SubscriptionStatus status);
+
+    /** Reminder window: due but not sent yet, trial or paid alike. */
+    List<Subscription> findByStatusAndExpiryReminderSentFalseAndEndDateBetween(SubscriptionStatus status, LocalDate from, LocalDate to);
+
+    /** Paid subscriptions whose period has lapsed with no renewal — trials are handled separately (auto-suspend, no grace period). */
+    List<Subscription> findByStatusAndFreeTrialFalseAndEndDateBefore(SubscriptionStatus status, LocalDate date);
 }

@@ -36,7 +36,7 @@ public class UserInvitationService {
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
-    private final NotificationService notificationService;
+    private final PlatformNotificationService platformNotificationService;
     private final AppProperties appProperties;
 
     public AppUser invite(Organization organization, Portal portal, Role role, String fullName, String email,
@@ -51,7 +51,9 @@ public class UserInvitationService {
         user.setRole(role);
         user.setOrganization(organization);
         user.setBranch(primaryBranch);
-        user.setBranchScope(branchScope);
+        // branch_scope is NOT NULL — platform-staff invites (no branch concept at all) pass
+        // null here and rely on the entity's own ALL_BRANCHES default rather than overwriting it.
+        if (branchScope != null) user.setBranchScope(branchScope);
         if (selectedBranches != null) user.getSelectedBranches().addAll(selectedBranches);
         // No password yet — INVITED accounts can't log in regardless of what's here;
         // this is just a non-null placeholder no one will ever type in.
@@ -94,7 +96,21 @@ public class UserInvitationService {
         user.setStatus(UserStatus.ACTIVE);
         user.setInviteToken(null);
         user.setInviteExpiresAt(null);
-        return appUserRepository.save(user);
+        AppUser saved = appUserRepository.save(user);
+        notifyWelcome(saved);
+        return saved;
+    }
+
+    /** Confirms onboarding completed — distinct moment from the invite link itself, org users only (no "welcome to your org" concept for platform staff). */
+    private void notifyWelcome(AppUser user) {
+        if (user.getOrganization() == null) return;
+        Map<String, String> vars = new HashMap<>();
+        vars.put("fullName", user.getFullName());
+        vars.put("organizationName", user.getOrganization().getName());
+        vars.put("loginLink", appProperties.frontendBaseUrl() + "/login");
+        platformNotificationService.notify(PlatformNotificationEventType.ORG_WELCOME,
+                new NotificationRecipient(user.getFullName(), user.getEmail(), null, user.getId()),
+                vars, NotificationPriority.NORMAL, "APP_USER", user.getId());
     }
 
     @Transactional(readOnly = true)
@@ -120,18 +136,30 @@ public class UserInvitationService {
                 user.getEmail(), user.getRole().getName(), user.getInviteToken(), user.getInviteExpiresAt());
     }
 
-    /** Routes the actual invite email through the Communication Engine — platform-staff invites (no organization) skip it: there's no org to pull channel settings/templates from. */
+    /**
+     * Routes the invite email through the platform's own Communication Engine
+     * rather than the invited user's (possibly not-yet-configured) org — a
+     * brand-new org has no SMTP set up yet, so its very first owner invite
+     * has nowhere else to go, and platform-staff invites never had an org to
+     * begin with.
+     */
     private void notifyInvited(AppUser user) {
-        if (user.getOrganization() == null) return;
         Map<String, String> vars = new HashMap<>();
         vars.put("fullName", user.getFullName());
-        vars.put("organizationName", user.getOrganization().getName());
         vars.put("roleName", user.getRole().getName());
         vars.put("inviteLink", appProperties.frontendBaseUrl() + "/accept-invite?token=" + user.getInviteToken());
         vars.put("expiresAt", user.getInviteExpiresAt() != null
                 ? DateTimeFormatter.ISO_INSTANT.format(user.getInviteExpiresAt()) : "");
-        notificationService.notify(user.getOrganization(), NotificationEventType.USER_INVITED,
-                NotificationRecipient.of(user.getFullName(), user.getEmail(), null),
-                vars, NotificationPriority.HIGH, "APP_USER", user.getId(), null);
+
+        if (user.getOrganization() != null) {
+            vars.put("organizationName", user.getOrganization().getName());
+            platformNotificationService.notify(PlatformNotificationEventType.ORG_USER_INVITED,
+                    NotificationRecipient.of(user.getFullName(), user.getEmail(), null),
+                    vars, NotificationPriority.HIGH, "APP_USER", user.getId());
+        } else {
+            platformNotificationService.notify(PlatformNotificationEventType.PLATFORM_STAFF_INVITED,
+                    NotificationRecipient.of(user.getFullName(), user.getEmail(), null),
+                    vars, NotificationPriority.HIGH, "APP_USER", user.getId());
+        }
     }
 }

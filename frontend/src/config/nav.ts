@@ -57,8 +57,6 @@ const ITEM_ICONS: Record<string, string> = {
   "platform/organization-types": "Shapes",
   "platform/organizations": "Building2",
   "platform/plans": "Layers",
-  "platform/modules": "Blocks",
-  "platform/features": "ToggleRight",
   "platform/subscriptions": "CreditCard",
   "platform/trials": "Timer",
   "platform/demo-requests": "CalendarCheck",
@@ -73,6 +71,7 @@ const ITEM_ICONS: Record<string, string> = {
   "platform/testimonials": "Quote",
   "platform/blog": "Newspaper",
   "platform/content-cards": "LayoutGrid",
+  "platform/communication": "MailCheck",
   /* org */
   "org/modules": "Blocks",
   "org/settings": "Settings",

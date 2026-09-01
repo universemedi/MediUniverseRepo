@@ -47,6 +47,7 @@ function FeaturesPage() {
         eyebrow="Features"
         title="One platform, every healthcare workflow"
         subtitle="Modules are switched on by subscription plan, so each organization only sees what it pays for."
+        bannerKey="features"
       />
       <section className="mx-auto max-w-6xl px-4 py-16">
         {loadError ? (

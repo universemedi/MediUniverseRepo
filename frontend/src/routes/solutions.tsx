@@ -47,6 +47,7 @@ function SolutionsPage() {
         eyebrow="Solutions"
         title="Built for how your organization actually operates"
         subtitle="From a single-doctor clinic to a multi-branch hospital group with its own pharmacy and lab."
+        bannerKey="solutions"
       />
       <section className="mx-auto max-w-6xl px-4 py-16">
         {loadError ? (

@@ -1,21 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ShieldAlert, Timer } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { usePermissions } from "@/hooks/usePermissions";
+import { col } from "@/config/types";
+import type { Row } from "@/lib/rows";
 import type { SubscriptionApiDto } from "@/lib/types";
+import { DataTable } from "@/components/common/DataTable";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 export const Route = createFileRoute("/app/platform/trials")({
   head: () => ({
@@ -33,6 +28,23 @@ function daysRemaining(endDate: string | null): number | null {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
+function daysLeftLabel(endDate: string | null): string {
+  const remaining = daysRemaining(endDate);
+  if (remaining === null) return "";
+  return remaining <= 0 ? "Expiring today" : `${remaining} days`;
+}
+
+function toRow(s: SubscriptionApiDto): Row {
+  return {
+    id: String(s.id),
+    organization: s.organizationName,
+    plan: s.planName,
+    startDate: s.startDate,
+    endDate: s.endDate ?? "",
+    daysLeft: daysLeftLabel(s.endDate),
+  };
+}
+
 function TrialsPage() {
   const { isPlatform } = usePermissions();
   const [rows, setRows] = useState<SubscriptionApiDto[] | null>(null);
@@ -45,6 +57,34 @@ function TrialsPage() {
         setLoadError(err instanceof ApiError ? err.message : "Couldn't load trials."),
       );
   }, []);
+
+  const columns = useMemo(
+    () => [
+      col("organization", "Organization", "org", { required: true }),
+      col("plan", "Plan", "badge", { secondary: true }),
+      col("startDate", "Started", "date"),
+      col("endDate", "Expires", "date"),
+      col("daysLeft", "Days left", "badge", {
+        render: (r) => {
+          const remaining = daysRemaining(String(r["endDate"]) || null);
+          if (remaining === null) return "—";
+          return (
+            <Badge
+              variant="outline"
+              className={
+                remaining <= 3
+                  ? "border-destructive/25 bg-destructive/10 text-destructive"
+                  : "border-emerald-300 bg-emerald-50 text-emerald-700"
+              }
+            >
+              {remaining <= 0 ? "Expiring today" : `${remaining} days`}
+            </Badge>
+          );
+        },
+      }),
+    ],
+    [],
+  );
 
   if (!isPlatform) {
     return (
@@ -78,48 +118,13 @@ function TrialsPage() {
           No active trials right now.
         </Card>
       ) : (
-        <Card className="overflow-x-auto p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Organization</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Started</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead>Days left</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => {
-                const remaining = daysRemaining(r.endDate);
-                return (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.organizationName}</TableCell>
-                    <TableCell>{r.planName}</TableCell>
-                    <TableCell>{r.startDate}</TableCell>
-                    <TableCell>{r.endDate ?? "—"}</TableCell>
-                    <TableCell>
-                      {remaining === null ? (
-                        "—"
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className={
-                            remaining <= 3
-                              ? "border-destructive/25 bg-destructive/10 text-destructive"
-                              : "border-emerald-300 bg-emerald-50 text-emerald-700"
-                          }
-                        >
-                          {remaining <= 0 ? "Expiring today" : `${remaining} days`}
-                        </Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </Card>
+        <DataTable
+          id="platform/trials"
+          title="Free Trials"
+          rows={rows.map(toRow)}
+          columns={columns}
+          canExport
+        />
       )}
     </div>
   );

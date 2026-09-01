@@ -134,6 +134,7 @@ function AboutPage() {
         eyebrow="About us"
         title="We build the platform. You run the care."
         subtitle="MediUnivers is the product owner of a multi-tenant healthcare SaaS used by clinics, pharmacies and laboratories."
+        bannerKey="about"
       />
       <AboutBody />
     </SiteLayout>

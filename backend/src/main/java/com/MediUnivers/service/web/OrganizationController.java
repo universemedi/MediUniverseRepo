@@ -1,5 +1,6 @@
 package com.MediUnivers.service.web;
 
+import com.MediUnivers.service.domain.OrgStatus;
 import com.MediUnivers.service.dto.CreateOrganizationRequest;
 import com.MediUnivers.service.dto.OrganizationDto;
 import com.MediUnivers.service.service.OrganizationService;
@@ -46,5 +47,11 @@ public class OrganizationController {
     @PreAuthorize("hasAuthority('PORTAL_PLATFORM') and (hasAuthority('ROLE_SUPER_ADMIN') or hasAuthority('ROLE_PLATFORM_FINANCE'))")
     public OrganizationDto changePlan(@PathVariable Long id, @RequestBody Map<String, String> body) {
         return organizationService.changePlan(id, body.get("planCode"));
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('PORTAL_PLATFORM') and (hasAuthority('ROLE_SUPER_ADMIN') or hasAuthority('ROLE_PLATFORM_FINANCE'))")
+    public OrganizationDto changeStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        return organizationService.changeStatus(id, OrgStatus.valueOf(body.get("status")));
     }
 }

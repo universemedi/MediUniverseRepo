@@ -59,7 +59,15 @@ export function useDataTable({ id, rows, columns, initialPageSize = 10 }: UseDat
 
     for (const [key, value] of Object.entries(filters)) {
       if (value && value !== "__all") {
-        data = data.filter((r) => String(r[key] ?? "") === value);
+        // Comma-joined multi-value cells (e.g. "Clinic, Pharmacy" from a `multiple: true`
+        // badge column) need membership, not exact-string equality — splitting also
+        // works transparently for ordinary single-value cells (a one-element array).
+        data = data.filter((r) =>
+          String(r[key] ?? "")
+            .split(",")
+            .map((v) => v.trim())
+            .includes(value),
+        );
       }
     }
 

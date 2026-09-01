@@ -12,7 +12,11 @@ import {
 } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { apiFetchPublic } from "@/lib/api";
-import type { PlanApiDto } from "@/lib/types";
+import { usePlatformSite } from "@/lib/platformSite";
+import { useDynamicSeo } from "@/lib/useDynamicSeo";
+import { usePageBanner } from "@/lib/pageBanners";
+import { cn } from "@/lib/utils";
+import type { PlanApiDto, PlatformSiteStat } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -100,6 +104,89 @@ function priceLine(p: PlanApiDto): string {
   return `₹${p.priceWithTax.toLocaleString("en-IN")} / month`;
 }
 
+/** Rendered inside <SiteLayout>, which is what actually provides usePlatformSite()'s context. */
+function HomeSeo() {
+  const { site } = usePlatformSite();
+  useDynamicSeo(site?.seoTitle, site?.seoDescription);
+  return null;
+}
+
+const DEFAULT_HERO_STATS: PlatformSiteStat[] = [
+  { label: "Organizations", value: "480+" },
+  { label: "Core modules", value: "6" },
+  { label: "Built-in roles", value: "14" },
+  { label: "Uptime target", value: "99.9%" },
+];
+
+/** Also rendered inside <SiteLayout> for the same reason as HomeSeo — usePageBanner and usePlatformSite need the site-config context. */
+function HomeHero() {
+  const imageUrl = usePageBanner("home");
+  const { site, stats } = usePlatformSite();
+  const heroStats = stats.length ? stats : DEFAULT_HERO_STATS;
+  return (
+    <section
+      className={cn(
+        "relative overflow-hidden border-b border-border",
+        imageUrl ? "bg-slate-900" : "bg-primary/5",
+      )}
+    >
+      {imageUrl ? (
+        <>
+          <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/75 via-slate-950/65 to-slate-950/85" />
+        </>
+      ) : null}
+      <div className="relative mx-auto max-w-6xl px-4 py-20 text-center">
+        <Badge
+          variant="outline"
+          className={
+            imageUrl
+              ? "border-white/30 bg-white/10 text-white"
+              : "border-primary/25 bg-primary/10 text-primary"
+          }
+        >
+          Multi-tenant healthcare SaaS
+        </Badge>
+        <h1
+          className={cn(
+            "mx-auto mt-5 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl",
+            imageUrl ? "text-white" : "text-foreground",
+          )}
+        >
+          {site?.heroHeading || "Run clinics, pharmacies and laboratories from a single console"}
+        </h1>
+        <p
+          className={cn(
+            "mx-auto mt-4 max-w-2xl text-base",
+            imageUrl ? "text-white/85" : "text-muted-foreground",
+          )}
+        >
+          {site?.heroSubheading ||
+            "MediUnivers brings appointments, queue management, billing, inventory, lab workflows, CRM and your public website together — with granular role-based access for every team member."}
+        </p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <Button asChild size="lg">
+            <Link to="/free-trial">
+              Start free trial <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <Link to="/request-demo">Request a demo</Link>
+          </Button>
+        </div>
+        <dl className="mx-auto mt-12 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-4">
+          {heroStats.map((s) => (
+            <div key={s.label} className="rounded-lg border border-border bg-card p-4">
+              <dt className="text-xl font-semibold text-foreground">{s.value}</dt>
+              <dd className="text-xs text-muted-foreground">{s.label}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  );
+}
+
 function Landing() {
   const [plans, setPlans] = useState<PlanApiDto[] | null>(null);
 
@@ -111,44 +198,8 @@ function Landing() {
 
   return (
     <SiteLayout>
-      <section className="border-b border-border bg-primary/5">
-        <div className="mx-auto max-w-6xl px-4 py-20 text-center">
-          <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
-            Multi-tenant healthcare SaaS
-          </Badge>
-          <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-            Run clinics, pharmacies and laboratories from a single console
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground">
-            MediUnivers brings appointments, queue management, billing, inventory, lab workflows,
-            CRM and your public website together — with granular role-based access for every team
-            member.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button asChild size="lg">
-              <Link to="/free-trial">
-                Start free trial <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link to="/request-demo">Request a demo</Link>
-            </Button>
-          </div>
-          <dl className="mx-auto mt-12 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-4">
-            {[
-              ["480+", "Organizations"],
-              ["6", "Core modules"],
-              ["14", "Built-in roles"],
-              ["99.9%", "Uptime target"],
-            ].map(([v, l]) => (
-              <div key={l} className="rounded-lg border border-border bg-card p-4">
-                <dt className="text-xl font-semibold text-foreground">{v}</dt>
-                <dd className="text-xs text-muted-foreground">{l}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </section>
+      <HomeSeo />
+      <HomeHero />
 
       <section className="mx-auto max-w-6xl px-4 py-16">
         <h2 className="text-2xl font-semibold tracking-tight text-foreground">

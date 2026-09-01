@@ -7,6 +7,7 @@ import { FormBuilder, type FormValues } from "@/components/form/FormBuilder";
 import { col, type ColumnDef } from "@/config/types";
 import { apiFetchPublic } from "@/lib/api";
 import type { OrgTypeApiDto, PlanApiDto } from "@/lib/types";
+import { fetchIndiaCities, useIndiaStates } from "@/lib/indiaLocations";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/free-trial")({
   component: TrialPage,
 });
 
-function buildFields(orgTypes: OrgTypeApiDto[]): ColumnDef[] {
+function buildFields(orgTypes: OrgTypeApiDto[], states: string[]): ColumnDef[] {
   return [
     col("organizationName", "Organization name", "org", {
       required: true,
@@ -59,8 +60,12 @@ function buildFields(orgTypes: OrgTypeApiDto[]): ColumnDef[] {
       fieldType: "phone",
       placeholder: "+91 98765 43210",
     }),
-    col("city", "City", "city", { required: true, placeholder: "Kochi" }),
-    col("state", "State", "text", { placeholder: "Kerala" }),
+    col("state", "State", "badge", { required: true, options: states }),
+    col("city", "City", "badge", {
+      required: true,
+      dependsOn: "state",
+      optionsFor: (state) => fetchIndiaCities(state),
+    }),
     col("subdomain", "Preferred subdomain", "code", {
       placeholder: "nairclinic",
       help: "Your workspace will be available at subdomain.mediunivers.io",
@@ -104,7 +109,8 @@ function TrialPage() {
       );
   }, []);
 
-  const fields = useMemo(() => buildFields(orgTypes ?? []), [orgTypes]);
+  const states = useIndiaStates();
+  const fields = useMemo(() => buildFields(orgTypes ?? [], states), [orgTypes, states]);
 
   return (
     <SiteLayout>

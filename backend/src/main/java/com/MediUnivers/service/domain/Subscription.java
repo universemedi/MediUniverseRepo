@@ -70,11 +70,19 @@ public class Subscription {
     @Column(name = "payment_gateway", length = 30)
     private String paymentGateway;
 
+    /** How a directly-sold subscription (no online gateway involved) was actually paid — CASH, BANK_TRANSFER, UPI, CHEQUE. Null for gateway-paid subscriptions. */
+    @Column(name = "payment_method", length = 20)
+    private String paymentMethod;
+
     @Column(name = "gateway_order_id", length = 100)
     private String gatewayOrderId;
 
     @Column(name = "gateway_payment_id", length = 100)
     private String gatewayPaymentId;
+
+    /** One-time "expiring soon" reminder already sent for this period — keeps the daily lifecycle job from resending it every run during the reminder window. */
+    @Column(name = "expiry_reminder_sent", nullable = false)
+    private boolean expiryReminderSent = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();

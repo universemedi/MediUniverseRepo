@@ -64,6 +64,7 @@ export interface LeadApiDto {
   organizationName: string | null;
   organizationType: string | null;
   city: string | null;
+  state: string | null;
   expectedBranches: number | null;
   expectedUsers: number | null;
   modulesOfInterest: string | null;
@@ -81,26 +82,10 @@ export interface PlatformStaffApiDto {
   id: number;
   fullName: string;
   email: string;
+  phone: string | null;
   roleCode: string;
   roleName: string;
   status: "ACTIVE" | "INVITED" | "DISABLED";
-}
-
-export interface PlatformModuleApiDto {
-  id: number;
-  code: string;
-  name: string;
-  category: string;
-  active: boolean;
-}
-
-export interface PlatformFeatureApiDto {
-  id: number;
-  code: string;
-  name: string;
-  moduleGroup: string;
-  featureType: string;
-  active: boolean;
 }
 
 export interface CouponApiDto {
@@ -194,6 +179,22 @@ export interface RoleApiDto {
   access: Record<string, "*" | string[]>;
 }
 
+export interface MyNotificationApiDto {
+  id: number;
+  eventType: string;
+  subject: string | null;
+  body: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface MyProfileApiDto {
+  fullName: string;
+  email: string;
+  phone: string | null;
+  dateOfBirth: string | null;
+}
+
 export interface MeResponse {
   userId: number;
   name: string;
@@ -239,6 +240,7 @@ export interface PlatformSiteConfigDto {
   privacyContent: string | null;
   termsContent: string | null;
   securityContent: string | null;
+  pageBannersJson: string | null;
 }
 
 export interface PlatformSiteStat {
@@ -271,6 +273,42 @@ export interface PlatformContentCardDto {
   published: boolean;
 }
 
+export interface PlatformCommunicationSettingsDto {
+  emailEnabled: boolean;
+  emailConfigJson: string | null;
+  smsEnabled: boolean;
+  smsConfigJson: string | null;
+}
+
+export interface PlatformNotificationTemplateDto {
+  id: number;
+  eventType: string;
+  channel: string;
+  name: string;
+  subject: string | null;
+  body: string;
+  supportedVariables: string | null;
+  active: boolean;
+}
+
+export interface PlatformNotificationDto {
+  id: number;
+  eventType: string;
+  channel: string;
+  priority: string;
+  status: string;
+  recipientName: string | null;
+  recipientEmail: string | null;
+  recipientPhone: string | null;
+  subject: string | null;
+  body: string;
+  retryCount: number;
+  maxRetries: number;
+  errorMessage: string | null;
+  createdAt: string;
+  sentAt: string | null;
+}
+
 export interface PlatformBlogPostDto {
   id: number;
   title: string;
@@ -282,4 +320,58 @@ export interface PlatformBlogPostDto {
   published: boolean;
   createdAt: string;
   publishedAt: string | null;
+}
+
+export interface PlatformDashboardStatsApiDto {
+  activeOrganizations: number;
+  newOrganizationsLast30Days: number;
+  appointmentsToday: number;
+  appointmentsYesterday: number;
+  pharmacyRevenueToday: number;
+  pharmacyRevenueYesterday: number;
+  pendingLabResults: number;
+}
+
+export interface ChartRow {
+  name: string;
+  [seriesKey: string]: string | number;
+}
+
+export interface PlatformDashboardApiDto {
+  stats: PlatformDashboardStatsApiDto;
+  appointmentsRevenueTrend: ChartRow[];
+  organizationsByType: ChartRow[];
+}
+
+export interface ClinicDashboardApiDto {
+  todaysAppointments: number;
+  checkedIn: number;
+  inConsultation: number;
+  completedToday: number;
+  totalPatients: number;
+  totalDoctors: number;
+}
+
+export interface PharmacyDashboardApiDto {
+  pendingPrescriptions: number;
+  todaysSalesCount: number;
+  todaysRevenue: number;
+  lowStockCount: number;
+  expiringSoonCount: number;
+}
+
+export interface LabDashboardApiDto {
+  todaysOrders: number;
+  pendingCollection: number;
+  pendingResults: number;
+  pendingVerification: number;
+  completedReports: number;
+  rejectedSamples: number;
+}
+
+export interface BillingDashboardApiDto {
+  unpaidInvoices: number;
+  totalOutstanding: number;
+  todaysInvoices: number;
+  todaysCollections: number;
 }

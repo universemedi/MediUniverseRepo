@@ -50,6 +50,27 @@ public class RoleController {
         return roleService.createCustomRole(me.getOrganization(), request);
     }
 
+    /** Super Admin builds a brand-new platform-portal role (staff role, not tenant). */
+    @PostMapping("/api/platform/roles")
+    @PreAuthorize("hasAuthority('PORTAL_PLATFORM') and hasAuthority('ROLE_SUPER_ADMIN')")
+    public RoleDto createPlatformRole(@Valid @RequestBody CreateRoleRequest request) {
+        return roleService.createPlatformRole(request);
+    }
+
+    /** Edits any non-system role (a platform role created here, or an org's own custom role). */
+    @PutMapping("/api/platform/roles/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_PLATFORM') and hasAuthority('ROLE_SUPER_ADMIN')")
+    public RoleDto updateRole(@PathVariable Long id, @Valid @RequestBody CreateRoleRequest request) {
+        return roleService.updateRole(id, request);
+    }
+
+    @DeleteMapping("/api/platform/roles/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_PLATFORM') and hasAuthority('ROLE_SUPER_ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteRole(@PathVariable Long id) {
+        roleService.deleteRole(id);
+    }
+
     private void requireOrganization(AppUser me) {
         if (me.getOrganization() == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This account is not attached to an organization.");

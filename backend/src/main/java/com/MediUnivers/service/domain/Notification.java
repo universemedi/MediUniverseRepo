@@ -99,6 +99,10 @@ public class Notification {
     @Column(name = "sent_at")
     private Instant sentAt;
 
+    /** Whether the recipient has seen this in their header notification bell — independent of delivery `status`. */
+    @Column(name = "is_read", nullable = false)
+    private boolean read = false;
+
     public boolean isDue() {
         return scheduledFor == null || !scheduledFor.isAfter(Instant.now());
     }

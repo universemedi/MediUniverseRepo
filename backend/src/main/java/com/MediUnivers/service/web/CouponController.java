@@ -2,6 +2,7 @@ package com.MediUnivers.service.web;
 
 import com.MediUnivers.service.dto.CouponDto;
 import com.MediUnivers.service.dto.CreateCouponRequest;
+import com.MediUnivers.service.dto.ShareCouponRequest;
 import com.MediUnivers.service.dto.UpdateCouponRequest;
 import com.MediUnivers.service.service.CouponService;
 import jakarta.validation.Valid;
@@ -43,5 +44,12 @@ public class CouponController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deactivate(@PathVariable Long id) {
         service.deactivate(id);
+    }
+
+    @PostMapping("/{id}/share")
+    @PreAuthorize("hasAuthority('PORTAL_PLATFORM') and (hasAuthority('ROLE_SUPER_ADMIN') or hasAuthority('ROLE_PLATFORM_SALES_LEAD') or hasAuthority('ROLE_PLATFORM_FINANCE'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void share(@PathVariable Long id, @Valid @RequestBody ShareCouponRequest request) {
+        service.share(id, request);
     }
 }

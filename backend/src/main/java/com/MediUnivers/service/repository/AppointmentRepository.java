@@ -13,4 +13,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByPatientIdOrderByAppointmentDateDesc(Long patientId);
     long countByOrganizationIdAndAppointmentDateAndStatus(Long organizationId, LocalDate date, AppointmentStatus status);
     long countByOrganizationIdAndAppointmentDate(Long organizationId, LocalDate date);
+
+    /** Cross-organization counts — platform dashboard only, never tenant-scoped. */
+    long countByAppointmentDate(LocalDate date);
+    long countByAppointmentDateBetween(LocalDate startInclusive, LocalDate endInclusive);
 }

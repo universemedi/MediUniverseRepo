@@ -34,4 +34,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findTop100ByStatusAndNextRetryAtLessThanEqualOrderByCreatedAtAsc(NotificationStatus status, Instant now);
 
     long countByOrganizationIdAndStatus(Long organizationId, NotificationStatus status);
+
+    /** The header bell: this user's own in-app notifications. */
+    List<Notification> findByRecipientUserIdAndChannelOrderByCreatedAtDesc(
+            Long recipientUserId, NotificationChannel channel, Pageable pageable);
+
+    long countByRecipientUserIdAndChannelAndReadFalse(Long recipientUserId, NotificationChannel channel);
 }

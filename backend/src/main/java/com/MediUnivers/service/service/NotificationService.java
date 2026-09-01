@@ -221,4 +221,44 @@ public class NotificationService {
                 n.getSubject(), n.getBody(), n.getRetryCount(), n.getMaxRetries(), n.getErrorMessage(),
                 n.getScheduledFor(), n.getCreatedAt(), n.getSentAt());
     }
+
+    // ---------------- Header bell (this user's own IN_APP notifications) ----------------
+
+    @Transactional(readOnly = true)
+    public List<com.MediUnivers.service.dto.MyNotificationDto> listMine(Long userId, int limit) {
+        Pageable page = Pageable.ofSize(Math.min(Math.max(limit, 1), 100));
+        return notificationRepository
+                .findByRecipientUserIdAndChannelOrderByCreatedAtDesc(userId, NotificationChannel.IN_APP, page)
+                .stream().map(this::toMyDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public long countMineUnread(Long userId) {
+        return notificationRepository.countByRecipientUserIdAndChannelAndReadFalse(userId, NotificationChannel.IN_APP);
+    }
+
+    @Transactional
+    public void markMineRead(Long userId, Long notificationId) {
+        notificationRepository.findById(notificationId)
+                .filter(n -> userId.equals(n.getRecipientUserId()))
+                .ifPresent(n -> {
+                    n.setRead(true);
+                    notificationRepository.save(n);
+                });
+    }
+
+    @Transactional
+    public void markAllMineRead(Long userId) {
+        notificationRepository.findByRecipientUserIdAndChannelOrderByCreatedAtDesc(
+                        userId, NotificationChannel.IN_APP, Pageable.ofSize(200))
+                .forEach(n -> {
+                    n.setRead(true);
+                    notificationRepository.save(n);
+                });
+    }
+
+    private com.MediUnivers.service.dto.MyNotificationDto toMyDto(Notification n) {
+        return new com.MediUnivers.service.dto.MyNotificationDto(
+                n.getId(), n.getEventType().name(), n.getSubject(), n.getBody(), n.isRead(), n.getCreatedAt());
+    }
 }

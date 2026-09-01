@@ -2,8 +2,8 @@ package com.MediUnivers.service.service;
 
 import com.MediUnivers.service.config.AppProperties;
 import com.MediUnivers.service.domain.AppUser;
-import com.MediUnivers.service.domain.NotificationEventType;
 import com.MediUnivers.service.domain.NotificationPriority;
+import com.MediUnivers.service.domain.PlatformNotificationEventType;
 import com.MediUnivers.service.domain.UserStatus;
 import com.MediUnivers.service.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +35,7 @@ public class AuthPasswordResetService {
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
-    private final NotificationService notificationService;
+    private final PlatformNotificationService platformNotificationService;
     private final AppProperties appProperties;
 
     /**
@@ -64,22 +64,19 @@ public class AuthPasswordResetService {
         appUserRepository.save(user);
     }
 
+    /** Routed through the platform's own Communication Engine — not the user's org — so it works identically for platform staff, org staff and any org whose own SMTP isn't configured yet. */
     private void stampAndNotify(AppUser user) {
         user.setResetToken(UUID.randomUUID().toString().replace("-", ""));
         user.setResetTokenExpiresAt(Instant.now().plus(RESET_VALID_MINUTES, ChronoUnit.MINUTES));
         appUserRepository.save(user);
-
-        // Platform staff have no organization, so there's no NotificationTemplate
-        // catalog to render from — same accepted limitation as invite emails today.
-        if (user.getOrganization() == null) return;
 
         Map<String, String> vars = new HashMap<>();
         vars.put("fullName", user.getFullName());
         vars.put("resetLink", appProperties.frontendBaseUrl() + "/reset-password?token=" + user.getResetToken());
         vars.put("expiresAt", DateTimeFormatter.ISO_INSTANT.format(user.getResetTokenExpiresAt()));
 
-        notificationService.notify(user.getOrganization(), NotificationEventType.PASSWORD_RESET_REQUESTED,
+        platformNotificationService.notify(PlatformNotificationEventType.PASSWORD_RESET_REQUESTED,
                 NotificationRecipient.of(user.getFullName(), user.getEmail(), null),
-                vars, NotificationPriority.HIGH, "APP_USER", user.getId(), null);
+                vars, NotificationPriority.HIGH, "APP_USER", user.getId());
     }
 }

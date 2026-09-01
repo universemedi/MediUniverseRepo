@@ -11,4 +11,7 @@ public interface LabOrderRepository extends JpaRepository<LabOrder, Long> {
     List<LabOrder> findByOrganizationIdAndStatusInOrderByCreatedAtDesc(Long organizationId, List<LabOrderStatus> statuses);
     List<LabOrder> findByPatientIdOrderByCreatedAtDesc(Long patientId);
     long countByOrganizationIdAndStatus(Long organizationId, LabOrderStatus status);
+
+    /** Cross-organization count — platform dashboard only, never tenant-scoped. */
+    long countByStatusIn(List<LabOrderStatus> statuses);
 }

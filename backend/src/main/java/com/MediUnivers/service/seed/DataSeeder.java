@@ -49,6 +49,7 @@ public class DataSeeder implements CommandLineRunner {
     private final PlatformContentCardRepository platformContentCardRepository;
     private final com.MediUnivers.service.service.NotificationTemplateService notificationTemplateService;
     private final com.MediUnivers.service.service.NotificationService notificationService;
+    private final com.MediUnivers.service.service.PlatformNotificationTemplateService platformNotificationTemplateService;
     private final PasswordEncoder passwordEncoder;
 
     private static final String DEMO_PASSWORD = "demo1234";
@@ -65,6 +66,7 @@ public class DataSeeder implements CommandLineRunner {
         seedDemoOrganizationAndUsers();
         seedDemoWebsite();
         seedPlatformWebsiteContent();
+        platformNotificationTemplateService.seedDefaults();
         log.info("MediUnivers seed data ready. Demo accounts all use password '{}':", DEMO_PASSWORD);
         log.info("  Platform : superadmin@mediunivers.io  (SUPER_ADMIN)");
         log.info("  Tenant   : owner@sunrise.mediunivers.io (ORG_OWNER, Sunrise Multispeciality)");

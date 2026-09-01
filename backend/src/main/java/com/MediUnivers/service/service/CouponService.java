@@ -1,8 +1,11 @@
 package com.MediUnivers.service.service;
 
 import com.MediUnivers.service.domain.Coupon;
+import com.MediUnivers.service.domain.NotificationPriority;
+import com.MediUnivers.service.domain.PlatformNotificationEventType;
 import com.MediUnivers.service.dto.CouponDto;
 import com.MediUnivers.service.dto.CreateCouponRequest;
+import com.MediUnivers.service.dto.ShareCouponRequest;
 import com.MediUnivers.service.dto.UpdateCouponRequest;
 import com.MediUnivers.service.repository.CouponRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -12,7 +15,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +26,7 @@ import java.util.List;
 public class CouponService {
 
     private final CouponRepository repository;
+    private final PlatformNotificationService platformNotificationService;
 
     public List<CouponDto> listAll() {
         return repository.findAll().stream().map(CouponService::toDto).toList();
@@ -50,6 +57,23 @@ public class CouponService {
         if (request.planCodes() != null) c.getPlanCodes().addAll(request.planCodes());
         c.setActive(request.active());
         return toDto(repository.save(c));
+    }
+
+    @Transactional
+    public void share(Long id, ShareCouponRequest request) {
+        Coupon c = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Coupon not found: " + id));
+        if (!c.isActive()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This coupon is inactive — activate it before sharing.");
+        }
+        Map<String, String> vars = new HashMap<>();
+        vars.put("fullName", request.recipientName());
+        vars.put("couponCode", c.getCode());
+        vars.put("discountPercent", c.getDiscountPercent().stripTrailingZeros().toPlainString());
+        vars.put("validTo", c.getValidTo() != null ? c.getValidTo().format(DateTimeFormatter.ISO_DATE) : "no end date");
+        platformNotificationService.notify(PlatformNotificationEventType.COUPON_SHARED,
+                NotificationRecipient.of(request.recipientName(), request.recipientEmail(), null),
+                vars, NotificationPriority.NORMAL, "COUPON", c.getId());
     }
 
     @Transactional

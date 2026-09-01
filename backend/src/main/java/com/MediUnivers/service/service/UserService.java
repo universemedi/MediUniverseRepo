@@ -1,13 +1,17 @@
 package com.MediUnivers.service.service;
 
 import com.MediUnivers.service.domain.*;
+import com.MediUnivers.service.dto.ChangePasswordRequest;
 import com.MediUnivers.service.dto.CreateUserRequest;
 import com.MediUnivers.service.dto.MeResponse;
+import com.MediUnivers.service.dto.MyProfileDto;
 import com.MediUnivers.service.dto.OrgUserDto;
+import com.MediUnivers.service.dto.UpdateMyProfileRequest;
 import com.MediUnivers.service.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -15,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -27,6 +32,8 @@ public class UserService {
     private final BranchRepository branchRepository;
     private final OrgModuleService orgModuleService;
     private final UserInvitationService userInvitationService;
+    private final PasswordEncoder passwordEncoder;
+    private final PlatformNotificationService platformNotificationService;
 
     @Transactional(readOnly = true)
     public List<OrgUserDto> listForOrganization(Long organizationId) {
@@ -119,6 +126,42 @@ public class UserService {
     public MeResponse resendInvitation(Organization organization, Long userId) {
         AppUser user = userInvitationService.resend(organization, userId);
         return toMeResponse(user);
+    }
+
+    /** Every logged-in user, any portal, editing their own account — no admin permission needed. */
+    @Transactional(readOnly = true)
+    public MyProfileDto getOwnProfile(AppUser user) {
+        return toProfileDto(user);
+    }
+
+    public MyProfileDto updateOwnProfile(AppUser user, UpdateMyProfileRequest request) {
+        String newEmail = request.email().trim();
+        if (!newEmail.equalsIgnoreCase(user.getEmail()) && appUserRepository.existsByEmailIgnoreCase(newEmail)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Another account already uses this email.");
+        }
+        user.setFullName(request.fullName().trim());
+        user.setEmail(newEmail);
+        user.setPhone(request.phone() != null && !request.phone().isBlank() ? request.phone().trim() : null);
+        user.setDateOfBirth(request.dateOfBirth());
+        return toProfileDto(appUserRepository.save(user));
+    }
+
+    /** Every logged-in user, any portal, changing their own password — requires knowing the current one, unlike the forgot-password token flow. */
+    public void changeOwnPassword(AppUser user, ChangePasswordRequest request) {
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect.");
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        appUserRepository.save(user);
+
+        platformNotificationService.notify(PlatformNotificationEventType.PASSWORD_CHANGED,
+                new NotificationRecipient(user.getFullName(), user.getEmail(), user.getPhone(), user.getId()),
+                Map.of("fullName", user.getFullName()),
+                NotificationPriority.HIGH, "APP_USER", user.getId());
+    }
+
+    private MyProfileDto toProfileDto(AppUser user) {
+        return new MyProfileDto(user.getFullName(), user.getEmail(), user.getPhone(), user.getDateOfBirth());
     }
 
     public MeResponse toMeResponse(AppUser user) {

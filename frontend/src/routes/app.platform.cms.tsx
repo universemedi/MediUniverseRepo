@@ -5,6 +5,14 @@ import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/lib/api";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { PlatformSiteConfigDto, PlatformSiteStat } from "@/lib/types";
+import {
+  PAGE_BANNER_LABELS,
+  parsePageBanners,
+  stringifyPageBanners,
+  type PageBannerKey,
+  type PageBanners,
+} from "@/lib/pageBanners";
+import { ImageUploadField } from "@/components/common/ImageUploadField";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -96,6 +104,7 @@ function PlatformCmsPage() {
 
   const [config, setConfig] = useState<PlatformSiteConfigDto | null>(null);
   const [stats, setStats] = useState<PlatformSiteStat[]>([]);
+  const [pageBanners, setPageBanners] = useState<PageBanners>({});
   const [templates, setTemplates] = useState<WebsiteTemplateRow[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -115,6 +124,7 @@ function PlatformCmsPage() {
       .then(([c, t]) => {
         setConfig(c);
         setStats(parseStats(c.statsJson));
+        setPageBanners(parsePageBanners(c.pageBannersJson));
         setTemplates(t);
       })
       .catch((err) =>
@@ -143,6 +153,7 @@ function PlatformCmsPage() {
       const payload = {
         ...config,
         statsJson: cleanStats.length ? JSON.stringify(cleanStats) : null,
+        pageBannersJson: Object.keys(pageBanners).length ? stringifyPageBanners(pageBanners) : null,
       };
       const updated = await apiFetch<PlatformSiteConfigDto>("/api/platform/website-config", {
         method: "PUT",
@@ -150,6 +161,7 @@ function PlatformCmsPage() {
       });
       setConfig(updated);
       setStats(parseStats(updated.statsJson));
+      setPageBanners(parsePageBanners(updated.pageBannersJson));
       toast.success("MediUnivers site settings saved");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Couldn't save site settings.");
@@ -168,6 +180,15 @@ function PlatformCmsPage() {
 
   function removeStat(index: number) {
     setStats((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updatePageBanner(key: PageBannerKey, url: string | null) {
+    setPageBanners((prev) => {
+      const next = { ...prev };
+      if (url) next[key] = url;
+      else delete next[key];
+      return next;
+    });
   }
 
   function openCreate() {
@@ -261,10 +282,10 @@ function PlatformCmsPage() {
           <>
             <Card className="grid gap-4 p-5 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
-                <Label>Logo URL</Label>
-                <Input
-                  value={config.logoUrl ?? ""}
-                  onChange={(e) => setConfig({ ...config, logoUrl: e.target.value })}
+                <ImageUploadField
+                  label="Logo"
+                  value={config.logoUrl ?? null}
+                  onChange={(url) => setConfig({ ...config, logoUrl: url ?? "" })}
                 />
               </div>
               <div className="space-y-1.5">
@@ -426,6 +447,28 @@ function PlatformCmsPage() {
                   ))}
                 </div>
               )}
+            </Card>
+
+            <Card className="space-y-4 p-5">
+              <div>
+                <Label className="text-sm font-semibold">Page banners</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  A hero image for each marketing page. Leave a page blank to keep its flat
+                  brand-colour background.
+                </p>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                {(Object.entries(PAGE_BANNER_LABELS) as [PageBannerKey, string][]).map(
+                  ([key, label]) => (
+                    <ImageUploadField
+                      key={key}
+                      label={label}
+                      value={pageBanners[key] ?? null}
+                      onChange={(url) => updatePageBanner(key, url)}
+                    />
+                  ),
+                )}
+              </div>
             </Card>
 
             <Card className="space-y-4 p-5">

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
+import ReactSelect from "react-select";
 import { SiteLayout, PageHero } from "@/components/site/SiteLayout";
 import { apiFetchPublic, ApiError } from "@/lib/api";
 import type { OrgTypeApiDto } from "@/lib/types";
 import { storeSignupSession, type SignupResult } from "@/lib/signupSession";
+import { fetchIndiaCities, useIndiaStates } from "@/lib/indiaLocations";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,7 +67,29 @@ function CreateAccountPage() {
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const states = useIndiaStates();
   const [subdomain, setSubdomain] = useState("");
+
+  useEffect(() => {
+    if (!state) {
+      setCityOptions([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingCities(true);
+    fetchIndiaCities(state)
+      .then((cities) => {
+        if (!cancelled) setCityOptions(cities);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCities(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [state]);
 
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -259,12 +283,33 @@ function CreateAccountPage() {
                 <Input id="s-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="s-city">City</Label>
-                <Input id="s-city" value={city} onChange={(e) => setCity(e.target.value)} />
+                <Label htmlFor="s-state">State</Label>
+                <ReactSelect
+                  inputId="s-state"
+                  instanceId="s-state"
+                  isSearchable
+                  options={states.map((s) => ({ label: s, value: s }))}
+                  value={state ? { label: state, value: state } : null}
+                  onChange={(opt) => {
+                    setState(opt?.value ?? "");
+                    setCity("");
+                  }}
+                  placeholder="Select state"
+                />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="s-state">State</Label>
-                <Input id="s-state" value={state} onChange={(e) => setState(e.target.value)} />
+                <Label htmlFor="s-city">City</Label>
+                <ReactSelect
+                  inputId="s-city"
+                  instanceId="s-city"
+                  isSearchable
+                  isDisabled={!state}
+                  isLoading={loadingCities}
+                  options={cityOptions.map((c) => ({ label: c, value: c }))}
+                  value={city ? { label: city, value: city } : null}
+                  onChange={(opt) => setCity(opt?.value ?? "")}
+                  placeholder={state ? "Select city" : "Select a state first"}
+                />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="s-subdomain">Preferred subdomain</Label>

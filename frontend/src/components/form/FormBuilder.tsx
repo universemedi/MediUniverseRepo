@@ -92,6 +92,8 @@ interface FieldProps {
   onChange: (v: string) => void;
   onBlur: () => void;
   inputRef: (el: HTMLElement | null) => void;
+  /** Current value of `column.dependsOn`, when set — feeds `column.optionsFor`. */
+  dependencyValue?: string;
 }
 
 type SelectOption = { label: string; value: string };
@@ -137,65 +139,118 @@ const selectStyles: StylesConfig<SelectOption, boolean> = {
   multiValueLabel: (base) => ({ ...base, color: "var(--primary)" }),
 };
 
-function Field({ column, value, error, touched, onChange, onBlur, inputRef }: FieldProps) {
+function Field({
+  column,
+  value,
+  error,
+  touched,
+  onChange,
+  onBlur,
+  inputRef,
+  dependencyValue,
+}: FieldProps) {
   const invalid = Boolean(error) && touched;
   const valid = !error && touched && value.length > 0;
   const id = `field-${column.key}`;
   const describedBy = invalid ? `${id}-error` : undefined;
+  const cascading = Boolean(column.dependsOn);
+
+  const [rawOptions, setRawOptions] = useState<string[]>(() =>
+    column.optionsFor ? [] : (column.options ?? []),
+  );
+  const [loadingOptions, setLoadingOptions] = useState(false);
+
+  useEffect(() => {
+    if (!column.optionsFor) {
+      setRawOptions(column.options ?? []);
+      return undefined;
+    }
+    const result = column.optionsFor(dependencyValue ?? "");
+    if (result instanceof Promise) {
+      let cancelled = false;
+      setLoadingOptions(true);
+      result
+        .then((opts) => {
+          if (!cancelled) setRawOptions(opts);
+        })
+        .catch(() => {
+          if (!cancelled) setRawOptions([]);
+        })
+        .finally(() => {
+          if (!cancelled) setLoadingOptions(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+    setRawOptions(result);
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [column.optionsFor, column.options, dependencyValue]);
 
   const options = useMemo<SelectOption[]>(
-    () => (column.options ?? []).map((o) => ({ label: o, value: o })),
-    [column.options],
+    () => rawOptions.map((o) => ({ label: o, value: o })),
+    [rawOptions],
   );
 
-  const selectControl = column.options?.length ? (
-    <Select<SelectOption, boolean>
-      inputId={id}
-      isMulti={Boolean(column.multiple)}
-      isSearchable
-      options={options}
-      value={
-        column.multiple
-          ? options.filter((option) =>
-              value
-                .split(",")
-                .map((v) => v.trim())
-                .includes(option.value),
-            )
-          : (options.find((option) => option.value === value) ?? null)
-      }
-      onChange={(selected: MultiValue<SelectOption> | SingleValue<SelectOption>) => {
-        if (column.multiple) {
-          const next = (selected as MultiValue<SelectOption>).map((item) => item.value).join(", ");
-          onChange(next);
-        } else {
-          onChange((selected as SingleValue<SelectOption>)?.value ?? "");
+  const selectControl =
+    column.options?.length || column.optionsFor ? (
+      <Select<SelectOption, boolean>
+        inputId={id}
+        instanceId={id}
+        isMulti={Boolean(column.multiple)}
+        isSearchable
+        isDisabled={cascading && !dependencyValue}
+        isLoading={loadingOptions}
+        options={options}
+        value={
+          column.multiple
+            ? options.filter((option) =>
+                value
+                  .split(",")
+                  .map((v) => v.trim())
+                  .includes(option.value),
+              )
+            : (options.find((option) => option.value === value) ?? null)
         }
-      }}
-      onBlur={onBlur}
-      placeholder={`Select ${column.label.toLowerCase()}${column.multiple ? " (search and select)" : ""}`}
-      styles={{
-        ...selectStyles,
-        control: (base, state) => ({
-          ...selectStyles.control!(base, state),
-          borderColor: invalid
-            ? "var(--destructive)"
-            : state.isFocused
-              ? "var(--ring)"
-              : "var(--input)",
-          boxShadow: invalid
-            ? "0 0 0 1px color-mix(in oklab, var(--destructive) 30%, transparent)"
-            : state.isFocused
-              ? "0 0 0 2px color-mix(in oklab, var(--ring) 20%, transparent)"
-              : "none",
-        }),
-      }}
-      className={cn(invalid && "rounded-md")}
-      aria-invalid={invalid}
-      aria-describedby={describedBy}
-      ref={(instance) => inputRef(instance?.inputRef ?? null)}
-    />
-  ) : null;
+        onChange={(selected: MultiValue<SelectOption> | SingleValue<SelectOption>) => {
+          if (column.multiple) {
+            const next = (selected as MultiValue<SelectOption>)
+              .map((item) => item.value)
+              .join(", ");
+            onChange(next);
+          } else {
+            onChange((selected as SingleValue<SelectOption>)?.value ?? "");
+          }
+        }}
+        onBlur={onBlur}
+        placeholder={
+          cascading && !dependencyValue
+            ? "Select a state first"
+            : `Select ${column.label.toLowerCase()}${column.multiple ? " (search and select)" : ""}`
+        }
+        styles={{
+          ...selectStyles,
+          control: (base, state) => ({
+            ...selectStyles.control!(base, state),
+            borderColor: invalid
+              ? "var(--destructive)"
+              : state.isFocused
+                ? "var(--ring)"
+                : "var(--input)",
+            boxShadow: invalid
+              ? "0 0 0 1px color-mix(in oklab, var(--destructive) 30%, transparent)"
+              : state.isFocused
+                ? "0 0 0 2px color-mix(in oklab, var(--ring) 20%, transparent)"
+                : "none",
+          }),
+        }}
+        className={cn(invalid && "rounded-md")}
+        aria-invalid={invalid}
+        aria-describedby={describedBy}
+        ref={(instance) => inputRef(instance?.inputRef ?? null)}
+      />
+    ) : null;
 
   const phoneControl =
     column.type === "phone" ? (
@@ -355,7 +410,14 @@ export function FormBuilder({
   }, [values]);
 
   const handleChange = (key: string, nextValue: string) => {
-    setValues((prev) => ({ ...prev, [key]: nextValue }));
+    // Clear any field that cascades from this one — e.g. changing state
+    // invalidates whatever city was previously picked for the old state.
+    const dependents = fields.filter((c) => c.dependsOn === key);
+    setValues((prev) => {
+      const next = { ...prev, [key]: nextValue };
+      for (const d of dependents) next[d.key] = "";
+      return next;
+    });
     if (touched[key]) {
       const next = { ...values, [key]: nextValue };
       setErrors((prev) => {
@@ -466,6 +528,7 @@ export function FormBuilder({
             inputRef={(el) => {
               refs.current[c.key] = el;
             }}
+            {...(c.dependsOn ? { dependencyValue: values[c.dependsOn] ?? "" } : {})}
           />
         ))}
       </div>

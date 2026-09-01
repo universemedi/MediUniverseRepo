@@ -3,10 +3,9 @@ import { useDispatch, useSelector, type TypedUseSelectorHook } from "react-redux
 import auth from "./slices/authSlice";
 import theme from "./slices/themeSlice";
 import ui from "./slices/uiSlice";
-import notifications from "./slices/notificationsSlice";
 import tenant from "./slices/tenantSlice";
 
-const rootReducer = combineReducers({ auth, theme, ui, notifications, tenant });
+const rootReducer = combineReducers({ auth, theme, ui, tenant });
 
 export const makeStore = () =>
   configureStore({

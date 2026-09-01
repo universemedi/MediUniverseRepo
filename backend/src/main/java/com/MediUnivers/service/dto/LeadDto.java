@@ -12,6 +12,7 @@ public record LeadDto(
         String organizationName,
         String organizationType,
         String city,
+        String state,
         Integer expectedBranches,
         Integer expectedUsers,
         String modulesOfInterest,

@@ -20,4 +20,6 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     long countByOrganizationIdAndStatusIn(Long organizationId, List<com.MediUnivers.service.domain.UserStatus> statuses);
 
     List<AppUser> findByOrganizationIsNullOrderByFullNameAsc();
+
+    boolean existsByRoleId(Long roleId);
 }

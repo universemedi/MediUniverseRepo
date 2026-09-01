@@ -11,8 +11,10 @@ import com.MediUnivers.service.repository.AppUserRepository;
 import com.MediUnivers.service.repository.RoleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -39,6 +41,10 @@ public class PlatformStaffService {
                 .orElseThrow(() -> new EntityNotFoundException("Unknown role: " + request.roleCode()));
         AppUser user = userInvitationService.invite(null, Portal.PLATFORM, role, request.fullName(), request.email(),
                 null, null, null);
+        if (request.phone() != null && !request.phone().isBlank()) {
+            user.setPhone(request.phone().trim());
+            appUserRepository.save(user);
+        }
         auditLogService.record(currentUserService.require(), "CREATED", "PLATFORM_STAFF", user.getEmail(), null);
         return toDto(user);
     }
@@ -50,13 +56,22 @@ public class PlatformStaffService {
                 .orElseThrow(() -> new EntityNotFoundException("Staff member not found: " + id));
         Role role = roleRepository.findByCode(request.roleCode())
                 .orElseThrow(() -> new EntityNotFoundException("Unknown role: " + request.roleCode()));
+
+        String newEmail = request.email().trim();
+        if (!newEmail.equalsIgnoreCase(user.getEmail()) && appUserRepository.existsByEmailIgnoreCase(newEmail)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Another account already uses this email.");
+        }
+
+        user.setFullName(request.fullName().trim());
+        user.setEmail(newEmail);
+        user.setPhone(request.phone() != null && !request.phone().isBlank() ? request.phone().trim() : null);
         user.setRole(role);
         user.setStatus(UserStatus.valueOf(request.status()));
         return toDto(appUserRepository.save(user));
     }
 
     private static PlatformStaffDto toDto(AppUser u) {
-        return new PlatformStaffDto(u.getId(), u.getFullName(), u.getEmail(),
+        return new PlatformStaffDto(u.getId(), u.getFullName(), u.getEmail(), u.getPhone(),
                 u.getRole().getCode(), u.getRole().getName(), u.getStatus().name());
     }
 }

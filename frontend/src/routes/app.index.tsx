@@ -1,11 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { MODULES } from "@/config/modules";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAppSelector } from "@/store";
 import { apiFetch } from "@/lib/api";
-import type { LeadApiDto, SubscriptionApiDto } from "@/lib/types";
+import type {
+  LeadApiDto,
+  SubscriptionApiDto,
+  PlatformDashboardApiDto,
+  ClinicDashboardApiDto,
+  PharmacyDashboardApiDto,
+  LabDashboardApiDto,
+  BillingDashboardApiDto,
+  ChartRow,
+} from "@/lib/types";
+import type { ChartDef, StatDef } from "@/config/types";
 import { StatCards } from "@/components/common/StatCards";
 import { ChartCard } from "@/components/common/ChartCard";
 import { WebsiteSetupBanner } from "@/components/layout/WebsiteSetupBanner";
@@ -19,76 +29,49 @@ export const Route = createFileRoute("/app/")({
   component: Dashboard,
 });
 
-const STATS = [
-  { label: "Active organizations", value: "482", delta: "+8.2%", trend: "up" as const },
-  { label: "Appointments today", value: "1,284", delta: "+4.6%", trend: "up" as const },
-  { label: "Pharmacy revenue", value: "₹ 8.4L", delta: "+12.1%", trend: "up" as const },
-  { label: "Pending lab results", value: "97", delta: "-6.3%", trend: "down" as const },
-];
+function currency(n: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
 
-const CHARTS = [
-  {
-    type: "area" as const,
-    title: "Appointments & revenue trend",
-    dataKeys: ["Appointments", "Revenue"],
-    categories: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"],
-  },
-  {
-    type: "bar" as const,
-    title: "Module usage by organization type",
-    dataKeys: ["Clinic", "Pharmacy", "Laboratory"],
-    categories: ["Starter", "Professional", "Enterprise", "Custom"],
-  },
-  {
-    type: "pie" as const,
-    title: "Subscription mix",
-    dataKeys: ["Organizations"],
-    categories: ["Starter", "Professional", "Enterprise", "Custom"],
-  },
-  {
-    type: "line" as const,
-    title: "Onboarding funnel velocity",
-    dataKeys: ["Leads", "Trials", "Live"],
-    categories: ["W1", "W2", "W3", "W4", "W5", "W6"],
-  },
-];
+/** Real day-over-day comparison — omitted (no badge shown) when there's no prior-day baseline to compare against. */
+function dayOverDayDelta(today: number, yesterday: number): Pick<StatDef, "delta" | "trend"> {
+  if (yesterday <= 0) return {};
+  const pct = ((today - yesterday) / yesterday) * 100;
+  return { delta: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`, trend: pct >= 0 ? "up" : "down" };
+}
 
-const TENANT_STATS = [
-  { label: "Appointments today", value: "184", delta: "+6.2%", trend: "up" as const },
-  { label: "Patients in queue", value: "23", delta: "-3.1%", trend: "down" as const },
-  { label: "Today's collection", value: "₹ 1.9L", delta: "+9.4%", trend: "up" as const },
-  { label: "Pending lab results", value: "17", delta: "-4.0%", trend: "down" as const },
-];
-
-const TENANT_CHARTS = [
-  {
-    type: "area" as const,
-    title: "Appointments & revenue trend",
-    dataKeys: ["Appointments", "Revenue"],
-    categories: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-  },
-  {
-    type: "bar" as const,
-    title: "Department load",
-    dataKeys: ["Consultations"],
-    categories: ["General", "Cardio", "Ortho", "Pediatrics", "Derma"],
-  },
-];
+/** Six trailing 7-day windows, oldest first — used for the onboarding funnel chart. */
+function weekBuckets(n: number) {
+  const dayMs = 86_400_000;
+  const now = Date.now();
+  const buckets: { start: number; end: number; label: string }[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const end = now - i * 7 * dayMs;
+    const start = end - 7 * dayMs;
+    buckets.push({ start, end, label: `W${n - i}` });
+  }
+  return buckets;
+}
 
 function Dashboard() {
-  const { canAccessPath, roleName, isPlatform, plan, orgType, orgName, reasonForPath } =
+  const { canAccessPath, roleName, isPlatform, plan, orgType, orgName, reasonForPath, portal } =
     usePermissions();
   const user = useAppSelector((s) => s.auth.user);
-  const sections = NAV_SECTIONS.map((s) => ({
-    ...s,
-    items: s.items.filter((i) => reasonForPath(i.path) === "ok"),
-  })).filter((s) => s.items.length);
-  const stats = isPlatform ? STATS : TENANT_STATS;
-  const charts = isPlatform ? CHARTS : TENANT_CHARTS;
+  const sections = NAV_SECTIONS.filter((s) => s.portal === portal)
+    .map((s) => ({
+      ...s,
+      items: s.items.filter((i) => reasonForPath(i.path) === "ok"),
+    }))
+    .filter((s) => s.items.length);
 
   const [leads, setLeads] = useState<LeadApiDto[] | null>(null);
   const [subscriptions, setSubscriptions] = useState<SubscriptionApiDto[] | null>(null);
   const [trials, setTrials] = useState<SubscriptionApiDto[] | null>(null);
+  const [platformDashboard, setPlatformDashboard] = useState<PlatformDashboardApiDto | null>(null);
 
   useEffect(() => {
     if (!isPlatform) return;
@@ -96,18 +79,57 @@ function Dashboard() {
       apiFetch<LeadApiDto[]>("/api/platform/leads"),
       apiFetch<SubscriptionApiDto[]>("/api/platform/subscriptions"),
       apiFetch<SubscriptionApiDto[]>("/api/platform/subscriptions/trials"),
+      apiFetch<PlatformDashboardApiDto>("/api/platform/dashboard"),
     ])
-      .then(([l, s, t]) => {
+      .then(([l, s, t, d]) => {
         setLeads(l);
         setSubscriptions(s);
         setTrials(t);
+        setPlatformDashboard(d);
       })
       .catch(() => {
         setLeads([]);
         setSubscriptions([]);
         setTrials([]);
+        setPlatformDashboard(null);
       });
   }, [isPlatform]);
+
+  // A clinic-only org's plan never includes pharmacy/lab, and vice versa — both the
+  // organization's business type AND its paid plan must allow a module before we
+  // ask its dashboard for numbers (matches AccessService.requireModuleEnabled).
+  const hasClinic = orgType.modules.includes("clinic") && plan.modules.includes("clinic");
+  const hasPharmacy = orgType.modules.includes("pharmacy") && plan.modules.includes("pharmacy");
+  const hasLab = orgType.modules.includes("lab") && plan.modules.includes("lab");
+
+  const [clinicDashboard, setClinicDashboard] = useState<ClinicDashboardApiDto | null>(null);
+  const [pharmacyDashboard, setPharmacyDashboard] = useState<PharmacyDashboardApiDto | null>(null);
+  const [labDashboard, setLabDashboard] = useState<LabDashboardApiDto | null>(null);
+  const [billingDashboard, setBillingDashboard] = useState<BillingDashboardApiDto | null>(null);
+  const [tenantLoaded, setTenantLoaded] = useState(false);
+
+  useEffect(() => {
+    if (isPlatform) return;
+    setTenantLoaded(false);
+    Promise.all([
+      apiFetch<BillingDashboardApiDto>("/api/billing/dashboard").catch(() => null),
+      hasClinic
+        ? apiFetch<ClinicDashboardApiDto>("/api/clinic/dashboard").catch(() => null)
+        : Promise.resolve(null),
+      hasPharmacy
+        ? apiFetch<PharmacyDashboardApiDto>("/api/pharmacy/dashboard").catch(() => null)
+        : Promise.resolve(null),
+      hasLab
+        ? apiFetch<LabDashboardApiDto>("/api/lab/dashboard").catch(() => null)
+        : Promise.resolve(null),
+    ]).then(([billing, clinic, pharmacy, lab]) => {
+      setBillingDashboard(billing);
+      setClinicDashboard(clinic);
+      setPharmacyDashboard(pharmacy);
+      setLabDashboard(lab);
+      setTenantLoaded(true);
+    });
+  }, [isPlatform, hasClinic, hasPharmacy, hasLab]);
 
   const pipelineLoading = isPlatform && (!leads || !subscriptions || !trials);
   const demoLeads = (leads ?? []).filter((l) => l.source === "REQUEST_DEMO");
@@ -160,6 +182,215 @@ function Dashboard() {
     }))
     .sort((a, b) => b.orgs - a.orgs);
 
+  const statsLoading = isPlatform ? !platformDashboard : !tenantLoaded;
+
+  const stats: StatDef[] = useMemo(() => {
+    if (isPlatform) {
+      if (!platformDashboard) return [];
+      const s = platformDashboard.stats;
+      return [
+        {
+          label: "Active organizations",
+          value: String(s.activeOrganizations),
+          ...(s.newOrganizationsLast30Days > 0
+            ? { delta: `+${s.newOrganizationsLast30Days} new (30d)`, trend: "up" as const }
+            : {}),
+        },
+        {
+          label: "Appointments today",
+          value: String(s.appointmentsToday),
+          ...dayOverDayDelta(s.appointmentsToday, s.appointmentsYesterday),
+        },
+        {
+          label: "Pharmacy revenue (today)",
+          value: currency(s.pharmacyRevenueToday),
+          ...dayOverDayDelta(s.pharmacyRevenueToday, s.pharmacyRevenueYesterday),
+        },
+        { label: "Pending lab results", value: String(s.pendingLabResults) },
+      ];
+    }
+    const list: StatDef[] = [];
+    if (hasClinic && clinicDashboard) {
+      list.push({ label: "Appointments today", value: String(clinicDashboard.todaysAppointments) });
+      list.push({
+        label: "Patients in queue",
+        value: String(clinicDashboard.checkedIn + clinicDashboard.inConsultation),
+      });
+    }
+    if (billingDashboard) {
+      list.push({
+        label: "Today's collection",
+        value: currency(billingDashboard.todaysCollections),
+      });
+    }
+    if (hasLab && labDashboard) {
+      list.push({
+        label: "Pending lab results",
+        value: String(
+          labDashboard.pendingCollection +
+            labDashboard.pendingResults +
+            labDashboard.pendingVerification,
+        ),
+      });
+    }
+    if (hasPharmacy && pharmacyDashboard && list.length < 4) {
+      list.push({
+        label: "Pharmacy sales today",
+        value: String(pharmacyDashboard.todaysSalesCount),
+        delta: `${currency(pharmacyDashboard.todaysRevenue)} revenue`,
+        trend: "up",
+      });
+    }
+    return list.slice(0, 4);
+  }, [
+    isPlatform,
+    platformDashboard,
+    hasClinic,
+    hasPharmacy,
+    hasLab,
+    clinicDashboard,
+    pharmacyDashboard,
+    labDashboard,
+    billingDashboard,
+  ]);
+
+  const funnelRows = useMemo<ChartRow[]>(() => {
+    if (!isPlatform || !leads || !subscriptions || !trials) return [];
+    return weekBuckets(6).map((b) => {
+      const leadsCount = leads.filter((l) => {
+        const t = new Date(l.createdAt).getTime();
+        return t >= b.start && t < b.end;
+      }).length;
+      const trialsCount = trials.filter((s) => {
+        const t = new Date(s.startDate).getTime();
+        return t >= b.start && t < b.end;
+      }).length;
+      const liveCount = subscriptions.filter((s) => {
+        if (s.freeTrial) return false;
+        const t = new Date(s.startDate).getTime();
+        return t >= b.start && t < b.end;
+      }).length;
+      return { name: b.label, Leads: leadsCount, Trials: trialsCount, Live: liveCount };
+    });
+  }, [isPlatform, leads, subscriptions, trials]);
+
+  const chartsWithData: { def: ChartDef; data: ChartRow[] }[] = useMemo(() => {
+    if (isPlatform) {
+      if (!platformDashboard) return [];
+      const trend = platformDashboard.appointmentsRevenueTrend;
+      const byType = platformDashboard.organizationsByType;
+      const subscriptionMix: ChartRow[] = planMix.map((p) => ({
+        name: p.name,
+        Organizations: p.orgs,
+      }));
+      const result: { def: ChartDef; data: ChartRow[] }[] = [
+        {
+          def: {
+            type: "area",
+            title: "Appointments & revenue trend",
+            dataKeys: ["Appointments", "Revenue"],
+            categories: trend.map((r) => r.name),
+          },
+          data: trend,
+        },
+        {
+          def: {
+            type: "bar",
+            title: "Organizations by type",
+            dataKeys: ["Organizations"],
+            categories: byType.map((r) => r.name),
+          },
+          data: byType,
+        },
+      ];
+      if (subscriptionMix.length) {
+        result.push({
+          def: {
+            type: "pie",
+            title: "Subscription mix",
+            dataKeys: ["Organizations"],
+            categories: subscriptionMix.map((r) => r.name),
+          },
+          data: subscriptionMix,
+        });
+      }
+      result.push({
+        def: {
+          type: "line",
+          title: "Onboarding funnel velocity",
+          dataKeys: ["Leads", "Trials", "Live"],
+          categories: funnelRows.map((r) => r.name),
+        },
+        data: funnelRows,
+      });
+      return result;
+    }
+
+    const result: { def: ChartDef; data: ChartRow[] }[] = [];
+    if (hasClinic && clinicDashboard) {
+      const data: ChartRow[] = [
+        { name: "Checked-in", Count: clinicDashboard.checkedIn },
+        { name: "In consultation", Count: clinicDashboard.inConsultation },
+        { name: "Completed", Count: clinicDashboard.completedToday },
+      ];
+      result.push({
+        def: {
+          type: "pie",
+          title: "Today's appointment status",
+          dataKeys: ["Count"],
+          categories: data.map((r) => r.name),
+        },
+        data,
+      });
+    }
+    if (hasLab && labDashboard) {
+      const data: ChartRow[] = [
+        { name: "Awaiting sample", Count: labDashboard.pendingCollection },
+        { name: "Processing", Count: labDashboard.pendingResults },
+        { name: "Awaiting verification", Count: labDashboard.pendingVerification },
+        { name: "Completed", Count: labDashboard.completedReports },
+        { name: "Rejected", Count: labDashboard.rejectedSamples },
+      ];
+      result.push({
+        def: {
+          type: "bar",
+          title: "Lab order pipeline",
+          dataKeys: ["Count"],
+          categories: data.map((r) => r.name),
+        },
+        data,
+      });
+    }
+    if (hasPharmacy && pharmacyDashboard) {
+      const data: ChartRow[] = [
+        { name: "Low stock", Count: pharmacyDashboard.lowStockCount },
+        { name: "Expiring soon", Count: pharmacyDashboard.expiringSoonCount },
+        { name: "Pending prescriptions", Count: pharmacyDashboard.pendingPrescriptions },
+      ];
+      result.push({
+        def: {
+          type: "bar",
+          title: "Pharmacy stock health",
+          dataKeys: ["Count"],
+          categories: data.map((r) => r.name),
+        },
+        data,
+      });
+    }
+    return result;
+  }, [
+    isPlatform,
+    platformDashboard,
+    planMix,
+    funnelRows,
+    hasClinic,
+    hasPharmacy,
+    hasLab,
+    clinicDashboard,
+    pharmacyDashboard,
+    labDashboard,
+  ]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -179,7 +410,7 @@ function Dashboard() {
 
       {!isPlatform ? <WebsiteSetupBanner /> : null}
 
-      <StatCards stats={stats} />
+      <StatCards stats={stats} loading={statsLoading} />
 
       {isPlatform ? (
         <div className="grid gap-4 lg:grid-cols-3">
@@ -280,11 +511,19 @@ function Dashboard() {
         </Card>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {charts.map((c) => (
-          <ChartCard key={c.title} def={c} seedKey="dashboard" />
-        ))}
-      </div>
+      {chartsWithData.length ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {chartsWithData.map(({ def, data }) => (
+            <ChartCard
+              key={def.title}
+              def={def}
+              data={data}
+              seedKey="dashboard"
+              loading={statsLoading}
+            />
+          ))}
+        </div>
+      ) : null}
 
       <div className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">

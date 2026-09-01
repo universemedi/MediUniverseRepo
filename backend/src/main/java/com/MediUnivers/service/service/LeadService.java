@@ -3,6 +3,8 @@ package com.MediUnivers.service.service;
 import com.MediUnivers.service.domain.AppUser;
 import com.MediUnivers.service.domain.Lead;
 import com.MediUnivers.service.domain.LeadStatus;
+import com.MediUnivers.service.domain.NotificationPriority;
+import com.MediUnivers.service.domain.PlatformNotificationEventType;
 import com.MediUnivers.service.dto.LeadDto;
 import com.MediUnivers.service.dto.LeadRequest;
 import com.MediUnivers.service.repository.AppUserRepository;
@@ -14,8 +16,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Every public-website form (Contact, Request Demo, Free Trial, Pricing
@@ -30,6 +35,14 @@ public class LeadService {
 
     private final LeadRepository leadRepository;
     private final AppUserRepository appUserRepository;
+    private final PlatformNotificationService platformNotificationService;
+
+    /** Only these transitions are customer-meaningful enough to auto-email the lead — CONTACTED/LOST stay internal-only (an automated "you are Lost" email is bad practice). */
+    private static final Map<LeadStatus, String> CUSTOMER_FACING_STATUS_MESSAGES = new EnumMap<>(Map.of(
+            LeadStatus.DEMO_SCHEDULED, "Your demo has been scheduled — our team will be in touch with the details shortly.",
+            LeadStatus.DEMO_COMPLETED, "Thanks for attending your MediUnivers demo! Let us know if you have any questions.",
+            LeadStatus.WON, "Welcome to MediUnivers! Our team will reach out shortly to help you get started."
+    ));
 
     public Long capture(LeadRequest request) {
         Lead lead = new Lead();
@@ -40,6 +53,7 @@ public class LeadService {
         lead.setOrganizationName(request.organizationName());
         lead.setOrganizationType(request.organizationType());
         lead.setCity(request.city());
+        lead.setState(request.state());
         lead.setExpectedBranches(request.expectedBranches());
         lead.setExpectedUsers(request.expectedUsers());
         lead.setModulesOfInterest(request.modulesOfInterest());
@@ -56,12 +70,27 @@ public class LeadService {
 
     public LeadDto updateStatus(Long id, String status) {
         Lead lead = requireLead(id);
+        LeadStatus newStatus;
         try {
-            lead.setStatus(LeadStatus.valueOf(status.toUpperCase(Locale.ROOT)));
+            newStatus = LeadStatus.valueOf(status.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown lead status: " + status);
         }
-        return DtoMapper.toDto(leadRepository.save(lead));
+        lead.setStatus(newStatus);
+        LeadDto dto = DtoMapper.toDto(leadRepository.save(lead));
+        notifyStatusUpdate(lead, newStatus);
+        return dto;
+    }
+
+    private void notifyStatusUpdate(Lead lead, LeadStatus newStatus) {
+        String message = CUSTOMER_FACING_STATUS_MESSAGES.get(newStatus);
+        if (message == null) return;
+        Map<String, String> vars = new HashMap<>();
+        vars.put("fullName", lead.getName());
+        vars.put("statusMessage", message);
+        platformNotificationService.notify(PlatformNotificationEventType.LEAD_STATUS_UPDATED,
+                NotificationRecipient.of(lead.getName(), lead.getEmail(), lead.getPhone()),
+                vars, NotificationPriority.NORMAL, "LEAD", lead.getId());
     }
 
     public LeadDto assign(Long id, Long userId) {

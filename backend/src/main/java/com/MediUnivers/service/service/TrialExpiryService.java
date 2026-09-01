@@ -1,9 +1,9 @@
 package com.MediUnivers.service.service;
 
-import com.MediUnivers.service.domain.NotificationEventType;
 import com.MediUnivers.service.domain.NotificationPriority;
 import com.MediUnivers.service.domain.OrgStatus;
 import com.MediUnivers.service.domain.Organization;
+import com.MediUnivers.service.domain.PlatformNotificationEventType;
 import com.MediUnivers.service.domain.Subscription;
 import com.MediUnivers.service.domain.SubscriptionStatus;
 import com.MediUnivers.service.repository.OrganizationRepository;
@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +36,7 @@ public class TrialExpiryService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final OrganizationRepository organizationRepository;
-    private final NotificationService notificationService;
+    private final PlatformNotificationService platformNotificationService;
 
     @Scheduled(cron = "${mediunivers.trial-expiry-cron}")
     @Transactional
@@ -56,15 +57,14 @@ public class TrialExpiryService {
         }
     }
 
+    /** Routed through the platform's own Communication Engine, not the org's — a trial org almost never has its own SMTP configured yet. */
     private void notifyOwner(Organization org, Subscription sub) {
-        if (org.getEmail() == null || org.getEmail().isBlank()) return;
         Map<String, String> vars = new HashMap<>();
-        vars.put("fullName", org.getName());
         vars.put("organizationName", org.getName());
-        vars.put("freeTrialDays", String.valueOf(sub.getFreeTrialDays()));
-        vars.put("plansLink", "/app/org/plans");
-        notificationService.notify(org, NotificationEventType.TRIAL_EXPIRED,
+        vars.put("planName", sub.getPlanNameSnapshot());
+        vars.put("endDate", sub.getEndDate() != null ? sub.getEndDate().format(DateTimeFormatter.ISO_DATE) : "");
+        platformNotificationService.notify(PlatformNotificationEventType.SUBSCRIPTION_EXPIRED,
                 NotificationRecipient.of(org.getName(), org.getEmail(), org.getPhone()),
-                vars, NotificationPriority.HIGH, "ORGANIZATION", org.getId(), null);
+                vars, NotificationPriority.HIGH, "ORGANIZATION", org.getId());
     }
 }
