@@ -13,7 +13,14 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       strictPort: true,
-      host: "localhost",
+      // "true" binds both 127.0.0.1 and ::1 — a plain "localhost" bound only to the IPv6
+      // loopback on this machine, so a standard (IPv4) hosts-file entry for local org-domain
+      // testing (e.g. "127.0.0.1 sunrise.mediunivers.local") couldn't even connect.
+      host: true,
+      // Lets a locally hosts-file-mapped org domain (e.g. "sunrise.mediunivers.local") through
+      // Vite's Host-header check — the server still only binds to localhost above, so this is
+      // safe for local dev; a real deployment terminates custom domains at a reverse proxy.
+      allowedHosts: true,
       proxy: {
         "/api": {
           target: backendTarget,

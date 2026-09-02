@@ -37,7 +37,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<OrgUserDto> listForOrganization(Long organizationId) {
-        return appUserRepository.findByOrganizationId(organizationId).stream()
+        return appUserRepository.findByOrganizationIdAndPortal(organizationId, Portal.TENANT).stream()
                 .map(u -> new OrgUserDto(
                         u.getId(), u.getFullName(), u.getEmail(),
                         u.getRole().getCode(), u.getRole().getName(),
@@ -54,43 +54,15 @@ public class UserService {
      * become ACTIVE once they accept it and set their own password.
      */
     public MeResponse createOrgUser(Organization organization, CreateUserRequest request) {
-        // User Limit Validation (spec §30) — counts everyone who occupies a seat,
-        // invited or already active.
-        long occupiedSeats = appUserRepository.countByOrganizationIdAndStatusIn(
-                organization.getId(), List.of(UserStatus.ACTIVE, UserStatus.INVITED));
+        // User Limit Validation (spec §30) — counts everyone who occupies a STAFF seat,
+        // invited or already active; Patient Portal accounts never count against this limit.
+        long occupiedSeats = appUserRepository.countByOrganizationIdAndPortalAndStatusIn(
+                organization.getId(), Portal.TENANT, List.of(UserStatus.ACTIVE, UserStatus.INVITED));
         if (occupiedSeats >= organization.getPlan().getMaxUsers()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Your subscription user limit has been reached.");
         }
 
-        Role role = roleRepository.findByCode(request.roleCode())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown role: " + request.roleCode()));
-        boolean roleUsableByThisOrg = role.getPortal() == Portal.TENANT
-                && (role.getOrganization() == null || role.getOrganization().getId().equals(organization.getId()));
-        if (!roleUsableByThisOrg) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "That role does not belong to this organization.");
-        }
-
-        // Custom, org-specific roles can only grant modules the organization currently has
-        // enabled (business type runs it AND the subscription pays for it) — a custom
-        // pharmacist role, say, can't be handed out if Pharmacy isn't on the plan yet.
-        // System roles (Org Owner, Org Admin, ...) are exempt: an Owner must be creatable even
-        // before every module on their plan is purchased — they're the one who upgrades it.
-        if (!role.isSystem()) {
-            var enabledGroups = orgModuleService.statusFor(organization).stream()
-                    .filter(com.MediUnivers.service.dto.OrgModuleStatusDto::enabled)
-                    .map(com.MediUnivers.service.dto.OrgModuleStatusDto::group)
-                    .collect(java.util.stream.Collectors.toSet());
-            boolean grantsOnlyEnabledModules = role.getGroupAccess().stream()
-                    .allMatch(access -> access.getModuleGroup() == ModuleGroup.ORG
-                            || access.getModuleGroup() == ModuleGroup.PATIENT
-                            || access.getModuleGroup() == ModuleGroup.BILLING
-                            || enabledGroups.contains(access.getModuleGroup()));
-            if (!grantsOnlyEnabledModules) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                        "This role grants access to a module your organization hasn't enabled yet. "
-                                + "Check Subscription & Billing or Configure Modules.");
-            }
-        }
+        Role role = requireUsableRole(organization, request.roleCode());
 
         Branch primaryBranch = null;
         if (request.branchId() != null) {
@@ -126,6 +98,81 @@ public class UserService {
     public MeResponse resendInvitation(Organization organization, Long userId) {
         AppUser user = userInvitationService.resend(organization, userId);
         return toMeResponse(user);
+    }
+
+    private Role requireUsableRole(Organization organization, String roleCode) {
+        Role role = roleRepository.findByCode(roleCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown role: " + roleCode));
+        boolean roleUsableByThisOrg = role.getPortal() == Portal.TENANT
+                && (role.getOrganization() == null || role.getOrganization().getId().equals(organization.getId()));
+        if (!roleUsableByThisOrg) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "That role does not belong to this organization.");
+        }
+
+        // Custom, org-specific roles can only grant modules the organization currently has
+        // enabled (business type runs it AND the subscription pays for it) — a custom
+        // pharmacist role, say, can't be handed out if Pharmacy isn't on the plan yet.
+        // System roles (Org Owner, Org Admin, ...) are exempt: an Owner must be creatable even
+        // before every module on their plan is purchased — they're the one who upgrades it.
+        if (!role.isSystem()) {
+            var enabledGroups = orgModuleService.statusFor(organization).stream()
+                    .filter(com.MediUnivers.service.dto.OrgModuleStatusDto::enabled)
+                    .map(com.MediUnivers.service.dto.OrgModuleStatusDto::group)
+                    .collect(java.util.stream.Collectors.toSet());
+            boolean grantsOnlyEnabledModules = role.getGroupAccess().stream()
+                    .allMatch(access -> access.getModuleGroup() == ModuleGroup.ORG
+                            || access.getModuleGroup() == ModuleGroup.PATIENT
+                            || access.getModuleGroup() == ModuleGroup.BILLING
+                            || enabledGroups.contains(access.getModuleGroup()));
+            if (!grantsOnlyEnabledModules) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "This role grants access to a module your organization hasn't enabled yet. "
+                                + "Check Subscription & Billing or Configure Modules.");
+            }
+        }
+        return role;
+    }
+
+    /** Role, primary branch and active/disabled state — the fields an org admin actually
+     * revisits after inviting someone. Branch scope (all vs. selected branches) stays as set at
+     * invitation time; re-scoping it isn't exposed here yet. */
+    public OrgUserDto updateOrgUser(Organization organization, Long userId, com.MediUnivers.service.dto.UpdateUserRequest request) {
+        AppUser user = appUserRepository.findById(userId)
+                .filter(u -> u.getOrganization() != null && u.getOrganization().getId().equals(organization.getId()))
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
+
+        user.setRole(requireUsableRole(organization, request.roleCode()));
+
+        if (request.branchId() != null) {
+            Branch branch = branchRepository.findById(request.branchId())
+                    .filter(b -> b.getOrganization().getId().equals(organization.getId()))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Branch does not belong to this organization."));
+            user.setBranch(branch);
+        }
+
+        if (request.status() != null && !request.status().isBlank()) {
+            UserStatus status;
+            try {
+                status = UserStatus.valueOf(request.status().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown status: " + request.status());
+            }
+            if (status == UserStatus.INVITED) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invited is set automatically — pick Active or Disabled.");
+            }
+            if (user.getStatus() == UserStatus.INVITED && status == UserStatus.ACTIVE) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "This user hasn't accepted their invitation yet — resend it instead of activating manually.");
+            }
+            user.setStatus(status);
+        }
+
+        appUserRepository.save(user);
+        return new OrgUserDto(user.getId(), user.getFullName(), user.getEmail(),
+                user.getRole().getCode(), user.getRole().getName(),
+                user.getBranch() != null ? user.getBranch().getId() : null,
+                user.getBranch() != null ? user.getBranch().getName() : null,
+                user.getStatus());
     }
 
     /** Every logged-in user, any portal, editing their own account — no admin permission needed. */

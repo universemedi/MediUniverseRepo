@@ -28,6 +28,10 @@ function toCreateBody(values: Record<string, string>) {
   return { code: values["code"], name: values["name"] };
 }
 
+function toUpdateBody(values: Record<string, string>) {
+  return { name: values["name"], status: values["status"] };
+}
+
 function DepartmentsPage() {
   return (
     <RealModulePage<DepartmentApiDto>
@@ -36,7 +40,7 @@ function DepartmentsPage() {
       columns={COLUMNS}
       toRow={toRow}
       toCreateBody={toCreateBody}
-      supportsDelete={false}
+      toUpdateBody={toUpdateBody}
     />
   );
 }

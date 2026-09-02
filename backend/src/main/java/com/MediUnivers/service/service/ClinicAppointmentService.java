@@ -194,6 +194,7 @@ public class ClinicAppointmentService {
         return new AppointmentDto(a.getId(), a.getAppointmentNumber(), a.getTokenNumber(),
                 a.getType().name(), a.getStatus().name(), a.getAppointmentDate(), a.getScheduledAt(), a.getReason(),
                 new PatientSummaryDto(p.getId(), p.getPatientNumber(), p.fullName(), p.getPhone()),
-                new DoctorSummaryDto(d.getId(), d.getFullName()));
+                new DoctorSummaryDto(d.getId(), d.getFullName()),
+                a.getBranch() != null ? a.getBranch().getName() : null);
     }
 }

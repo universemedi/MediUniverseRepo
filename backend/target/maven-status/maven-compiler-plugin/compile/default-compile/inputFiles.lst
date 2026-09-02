@@ -8,7 +8,10 @@ C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\se
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\config\RazorpayProperties.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\config\ResourceServerConfig.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\config\SchedulingConfig.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\config\TrustedOrigins.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\config\WebConfig.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\config\WebSocketAuthChannelInterceptor.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\config\WebSocketConfig.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\domain\ActionType.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\domain\Appointment.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\domain\AppointmentStatus.java
@@ -246,6 +249,7 @@ C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\se
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\PrescriptionItemInput.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\PublicBlogSummaryDto.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\PublicBookAppointmentRequest.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\PublicBranchDto.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\PublicDoctorDto.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\PublicOrganizationSignupRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\PublicSignupResultDto.java
@@ -284,10 +288,14 @@ C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\se
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\TaxRuleDto.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\TestSendNotificationRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateAppointmentStatusRequest.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateBranchRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateBranchStatusRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateCouponRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateCrmFollowUpRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateCrmLeadRequest.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateDepartmentRequest.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateDoctorPhotoRequest.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateDoctorRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateLeadStatusRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateModulePriceRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateMyProfileRequest.java
@@ -301,6 +309,7 @@ C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\se
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdatePlatformWebsiteConfigRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateReferralCodeRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateSupportTicketRequest.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateUserRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateWebsiteConfigRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpsertNotificationTemplateRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpsertPlatformNotificationTemplateRequest.java
@@ -328,6 +337,7 @@ C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\se
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\payment\GatewayOrderResult.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\payment\PaymentGatewayService.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\payment\RazorpayGatewayService.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\realtime\RealtimeEventService.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\repository\AppointmentRepository.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\repository\AppUserRepository.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\repository\AuditLogRepository.java
@@ -501,6 +511,7 @@ C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\se
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\web\OrgModuleController.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\web\OrgSubscriptionController.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\web\OrgTypeController.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\web\OrgUploadController.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\web\PatientPortalController.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\web\PharmacyCatalogController.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\web\PharmacyDashboardController.java

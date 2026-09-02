@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { CalendarPlus, Lock, ShieldAlert, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -63,6 +64,11 @@ interface Doctor {
   fullName: string;
 }
 
+interface FieldErrors {
+  patientId?: string | undefined;
+  doctorId?: string | undefined;
+}
+
 const STATUS_STYLE: Record<Appointment["status"], string> = {
   BOOKED: "border-border text-muted-foreground",
   CHECKED_IN: "border-amber-300 bg-amber-50 text-amber-700",
@@ -89,6 +95,7 @@ function AppointmentsPage() {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   function load() {
     if (isPlatform || unavailable) return;
@@ -140,10 +147,19 @@ function AppointmentsPage() {
     setDoctorId("");
     setReason("");
     setError(null);
+    setFieldErrors({});
+  }
+
+  function validateFields(): boolean {
+    const errors: FieldErrors = {};
+    if (!patientId) errors.patientId = "Select a patient.";
+    if (!doctorId) errors.doctorId = "Select a doctor.";
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   }
 
   async function submitBooking() {
-    if (!patientId || !doctorId) return setError("Select a patient and a doctor.");
+    if (!validateFields()) return;
     setError(null);
     setSubmitting(true);
     try {
@@ -260,6 +276,16 @@ function AppointmentsPage() {
                     Check in
                   </Button>
                 ) : null}
+                {a.status === "BOOKED" ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-muted-foreground"
+                    onClick={() => transition(a, "NO_SHOW")}
+                  >
+                    No-show
+                  </Button>
+                ) : null}
                 {a.status === "BOOKED" || a.status === "CHECKED_IN" ? (
                   <Button
                     size="sm"
@@ -311,9 +337,17 @@ function AppointmentsPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Patient</Label>
-              <Select value={patientId} onValueChange={setPatientId}>
-                <SelectTrigger>
+              <Label>
+                Patient <span className="font-bold text-destructive">*</span>
+              </Label>
+              <Select
+                value={patientId}
+                onValueChange={(v) => {
+                  setPatientId(v);
+                  if (fieldErrors.patientId) setFieldErrors(({ patientId: _, ...rest }) => rest);
+                }}
+              >
+                <SelectTrigger className={cn(fieldErrors.patientId && "border-destructive")}>
                   <SelectValue placeholder="Select patient" />
                 </SelectTrigger>
                 <SelectContent className="max-h-64">
@@ -324,11 +358,22 @@ function AppointmentsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {fieldErrors.patientId ? (
+                <p className="text-[11px] font-medium text-destructive">{fieldErrors.patientId}</p>
+              ) : null}
             </div>
             <div className="space-y-1.5">
-              <Label>Doctor</Label>
-              <Select value={doctorId} onValueChange={setDoctorId}>
-                <SelectTrigger>
+              <Label>
+                Doctor <span className="font-bold text-destructive">*</span>
+              </Label>
+              <Select
+                value={doctorId}
+                onValueChange={(v) => {
+                  setDoctorId(v);
+                  if (fieldErrors.doctorId) setFieldErrors(({ doctorId: _, ...rest }) => rest);
+                }}
+              >
+                <SelectTrigger className={cn(fieldErrors.doctorId && "border-destructive")}>
                   <SelectValue placeholder="Select doctor" />
                 </SelectTrigger>
                 <SelectContent className="max-h-64">
@@ -339,6 +384,9 @@ function AppointmentsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {fieldErrors.doctorId ? (
+                <p className="text-[11px] font-medium text-destructive">{fieldErrors.doctorId}</p>
+              ) : null}
             </div>
             {mode === "book" ? (
               <div className="space-y-1.5">

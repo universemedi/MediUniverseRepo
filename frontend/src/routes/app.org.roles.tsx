@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { KeyRound, Lock, Plus, ShieldAlert } from "lucide-react";
+import { KeyRound, Lock, Pencil, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { MODULES } from "@/config/modules";
 import type { Action } from "@/lib/rbac";
 import { apiFetch, ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/app/org/roles")({
   head: () => ({
@@ -47,6 +58,7 @@ const GROUP_LABEL: Record<string, string> = {
 const TENANT_GROUPS = ["clinic", "pharmacy", "lab", "crm", "cms"] as const;
 
 interface ApiRole {
+  id: number;
   code: string;
   name: string;
   description: string;
@@ -68,12 +80,15 @@ function RolesPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<ApiRole | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [paths, setPaths] = useState<string[]>([]);
   const [actions, setActions] = useState<Action[]>(["view"]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<ApiRole | null>(null);
 
   const canManage = !isPlatform && ["ORG_OWNER", "ORG_ADMIN"].includes(roleDef.key);
 
@@ -116,15 +131,37 @@ function RolesPage() {
   }
 
   function reset() {
+    setEditing(null);
     setName("");
     setDescription("");
     setPaths([]);
     setActions(["view"]);
     setError(null);
+    setNameError(null);
+  }
+
+  function openEdit(role: ApiRole) {
+    setEditing(role);
+    setName(role.name);
+    setDescription(role.description);
+    setActions(role.actions.map((a) => a.toLowerCase()) as Action[]);
+    const expandedPaths: string[] = [];
+    for (const [group, value] of Object.entries(role.access)) {
+      if (value === "*") {
+        expandedPaths.push(...MODULES.filter((m) => m.group === group).map((m) => m.path));
+      } else {
+        expandedPaths.push(...value);
+      }
+    }
+    setPaths(expandedPaths);
+    setError(null);
+    setNameError(null);
+    setOpen(true);
   }
 
   async function save() {
-    if (!name.trim()) return setError("Role name is required.");
+    if (!name.trim()) return setNameError("Role name is required.");
+    setNameError(null);
     if (!paths.length) return setError("Select at least one page this role can open.");
 
     const byGroup = new Map<string, string[]>();
@@ -136,31 +173,47 @@ function RolesPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await apiFetch("/api/org/roles", {
-        method: "POST",
-        data: {
-          name: name.trim(),
-          description: description.trim() || "Custom role created by the organization admin.",
-          actions,
-          access: Array.from(byGroup.entries()).map(([moduleGroup, groupPaths]) => ({
-            moduleGroup,
-            wildcard: false,
-            paths: groupPaths,
-          })),
-        },
-      });
-      toast.success(`Role "${name.trim()}" created`, {
-        description: "Assign it from Users → New user.",
-      });
+      const body = {
+        name: name.trim(),
+        description: description.trim() || "Custom role created by the organization admin.",
+        actions,
+        access: Array.from(byGroup.entries()).map(([moduleGroup, groupPaths]) => ({
+          moduleGroup,
+          wildcard: false,
+          paths: groupPaths,
+        })),
+      };
+      if (editing) {
+        await apiFetch(`/api/org/roles/${editing.id}`, { method: "PUT", data: body });
+        toast.success(`Role "${name.trim()}" updated`);
+      } else {
+        await apiFetch("/api/org/roles", { method: "POST", data: body });
+        toast.success(`Role "${name.trim()}" created`, {
+          description: "Assign it from Users → New user.",
+        });
+      }
       setOpen(false);
       reset();
       load();
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Couldn't create this role. Please try again.",
+        err instanceof ApiError ? err.message : "Couldn't save this role. Please try again.",
       );
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    const role = deleting;
+    setDeleting(null);
+    try {
+      await apiFetch(`/api/org/roles/${role.id}`, { method: "DELETE" });
+      toast.success(`Role "${role.name}" removed`);
+      load();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't remove this role.");
     }
   }
 
@@ -222,15 +275,37 @@ function RolesPage() {
             return (
               <Card key={role.code} className="flex flex-col gap-3 p-4">
                 <div className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <KeyRound className="h-4 w-4" />
                   </span>
-                  <div>
-                    <p className="text-sm font-semibold leading-tight">{role.name}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold leading-tight">{role.name}</p>
                     <p className="text-[11px] text-muted-foreground">
                       {role.system ? "System role" : "Custom role"}
                     </p>
                   </div>
+                  {canManage && !role.system ? (
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground"
+                        onClick={() => openEdit(role)}
+                        aria-label={`Edit ${role.name}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => setDeleting(role)}
+                        aria-label={`Delete ${role.name}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
                 <p className="text-xs text-muted-foreground">{role.description}</p>
                 <div className="flex flex-wrap gap-1">
@@ -266,7 +341,7 @@ function RolesPage() {
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create a role</DialogTitle>
+            <DialogTitle>{editing ? `Edit ${editing.name}` : "Create a role"}</DialogTitle>
             <DialogDescription>
               Only pages from currently enabled modules can be granted.
             </DialogDescription>
@@ -275,14 +350,22 @@ function RolesPage() {
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="role-name">Role name</Label>
+                <Label htmlFor="role-name">
+                  Role name <span className="font-bold text-destructive">*</span>
+                </Label>
                 <Input
                   id="role-name"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (nameError) setNameError(null);
+                  }}
                   placeholder="e.g. Senior Receptionist"
-                  className={error && !name.trim() ? "border-destructive" : ""}
+                  className={cn(nameError && "border-destructive")}
                 />
+                {nameError ? (
+                  <p className="text-[11px] font-medium text-destructive">{nameError}</p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="role-desc">Description</Label>
@@ -369,12 +452,34 @@ function RolesPage() {
                 Cancel
               </Button>
               <Button onClick={save} disabled={submitting}>
-                {submitting ? "Creating…" : "Create role"}
+                {submitting
+                  ? editing
+                    ? "Saving…"
+                    : "Creating…"
+                  : editing
+                    ? "Save changes"
+                    : "Create role"}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{deleting?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Any staff currently assigned this role will need a new one first — reassign them
+              before deleting if this fails.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

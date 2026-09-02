@@ -23,7 +23,8 @@ import java.util.UUID;
 public class FileStorageService {
 
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/jpeg", "image/png", "image/webp", "image/gif");
+            "image/jpeg", "image/png", "image/webp", "image/gif",
+            "video/mp4", "video/webm", "video/quicktime");
 
     private final Path uploadsDir;
 
@@ -43,7 +44,7 @@ public class FileStorageService {
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Only JPEG, PNG, WEBP or GIF images are allowed.");
+                    "Only JPEG, PNG, WEBP, GIF images or MP4, WEBM, MOV videos are allowed.");
         }
 
         String extension = switch (contentType) {
@@ -51,6 +52,9 @@ public class FileStorageService {
             case "image/png" -> ".png";
             case "image/webp" -> ".webp";
             case "image/gif" -> ".gif";
+            case "video/mp4" -> ".mp4";
+            case "video/webm" -> ".webm";
+            case "video/quicktime" -> ".mov";
             default -> "";
         };
         String filename = UUID.randomUUID() + extension;

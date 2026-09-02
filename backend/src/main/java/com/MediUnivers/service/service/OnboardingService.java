@@ -2,6 +2,7 @@ package com.MediUnivers.service.service;
 
 import com.MediUnivers.service.domain.ModuleGroup;
 import com.MediUnivers.service.domain.Organization;
+import com.MediUnivers.service.domain.Portal;
 import com.MediUnivers.service.domain.UserStatus;
 import com.MediUnivers.service.dto.OnboardingStepDto;
 import com.MediUnivers.service.repository.*;
@@ -40,7 +41,7 @@ public class OnboardingService {
 
         steps.add(new OnboardingStepDto("team", "Invite your team",
                 "Bring in doctors, reception and other staff so they can sign in.",
-                appUserRepository.countByOrganizationIdAndStatusIn(organization.getId(),
+                appUserRepository.countByOrganizationIdAndPortalAndStatusIn(organization.getId(), Portal.TENANT,
                         List.of(UserStatus.ACTIVE, UserStatus.INVITED)) > 1));
 
         if (modules.contains(ModuleGroup.CLINIC)) {

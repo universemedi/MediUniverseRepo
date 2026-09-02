@@ -32,10 +32,18 @@ public class NotificationTemplateService {
 
     private final NotificationTemplateRepository templateRepository;
 
-    /** Called once, right after an organization (and its settings row) is created. Safe to call twice — no-op if already seeded. */
+    /** Called right after an organization (and its settings row) is created, and again on every
+     * visit to the Notification Templates screen ({@link #list}) — a per-(event, channel) check
+     * rather than "skip entirely if this org has any row at all", so an org seeded before some
+     * later event type/channel was added to {@link DefaultTemplateCatalog} still picks it up
+     * instead of silently missing that notification forever. Already-present rows (including any
+     * an admin has customized) are left untouched. */
     public void seedDefaults(Organization organization) {
-        if (templateRepository.existsByOrganizationId(organization.getId())) return;
         for (DefaultTemplateCatalog.Default d : DefaultTemplateCatalog.all()) {
+            if (templateRepository.findByOrganizationIdAndEventTypeAndChannel(
+                    organization.getId(), d.eventType(), d.channel()).isPresent()) {
+                continue;
+            }
             NotificationTemplate t = new NotificationTemplate();
             t.setOrganization(organization);
             t.setEventType(d.eventType());
@@ -50,10 +58,24 @@ public class NotificationTemplateService {
         }
     }
 
-    @Transactional(readOnly = true)
+    /** Event types seeded into every org's catalog for completeness, but never actually sent
+     * through this org-scoped engine — account-invite and password-reset emails are always
+     * delivered via MediUnivers' own platform mailbox instead (see UserInvitationService,
+     * AuthPasswordResetService), specifically so a brand-new org's very first invite still goes
+     * out even before anyone has configured this org's own SMTP. Editing these rows here would
+     * have no visible effect, so they're hidden rather than shown as if customizable. */
+    private static final java.util.Set<NotificationEventType> NEVER_SENT_FROM_ORG_ENGINE =
+            java.util.Set.of(NotificationEventType.USER_INVITED, NotificationEventType.PASSWORD_RESET_REQUESTED);
+
+    /** Not read-only: backfills any catalog entries this org is still missing (see
+     * {@link #seedDefaults}) before listing, so an org seeded before the catalog grew sees the
+     * gap close the next time it opens this screen instead of staying missing indefinitely. */
     public List<NotificationTemplateDto> list(Organization organization) {
+        seedDefaults(organization);
         return templateRepository.findByOrganizationIdOrderByEventTypeAscChannelAsc(organization.getId())
-                .stream().map(this::toDto).toList();
+                .stream()
+                .filter(t -> !NEVER_SENT_FROM_ORG_ENGINE.contains(t.getEventType()))
+                .map(this::toDto).toList();
     }
 
     public NotificationTemplateDto update(Organization organization, Long templateId, UpsertNotificationTemplateRequest request) {
@@ -71,8 +93,31 @@ public class NotificationTemplateService {
 
     /** Used by NotificationService to render an org's current template for an event/channel — falls back gracefully if missing. */
     @Transactional(readOnly = true)
+    /** The actual send path (NotificationService.notify) goes through here for every event —
+     * self-heals the same gap {@link #seedDefaults} backfills, at the exact moment it would
+     * otherwise have silently dropped a notification for an org that predates this event/channel
+     * being added to the catalog, rather than waiting for someone to open the Templates screen. */
     public Optional<NotificationTemplate> find(Organization organization, NotificationEventType eventType, NotificationChannel channel) {
-        return templateRepository.findByOrganizationIdAndEventTypeAndChannel(organization.getId(), eventType, channel);
+        Optional<NotificationTemplate> existing =
+                templateRepository.findByOrganizationIdAndEventTypeAndChannel(organization.getId(), eventType, channel);
+        if (existing.isPresent()) return existing;
+
+        return DefaultTemplateCatalog.all().stream()
+                .filter(d -> d.eventType() == eventType && d.channel() == channel)
+                .findFirst()
+                .map(d -> {
+                    NotificationTemplate t = new NotificationTemplate();
+                    t.setOrganization(organization);
+                    t.setEventType(d.eventType());
+                    t.setChannel(d.channel());
+                    t.setCategory(d.eventType().category());
+                    t.setName(d.name());
+                    t.setSubject(d.subject());
+                    t.setBody(d.body());
+                    t.setSupportedVariables(d.supportedVariables());
+                    t.setActive(true);
+                    return templateRepository.save(t);
+                });
     }
 
     private NotificationTemplate requireOwned(Organization organization, Long templateId) {

@@ -39,6 +39,15 @@ public class Doctor {
     @Column(length = 120)
     private String qualification;
 
+    /** Medical council / state registration number — required in the UI for a new doctor, but
+     * left nullable here so a pre-existing doctor row from before this field existed doesn't
+     * need a backfill to stay valid. */
+    @Column(name = "registration_number", length = 50)
+    private String registrationNumber;
+
+    @Column(name = "photo_url", length = 500)
+    private String photoUrl;
+
     @Column(name = "experience_years")
     private Integer experienceYears;
 

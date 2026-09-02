@@ -114,4 +114,9 @@ public class WebsiteConfig {
 
     @Column(name = "booking_enabled", nullable = false)
     private boolean bookingEnabled = true;
+
+    /** Optional "how it works" / intro video shown alongside the hero — bannersJson above is the
+     * hero's rotating image carousel (up to 5 images), already existed but was never rendered. */
+    @Column(name = "hero_video_url", length = 500)
+    private String heroVideoUrl;
 }

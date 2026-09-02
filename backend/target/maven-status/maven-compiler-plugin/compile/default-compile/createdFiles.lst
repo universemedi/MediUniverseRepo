@@ -39,6 +39,7 @@ com\MediUnivers\service\domain\PlatformContentCard.class
 com\MediUnivers\service\domain\SaleType.class
 com\MediUnivers\service\web\OrgSubscriptionController.class
 com\MediUnivers\service\dto\PaymentDto.class
+com\MediUnivers\service\dto\UpdateUserRequest.class
 com\MediUnivers\service\web\LabCatalogController.class
 com\MediUnivers\service\service\PatientPortalService.class
 com\MediUnivers\service\domain\AppointmentType.class
@@ -82,6 +83,7 @@ com\MediUnivers\service\service\SavedReportService.class
 com\MediUnivers\service\service\FileStorageService.class
 com\MediUnivers\service\service\ModulePriceService.class
 com\MediUnivers\service\web\LogoutController.class
+com\MediUnivers\service\dto\UpdateDoctorRequest.class
 com\MediUnivers\service\domain\OrganizationCommunicationSettings.class
 com\MediUnivers\service\service\PlatformNotificationService$1.class
 com\MediUnivers\service\dto\CrmLeadSourceDto.class
@@ -122,6 +124,7 @@ com\MediUnivers\service\dto\CreatePlanRequest.class
 com\MediUnivers\service\dto\SaveWebsiteTemplateRequest.class
 com\MediUnivers\service\notification\PlatformEmailChannelSender.class
 com\MediUnivers\service\dto\CreateGoodsReceiptRequest.class
+com\MediUnivers\service\dto\UpdateDepartmentRequest.class
 com\MediUnivers\service\repository\LabOrderRepository.class
 com\MediUnivers\service\repository\WebsiteGalleryImageRepository.class
 com\MediUnivers\service\service\DtoMapper.class
@@ -194,6 +197,7 @@ com\MediUnivers\service\dto\WebsiteTestimonialDto.class
 com\MediUnivers\service\security\AppUserPrincipal$1.class
 com\MediUnivers\service\dto\CreateSupplierRequest.class
 com\MediUnivers\service\dto\MasterItemDto.class
+com\MediUnivers\service\dto\UpdateDoctorPhotoRequest.class
 com\MediUnivers\service\config\PasswordConfig.class
 com\MediUnivers\service\service\NotificationRecipient.class
 com\MediUnivers\service\web\CouponController.class
@@ -311,6 +315,7 @@ com\MediUnivers\service\domain\Organization.class
 com\MediUnivers\service\domain\SaleStatus.class
 com\MediUnivers\service\dto\SubscriptionDto.class
 com\MediUnivers\service\service\PublicWebsiteService.class
+com\MediUnivers\service\dto\UpdateBranchRequest.class
 com\MediUnivers\service\web\BranchController.class
 com\MediUnivers\service\dto\CreateOrgTypeRequest.class
 com\MediUnivers\service\service\PlatformDefaultTemplateCatalog$Default.class
@@ -370,6 +375,7 @@ com\MediUnivers\service\dto\UpdateModulePriceRequest.class
 com\MediUnivers\service\domain\ModuleGroup.class
 com\MediUnivers\service\dto\ShareCouponRequest.class
 com\MediUnivers\service\exception\GlobalExceptionHandler.class
+com\MediUnivers\service\realtime\RealtimeEventService.class
 com\MediUnivers\service\dto\UpdatePlanRequest.class
 com\MediUnivers\service\repository\AuditLogRepository.class
 com\MediUnivers\service\domain\Medicine.class
@@ -396,12 +402,15 @@ com\MediUnivers\service\service\TrialExpiryService.class
 com\MediUnivers\service\repository\PharmacySaleItemRepository.class
 com\MediUnivers\service\service\LeadService.class
 com\MediUnivers\service\domain\ResultFlag.class
+com\MediUnivers\service\dto\PublicBranchDto.class
 com\MediUnivers\service\repository\InvoiceRepository.class
 com\MediUnivers\service\repository\SupportTicketRepository.class
+com\MediUnivers\service\config\WebSocketAuthChannelInterceptor.class
 com\MediUnivers\service\dto\SelectCustomPlanRequest.class
 com\MediUnivers\service\domain\PlatformContentSection.class
 com\MediUnivers\service\service\AuditLogService.class
 com\MediUnivers\service\service\OrgTypeService.class
+com\MediUnivers\service\config\TrustedOrigins.class
 com\MediUnivers\service\web\WebsiteContentController.class
 com\MediUnivers\service\config\SchedulingConfig.class
 com\MediUnivers\service\dto\DoctorDto.class
@@ -419,6 +428,7 @@ com\MediUnivers\service\dto\PublicOrganizationSignupRequest.class
 com\MediUnivers\service\domain\Consultation.class
 com\MediUnivers\service\domain\LabResult.class
 com\MediUnivers\service\domain\Supplier.class
+com\MediUnivers\service\web\OrgUploadController.class
 com\MediUnivers\service\dto\CreateTaxRuleRequest.class
 com\MediUnivers\service\service\AuthPasswordResetService.class
 com\MediUnivers\service\dto\CreatePatientRequest.class
@@ -524,6 +534,7 @@ com\MediUnivers\service\dto\NotificationTemplateDto.class
 com\MediUnivers\service\dto\SaveTestimonialRequest.class
 com\MediUnivers\service\config\MethodSecurityConfig.class
 com\MediUnivers\service\domain\NotificationChannel.class
+com\MediUnivers\service\config\WebSocketConfig.class
 com\MediUnivers\service\dto\AcceptInvitationRequest.class
 com\MediUnivers\service\dto\PharmacySaleDto.class
 com\MediUnivers\service\domain\ActionType.class

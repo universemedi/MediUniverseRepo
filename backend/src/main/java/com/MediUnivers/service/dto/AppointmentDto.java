@@ -13,6 +13,7 @@ public record AppointmentDto(
         Instant scheduledAt,
         String reason,
         PatientSummaryDto patient,
-        DoctorSummaryDto doctor
+        DoctorSummaryDto doctor,
+        String branchName
 ) {
 }

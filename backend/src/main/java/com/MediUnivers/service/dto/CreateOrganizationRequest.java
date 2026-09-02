@@ -15,6 +15,8 @@ public record CreateOrganizationRequest(
         @NotBlank String country,
         @NotBlank String state,
         @NotBlank String city,
+        /** Optional — many small clinics/pharmacies aren't GST-registered. */
+        String gstNumber,
         /** How this deal was actually paid — CASH, BANK_TRANSFER, UPI, CHEQUE, ONLINE. Required unless the plan is a free trial. */
         String paymentMethod,
         /** ONLINE_PURCHASE, FREE_TRIAL, DEMO_CONVERSION, DIRECT_SALES, SUPER_ADMIN — defaults to DIRECT_SALES if omitted */

@@ -11,6 +11,9 @@ public record CreateDoctorRequest(
         @Email @NotBlank String email,
         @NotBlank String tempPassword,
         String qualification,
+        /** Medical council / state registration number — required by the admin UI. */
+        @NotBlank String registrationNumber,
+        String photoUrl,
         Integer experienceYears,
         BigDecimal consultationFee,
         BigDecimal taxPercent,

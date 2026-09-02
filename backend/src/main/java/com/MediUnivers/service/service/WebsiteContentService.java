@@ -80,6 +80,7 @@ public class WebsiteContentService {
         config.setSeoDescription(request.seoDescription());
         config.setSeoKeywords(request.seoKeywords());
         config.setBookingEnabled(request.bookingEnabled());
+        config.setHeroVideoUrl(request.heroVideoUrl());
         configRepository.save(config);
         return toDto(config);
     }
@@ -94,7 +95,13 @@ public class WebsiteContentService {
     }
 
     WebsiteConfigDto toDto(WebsiteConfig c) {
-        String siteUrl = c.getOrganization().getSlug() + ".mediunivers.com";
+        Organization org = c.getOrganization();
+        // The custom-domain lookup (PublicWebsiteService#getSiteBySubdomain) matches the org's
+        // chosen subdomain first, falling back to its slug — this has to build the exact same
+        // label, or "your site is live at X" would show an address that doesn't actually resolve.
+        String domainLabel = org.getSubdomain() != null && !org.getSubdomain().isBlank()
+                ? org.getSubdomain() : org.getSlug();
+        String siteUrl = domainLabel + ".mediunivers.com";
         return new WebsiteConfigDto(c.getTemplateCode(), c.getTemplate() != null ? c.getTemplate().getId() : null,
                 c.isPublished(), c.getLogoUrl(), c.getPrimaryColor(), c.getSecondaryColor(),
                 c.getFontFamily(), c.getBackgroundColor(), c.getTextSizeScale(),
@@ -103,7 +110,7 @@ public class WebsiteContentService {
                 c.getFacebookUrl(), c.getInstagramUrl(), c.getTwitterUrl(), c.getLinkedinUrl(), c.getYoutubeUrl(), c.getWhatsappNumber(),
                 c.getSeoTitle(), c.getSeoDescription(), c.getSeoKeywords(),
                 c.getBannersJson(), c.getNavItemsJson(), c.getFooterColumnsJson(),
-                c.isBookingEnabled(), siteUrl);
+                c.isBookingEnabled(), siteUrl, c.getHeroVideoUrl(), org.getSlug());
     }
 
     // ---------------- Services ----------------

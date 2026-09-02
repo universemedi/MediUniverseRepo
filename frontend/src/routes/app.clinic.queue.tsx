@@ -21,7 +21,7 @@ function QueuePage() {
                 onClick: async () => {
                   try {
                     await apiFetch(`/api/clinic/consultations/start/${a.id}`, { method: "POST" });
-                    toast.success(`${a.patient.fullName} moved into consultation`);
+                    toast.success(`${a.patient.name} moved into consultation`);
                     reload();
                   } catch (err) {
                     toast.error(

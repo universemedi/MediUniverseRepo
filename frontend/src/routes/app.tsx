@@ -113,6 +113,7 @@ import { useAppDispatch, useAppSelector } from "@/store";
 import { loginSuccess, type AuthUser } from "@/store/slices/authSlice";
 import { hydrateFromOrganization } from "@/store/slices/tenantSlice";
 import { apiFetch, clearTokens, getAccessToken } from "@/lib/api";
+import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 import type { RoleKey } from "@/lib/rbac";
 import type { MeResponse } from "@/lib/types";
 import { Loader2 } from "lucide-react";
@@ -222,6 +223,8 @@ function AppLayout() {
       navigate({ to: "/login", search: { redirect: pathname }, replace: true });
     }
   }, [status, rehydrating, navigate, pathname]);
+
+  useRealtimeUpdates();
 
   // Prevent flash of protected content during rehydration
   if (rehydrating || status !== "authenticated") {

@@ -61,6 +61,8 @@ public class PlatformWebsiteService {
         config.setTermsContent(request.termsContent());
         config.setSecurityContent(request.securityContent());
         config.setPageBannersJson(request.pageBannersJson());
+        config.setHomeCarouselJson(request.homeCarouselJson());
+        config.setHeroVideoUrl(request.heroVideoUrl());
         configRepository.save(config);
         return toDto(config);
     }
@@ -79,6 +81,7 @@ public class PlatformWebsiteService {
                 c.getFacebookUrl(), c.getInstagramUrl(), c.getLinkedinUrl(), c.getYoutubeUrl(),
                 c.getSeoTitle(), c.getSeoDescription(), c.getSeoKeywords(),
                 c.getBannersJson(), c.getNavItemsJson(), c.getFooterColumnsJson(), c.getStatsJson(),
-                c.getPrivacyContent(), c.getTermsContent(), c.getSecurityContent(), c.getPageBannersJson());
+                c.getPrivacyContent(), c.getTermsContent(), c.getSecurityContent(), c.getPageBannersJson(),
+                c.getHomeCarouselJson(), c.getHeroVideoUrl());
     }
 }

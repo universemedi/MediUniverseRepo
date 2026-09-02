@@ -220,6 +220,11 @@ function NotificationTemplatesPage() {
           The wording of every email, SMS, WhatsApp and in-app message this organization sends —
           nothing is hardcoded, edit anything below and it takes effect immediately.
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Staff invitations and password-reset emails aren't listed here — those always go out
+          through MediUnivers' own reliable delivery, so a new organization's very first invite
+          still arrives before anyone has set up this page's Email settings.
+        </p>
       </div>
 
       <Card className="p-2">

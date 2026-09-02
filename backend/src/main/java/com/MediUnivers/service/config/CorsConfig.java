@@ -20,7 +20,7 @@ public class CorsConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(appProperties.frontendBaseUrl()));
+        config.setAllowedOriginPatterns(TrustedOrigins.patterns(appProperties));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         // X-Signup-Token: the public self-serve signup flow's stand-in for a session
         // (POST /api/public/organizations/{id}/select-plan|select-custom-plan|subscribe/confirm) —

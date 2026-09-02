@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Building2, Plus, ShieldAlert } from "lucide-react";
+import { Building2, Pencil, Plus, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -72,6 +73,7 @@ function BranchesPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Branch | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -79,6 +81,7 @@ function BranchesPage() {
   const [modules, setModules] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   function load() {
     if (isPlatform) return;
@@ -109,37 +112,55 @@ function BranchesPage() {
   }
 
   function resetForm() {
+    setEditing(null);
     setName("");
     setEmail("");
     setPhone("");
     setCity("");
     setModules(availableModules.map((m) => m.group));
     setError(null);
+    setNameError(null);
+  }
+
+  function openEdit(b: Branch) {
+    setEditing(b);
+    setName(b.name);
+    setEmail(b.email ?? "");
+    setPhone(b.phone ?? "");
+    setCity(b.city ?? "");
+    setModules(b.enabledModules.map((m) => m.toUpperCase()));
+    setError(null);
+    setNameError(null);
+    setOpen(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return setError("Branch name is required.");
+    if (!name.trim()) return setNameError("Branch name is required.");
+    setNameError(null);
     setError(null);
     setSubmitting(true);
     try {
-      await apiFetch("/api/org/branches", {
-        method: "POST",
-        data: {
-          name: name.trim(),
-          email: email.trim() || null,
-          phone: phone.trim() || null,
-          city: city.trim() || null,
-          enabledModules: modules,
-        },
-      });
-      toast.success(`${name.trim()} added`);
+      const body = {
+        name: name.trim(),
+        email: email.trim() || null,
+        phone: phone.trim() || null,
+        city: city.trim() || null,
+        enabledModules: modules,
+      };
+      if (editing) {
+        await apiFetch(`/api/org/branches/${editing.id}`, { method: "PUT", data: body });
+        toast.success(`${name.trim()} updated`);
+      } else {
+        await apiFetch("/api/org/branches", { method: "POST", data: body });
+        toast.success(`${name.trim()} added`);
+      }
       setOpen(false);
       resetForm();
       load();
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Couldn't add this branch. Please try again.",
+        err instanceof ApiError ? err.message : "Couldn't save this branch. Please try again.",
       );
     } finally {
       setSubmitting(false);
@@ -204,9 +225,22 @@ function BranchesPage() {
                     ) : null}
                   </div>
                 </div>
-                <Badge variant="outline" className={STATUS_STYLE[b.status] ?? ""}>
-                  {b.status}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant="outline" className={STATUS_STYLE[b.status] ?? ""}>
+                    {b.status}
+                  </Badge>
+                  {canManage ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground"
+                      onClick={() => openEdit(b)}
+                      aria-label={`Edit ${b.name}`}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  ) : null}
+                </div>
               </div>
               <div className="flex flex-wrap gap-1">
                 {b.enabledModules.length === 0 ? (
@@ -245,17 +279,40 @@ function BranchesPage() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) resetForm();
+        }}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>New branch</DialogTitle>
-            <DialogDescription>Subject to your subscription's branch limit.</DialogDescription>
+            <DialogTitle>{editing ? `Edit ${editing.name}` : "New branch"}</DialogTitle>
+            <DialogDescription>
+              {editing
+                ? "Update this branch's contact details and enabled modules."
+                : "Subject to your subscription's branch limit."}
+            </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleSubmit} noValidate>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="b-name">Branch name</Label>
-                <Input id="b-name" value={name} onChange={(e) => setName(e.target.value)} />
+                <Label htmlFor="b-name">
+                  Branch name <span className="font-bold text-destructive">*</span>
+                </Label>
+                <Input
+                  id="b-name"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (nameError) setNameError(null);
+                  }}
+                  className={cn(nameError && "border-destructive")}
+                />
+                {nameError ? (
+                  <p className="text-[11px] font-medium text-destructive">{nameError}</p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="b-email">Email</Label>
@@ -299,7 +356,13 @@ function BranchesPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Adding…" : "Add branch"}
+                {submitting
+                  ? editing
+                    ? "Saving…"
+                    : "Adding…"
+                  : editing
+                    ? "Save changes"
+                    : "Add branch"}
               </Button>
             </div>
           </form>

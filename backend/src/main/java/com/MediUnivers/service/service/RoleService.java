@@ -133,6 +133,27 @@ public class RoleService {
         roleRepository.delete(role);
     }
 
+    /** Org Owner/Admin editing their own organization's custom role — same edit logic as the
+     * platform-wide {@link #updateRole}, with an ownership check first so an org admin can't
+     * reach another org's role (or a platform role) by guessing its id. */
+    public RoleDto updateOrgRole(Organization organization, Long id, CreateRoleRequest request) {
+        requireOwnedByOrg(organization, id);
+        return updateRole(id, request);
+    }
+
+    public void deleteOrgRole(Organization organization, Long id) {
+        requireOwnedByOrg(organization, id);
+        deleteRole(id);
+    }
+
+    private void requireOwnedByOrg(Organization organization, Long id) {
+        Role role = roleRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Role not found: " + id));
+        if (role.getOrganization() == null || !role.getOrganization().getId().equals(organization.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This role does not belong to your organization.");
+        }
+    }
+
     private Role requireEditable(Long id) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Role not found: " + id));

@@ -13,6 +13,8 @@ import {
   type PageBanners,
 } from "@/lib/pageBanners";
 import { ImageUploadField } from "@/components/common/ImageUploadField";
+import { MultiImageUploadField } from "@/components/common/MultiImageUploadField";
+import { VideoUploadField } from "@/components/common/VideoUploadField";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +49,16 @@ export const Route = createFileRoute("/app/platform/cms")({
   }),
   component: PlatformCmsPage,
 });
+
+function parseImageArray(json: string | null): string[] {
+  if (!json) return [];
+  try {
+    const parsed: unknown = JSON.parse(json);
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 function parseStats(json: string | null): PlatformSiteStat[] {
   if (!json) return [];
@@ -105,6 +117,7 @@ function PlatformCmsPage() {
   const [config, setConfig] = useState<PlatformSiteConfigDto | null>(null);
   const [stats, setStats] = useState<PlatformSiteStat[]>([]);
   const [pageBanners, setPageBanners] = useState<PageBanners>({});
+  const [homeCarousel, setHomeCarousel] = useState<string[]>([]);
   const [templates, setTemplates] = useState<WebsiteTemplateRow[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -125,6 +138,7 @@ function PlatformCmsPage() {
         setConfig(c);
         setStats(parseStats(c.statsJson));
         setPageBanners(parsePageBanners(c.pageBannersJson));
+        setHomeCarousel(parseImageArray(c.homeCarouselJson));
         setTemplates(t);
       })
       .catch((err) =>
@@ -154,6 +168,7 @@ function PlatformCmsPage() {
         ...config,
         statsJson: cleanStats.length ? JSON.stringify(cleanStats) : null,
         pageBannersJson: Object.keys(pageBanners).length ? stringifyPageBanners(pageBanners) : null,
+        homeCarouselJson: homeCarousel.length ? JSON.stringify(homeCarousel) : null,
       };
       const updated = await apiFetch<PlatformSiteConfigDto>("/api/platform/website-config", {
         method: "PUT",
@@ -162,6 +177,7 @@ function PlatformCmsPage() {
       setConfig(updated);
       setStats(parseStats(updated.statsJson));
       setPageBanners(parsePageBanners(updated.pageBannersJson));
+      setHomeCarousel(parseImageArray(updated.homeCarouselJson));
       toast.success("MediUnivers site settings saved");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Couldn't save site settings.");
@@ -451,9 +467,30 @@ function PlatformCmsPage() {
 
             <Card className="space-y-4 p-5">
               <div>
+                <Label className="text-sm font-semibold">Home hero</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  The homepage's own rotating banner — up to 5 photos, auto-advancing — plus an
+                  optional intro video shown underneath it.
+                </p>
+              </div>
+              <MultiImageUploadField
+                label="Carousel photos"
+                values={homeCarousel}
+                onChange={setHomeCarousel}
+                max={5}
+              />
+              <VideoUploadField
+                label="Intro video"
+                value={config.heroVideoUrl ?? null}
+                onChange={(url) => setConfig({ ...config, heroVideoUrl: url })}
+              />
+            </Card>
+
+            <Card className="space-y-4 p-5">
+              <div>
                 <Label className="text-sm font-semibold">Page banners</Label>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  A hero image for each marketing page. Leave a page blank to keep its flat
+                  A hero image for each other marketing page. Leave a page blank to keep its flat
                   brand-colour background.
                 </p>
               </div>

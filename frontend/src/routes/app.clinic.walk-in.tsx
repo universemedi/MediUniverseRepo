@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AppointmentBoard, type AppointmentApiDto } from "@/components/common/AppointmentBoard";
 import { apiFetch, ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +39,11 @@ interface Doctor {
   fullName: string;
 }
 
+interface FieldErrors {
+  patientId?: string | undefined;
+  doctorId?: string | undefined;
+}
+
 function WalkInDialog({ onDone }: { onDone: () => void }) {
   const [open, setOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -47,6 +53,7 @@ function WalkInDialog({ onDone }: { onDone: () => void }) {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   useEffect(() => {
     if (!open) return;
@@ -58,11 +65,16 @@ function WalkInDialog({ onDone }: { onDone: () => void }) {
       .catch(() => setDoctors([]));
   }, [open]);
 
+  function validateFields(): boolean {
+    const errors: FieldErrors = {};
+    if (!patientId) errors.patientId = "Select a patient.";
+    if (!doctorId) errors.doctorId = "Select a doctor.";
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
   async function submit() {
-    if (!patientId || !doctorId) {
-      setError("Pick a patient and a doctor.");
-      return;
-    }
+    if (!validateFields()) return;
     setError(null);
     setSubmitting(true);
     try {
@@ -79,6 +91,7 @@ function WalkInDialog({ onDone }: { onDone: () => void }) {
       setPatientId("");
       setDoctorId("");
       setReason("");
+      setFieldErrors({});
       onDone();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't register this walk-in.");
@@ -105,8 +118,14 @@ function WalkInDialog({ onDone }: { onDone: () => void }) {
             <Label>
               Patient <span className="font-bold text-destructive">*</span>
             </Label>
-            <Select value={patientId} onValueChange={setPatientId}>
-              <SelectTrigger>
+            <Select
+              value={patientId}
+              onValueChange={(v) => {
+                setPatientId(v);
+                if (fieldErrors.patientId) setFieldErrors(({ patientId: _, ...rest }) => rest);
+              }}
+            >
+              <SelectTrigger className={cn(fieldErrors.patientId && "border-destructive")}>
                 <SelectValue placeholder="Select patient" />
               </SelectTrigger>
               <SelectContent>
@@ -117,13 +136,22 @@ function WalkInDialog({ onDone }: { onDone: () => void }) {
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.patientId ? (
+              <p className="text-[11px] font-medium text-destructive">{fieldErrors.patientId}</p>
+            ) : null}
           </div>
           <div className="space-y-1.5">
             <Label>
               Doctor <span className="font-bold text-destructive">*</span>
             </Label>
-            <Select value={doctorId} onValueChange={setDoctorId}>
-              <SelectTrigger>
+            <Select
+              value={doctorId}
+              onValueChange={(v) => {
+                setDoctorId(v);
+                if (fieldErrors.doctorId) setFieldErrors(({ doctorId: _, ...rest }) => rest);
+              }}
+            >
+              <SelectTrigger className={cn(fieldErrors.doctorId && "border-destructive")}>
                 <SelectValue placeholder="Select doctor" />
               </SelectTrigger>
               <SelectContent>
@@ -134,6 +162,9 @@ function WalkInDialog({ onDone }: { onDone: () => void }) {
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.doctorId ? (
+              <p className="text-[11px] font-medium text-destructive">{fieldErrors.doctorId}</p>
+            ) : null}
           </div>
           <div className="space-y-1.5">
             <Label>Reason</Label>

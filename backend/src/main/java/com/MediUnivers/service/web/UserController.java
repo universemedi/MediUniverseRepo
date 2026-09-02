@@ -4,6 +4,7 @@ import com.MediUnivers.service.domain.AppUser;
 import com.MediUnivers.service.dto.CreateUserRequest;
 import com.MediUnivers.service.dto.MeResponse;
 import com.MediUnivers.service.dto.OrgUserDto;
+import com.MediUnivers.service.dto.UpdateUserRequest;
 import com.MediUnivers.service.security.CurrentUserService;
 import com.MediUnivers.service.service.UserService;
 import jakarta.validation.Valid;
@@ -34,6 +35,12 @@ public class UserController {
     public MeResponse create(@Valid @RequestBody CreateUserRequest request) {
         AppUser me = requireOrgUser();
         return userService.createOrgUser(me.getOrganization(), request);
+    }
+
+    @PutMapping("/{id}")
+    public OrgUserDto update(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
+        AppUser me = requireOrgUser();
+        return userService.updateOrgUser(me.getOrganization(), id, request);
     }
 
     @PostMapping("/{id}/resend-invitation")

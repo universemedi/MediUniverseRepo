@@ -64,6 +64,29 @@ public class MasterDataService {
         return new DepartmentDto(d.getId(), d.getCode(), d.getName(), d.getStatus());
     }
 
+    public DepartmentDto updateDepartment(Organization organization, Long id, UpdateDepartmentRequest request) {
+        Department d = requireOwnedDepartment(organization, id);
+        d.setName(request.name());
+        if (request.status() != null && !request.status().isBlank()) {
+            d.setStatus(request.status());
+        }
+        return new DepartmentDto(d.getId(), d.getCode(), d.getName(), d.getStatus());
+    }
+
+    public void deactivateDepartment(Organization organization, Long id) {
+        Department d = requireOwnedDepartment(organization, id);
+        d.setStatus("INACTIVE");
+    }
+
+    private Department requireOwnedDepartment(Organization organization, Long id) {
+        Department d = departmentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Department not found."));
+        if (!d.getOrganization().getId().equals(organization.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This department does not belong to your organization.");
+        }
+        return d;
+    }
+
     @Transactional(readOnly = true)
     public List<SpecializationDto> listSpecializations(Long organizationId) {
         Stream<SpecializationDto> platform = specializationRepository.findByOrganizationIsNull().stream()

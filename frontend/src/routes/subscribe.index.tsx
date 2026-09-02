@@ -67,6 +67,7 @@ function CreateAccountPage() {
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
   const [cityOptions, setCityOptions] = useState<string[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
   const states = useIndiaStates();
@@ -154,6 +155,7 @@ function CreateAccountPage() {
             city: city.trim() || null,
             state: state.trim() || null,
             country: "India",
+            gstNumber: gstNumber.trim() || null,
             headBranchName: headBranchName.trim(),
             ownerFullName: ownerFullName.trim(),
             ownerEmail: ownerEmail.trim(),
@@ -309,6 +311,16 @@ function CreateAccountPage() {
                   value={city ? { label: city, value: city } : null}
                   onChange={(opt) => setCity(opt?.value ?? "")}
                   placeholder={state ? "Select city" : "Select a state first"}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="s-gst">GST number (optional)</Label>
+                <Input
+                  id="s-gst"
+                  value={gstNumber}
+                  onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
+                  placeholder="22AAAAA0000A1Z5"
+                  maxLength={15}
                 />
               </div>
               <div className="space-y-1.5 sm:col-span-2">

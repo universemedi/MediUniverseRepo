@@ -29,7 +29,7 @@ export interface LabOrderApiDto {
     | "COMPLETED"
     | "CANCELLED"
     | "REJECTED";
-  patient: { id: number; patientNumber: string; fullName: string };
+  patient: { id: number; patientNumber: string; name: string };
   doctorName: string | null;
   items: LabOrderItemApiDto[];
   createdAt: string;
@@ -157,7 +157,7 @@ export function LabOrderBoard({ path, statuses, emptyMessage, actions }: LabOrde
             {orders.map((o) => (
               <div key={o.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div>
-                  <p className="text-sm font-medium text-foreground">{o.patient.fullName}</p>
+                  <p className="text-sm font-medium text-foreground">{o.patient.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {o.orderNumber} · {o.patient.patientNumber} ·{" "}
                     {o.items.map((i) => i.testName).join(", ")}

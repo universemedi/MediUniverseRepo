@@ -11,16 +11,28 @@ import {
   Check,
 } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
-import { apiFetchPublic } from "@/lib/api";
+import { apiFetchPublic, resolveUploadUrl } from "@/lib/api";
 import { usePlatformSite } from "@/lib/platformSite";
 import { useDynamicSeo } from "@/lib/useDynamicSeo";
-import { usePageBanner } from "@/lib/pageBanners";
 import { cn } from "@/lib/utils";
+import { HeroCarousel } from "@/components/common/HeroCarousel";
+import { useOrgDomainRedirect } from "@/lib/orgDomain";
 import type { PlanApiDto, PlatformSiteStat } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+
+function parseImageArray(json: string | null | undefined): string[] {
+  if (!json) return [];
+  try {
+    const parsed: unknown = JSON.parse(json);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -118,21 +130,24 @@ const DEFAULT_HERO_STATS: PlatformSiteStat[] = [
   { label: "Uptime target", value: "99.9%" },
 ];
 
-/** Also rendered inside <SiteLayout> for the same reason as HomeSeo — usePageBanner and usePlatformSite need the site-config context. */
+/** Also rendered inside <SiteLayout> for the same reason as HomeSeo — usePlatformSite needs the site-config context. */
 function HomeHero() {
-  const imageUrl = usePageBanner("home");
   const { site, stats } = usePlatformSite();
   const heroStats = stats.length ? stats : DEFAULT_HERO_STATS;
+  const carouselImages = parseImageArray(site?.homeCarouselJson).map(resolveUploadUrl);
+  const hasCarousel = carouselImages.length > 0;
+  const videoUrl = site?.heroVideoUrl ? resolveUploadUrl(site.heroVideoUrl) : null;
+
   return (
     <section
       className={cn(
         "relative overflow-hidden border-b border-border",
-        imageUrl ? "bg-slate-900" : "bg-primary/5",
+        hasCarousel ? "bg-slate-900" : "bg-primary/5",
       )}
     >
-      {imageUrl ? (
+      {hasCarousel ? (
         <>
-          <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <HeroCarousel images={carouselImages} />
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/75 via-slate-950/65 to-slate-950/85" />
         </>
       ) : null}
@@ -140,7 +155,7 @@ function HomeHero() {
         <Badge
           variant="outline"
           className={
-            imageUrl
+            hasCarousel
               ? "border-white/30 bg-white/10 text-white"
               : "border-primary/25 bg-primary/10 text-primary"
           }
@@ -150,7 +165,7 @@ function HomeHero() {
         <h1
           className={cn(
             "mx-auto mt-5 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl",
-            imageUrl ? "text-white" : "text-foreground",
+            hasCarousel ? "text-white" : "text-foreground",
           )}
         >
           {site?.heroHeading || "Run clinics, pharmacies and laboratories from a single console"}
@@ -158,7 +173,7 @@ function HomeHero() {
         <p
           className={cn(
             "mx-auto mt-4 max-w-2xl text-base",
-            imageUrl ? "text-white/85" : "text-muted-foreground",
+            hasCarousel ? "text-white/85" : "text-muted-foreground",
           )}
         >
           {site?.heroSubheading ||
@@ -183,18 +198,32 @@ function HomeHero() {
           ))}
         </dl>
       </div>
+      {videoUrl ? (
+        <div className="relative mx-auto max-w-3xl px-4 pb-16">
+          <video
+            src={videoUrl}
+            controls
+            className="w-full rounded-xl border border-border/60 shadow-lg"
+          />
+        </div>
+      ) : null}
     </section>
   );
 }
 
 function Landing() {
   const [plans, setPlans] = useState<PlanApiDto[] | null>(null);
+  const checkingOrgDomain = useOrgDomainRedirect();
 
   useEffect(() => {
     apiFetchPublic<PlanApiDto[]>("/api/public/plans")
       .then(setPlans)
       .catch(() => setPlans([]));
   }, []);
+
+  // Landing on an org's own domain resolves to their site instead — render nothing while that
+  // lookup is in flight so the MediUnivers homepage never flashes before the redirect.
+  if (checkingOrgDomain) return null;
 
   return (
     <SiteLayout>

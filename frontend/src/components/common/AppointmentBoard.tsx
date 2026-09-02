@@ -13,7 +13,7 @@ import { Link } from "@tanstack/react-router";
 export interface PatientSummary {
   id: number;
   patientNumber: string;
-  fullName: string;
+  name: string;
   phone: string | null;
 }
 
@@ -163,7 +163,7 @@ export function AppointmentBoard({
         method: "PUT",
         data: { status: nextStatus },
       });
-      toast.success(`${a.patient.fullName} — ${STATUS_LABELS[nextStatus].toLowerCase()}`);
+      toast.success(`${a.patient.name} — ${STATUS_LABELS[nextStatus].toLowerCase()}`);
       load();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Couldn't update this appointment.");
@@ -200,7 +200,7 @@ export function AppointmentBoard({
                     </span>
                   ) : null}
                   <div>
-                    <p className="text-sm font-medium text-foreground">{a.patient.fullName}</p>
+                    <p className="text-sm font-medium text-foreground">{a.patient.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {a.patient.patientNumber} · Dr. {a.doctor.fullName}
                       {a.reason ? ` · ${a.reason}` : ""}

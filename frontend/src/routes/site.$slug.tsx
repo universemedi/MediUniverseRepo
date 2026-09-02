@@ -8,6 +8,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  Menu,
   Phone,
   Sparkles,
   Star,
@@ -16,7 +17,8 @@ import {
   Youtube,
 } from "lucide-react";
 import { toast } from "sonner";
-import { apiFetch, ApiError } from "@/lib/api";
+import { apiFetch, ApiError, resolveUploadUrl } from "@/lib/api";
+import { HeroCarousel } from "@/components/common/HeroCarousel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,6 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { parseFooterColumns, parseNavLinks } from "@/components/common/SiteNavFooterEditors";
 
 export const Route = createFileRoute("/site/$slug")({
   head: () => ({ meta: [{ title: "Loading site…" }] }),
@@ -54,6 +58,10 @@ interface WebsiteConfig {
   seoTitle: string | null;
   seoDescription: string | null;
   bookingEnabled: boolean;
+  bannersJson: string | null;
+  heroVideoUrl: string | null;
+  navItemsJson: string | null;
+  footerColumnsJson: string | null;
 }
 interface ServiceItem {
   id: number;
@@ -64,8 +72,17 @@ interface PublicDoctor {
   id: number;
   fullName: string;
   qualification: string | null;
+  photoUrl: string | null;
   experienceYears: number | null;
   specializations: string[];
+  branchId: number | null;
+}
+interface PublicBranch {
+  id: number;
+  name: string;
+  headOffice: boolean;
+  city: string | null;
+  addressLine1: string | null;
 }
 interface GalleryImage {
   id: number;
@@ -96,9 +113,21 @@ interface SiteData {
   gallery: GalleryImage[];
   testimonials: Testimonial[];
   blogs: BlogSummary[];
+  branches: PublicBranch[];
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function parseImageArray(json: string | null | undefined): string[] {
+  if (!json) return [];
+  try {
+    const parsed: unknown = JSON.parse(json);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
 
 function PublicSitePage() {
   const { slug } = Route.useParams();
@@ -133,6 +162,12 @@ function PublicSitePage() {
 
   const { config } = site;
   const primary = config.primaryColor || "#0f766e";
+  const logoUrl = config.logoUrl ? resolveUploadUrl(config.logoUrl) : null;
+  const carouselImages = parseImageArray(config.bannersJson).map(resolveUploadUrl);
+  const hasCarousel = carouselImages.length > 0;
+  const videoUrl = config.heroVideoUrl ? resolveUploadUrl(config.heroVideoUrl) : null;
+  const extraNavLinks = parseNavLinks(config.navItemsJson);
+  const footerColumns = parseFooterColumns(config.footerColumnsJson);
 
   return (
     <div
@@ -143,9 +178,9 @@ function PublicSitePage() {
       <header className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2 font-semibold">
-            {config.logoUrl ? (
+            {logoUrl ? (
               <img
-                src={config.logoUrl}
+                src={logoUrl}
                 alt={site.organizationName}
                 className="h-8 w-8 rounded object-cover"
               />
@@ -159,7 +194,7 @@ function PublicSitePage() {
             )}
             {site.organizationName}
           </div>
-          <nav className="hidden gap-6 text-sm text-slate-600 md:flex">
+          <nav className="hidden gap-6 text-sm text-slate-600 lg:flex">
             <a href="#about" className="hover:text-slate-900">
               About
             </a>
@@ -178,8 +213,13 @@ function PublicSitePage() {
             <a href="#contact" className="hover:text-slate-900">
               Contact
             </a>
+            {extraNavLinks.map((link, i) => (
+              <a key={i} href={link.url} className="hover:text-slate-900">
+                {link.label}
+              </a>
+            ))}
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 lg:flex">
             <Button asChild variant="outline" size="sm">
               <Link to="/login">Sign in</Link>
             </Button>
@@ -189,18 +229,113 @@ function PublicSitePage() {
               </a>
             </Button>
           </div>
+
+          {/* Below "lg" there's no room for the full nav + both buttons — everything moves
+              into this one menu instead of cramming/clipping the header row. */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="lg:hidden" aria-label="Open menu">
+                <Menu className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="flex w-72 flex-col gap-6">
+              <SheetTitle>{site.organizationName}</SheetTitle>
+              <nav className="flex flex-col gap-4 text-sm text-slate-600">
+                <SheetClose asChild>
+                  <a href="#about" className="hover:text-slate-900">
+                    About
+                  </a>
+                </SheetClose>
+                <SheetClose asChild>
+                  <a href="#services" className="hover:text-slate-900">
+                    Services
+                  </a>
+                </SheetClose>
+                <SheetClose asChild>
+                  <a href="#doctors" className="hover:text-slate-900">
+                    Doctors
+                  </a>
+                </SheetClose>
+                <SheetClose asChild>
+                  <a href="#testimonials" className="hover:text-slate-900">
+                    Testimonials
+                  </a>
+                </SheetClose>
+                <SheetClose asChild>
+                  <a href="#blog" className="hover:text-slate-900">
+                    Blog
+                  </a>
+                </SheetClose>
+                <SheetClose asChild>
+                  <a href="#contact" className="hover:text-slate-900">
+                    Contact
+                  </a>
+                </SheetClose>
+                {extraNavLinks.map((link, i) => (
+                  <SheetClose key={i} asChild>
+                    <a href={link.url} className="hover:text-slate-900">
+                      {link.label}
+                    </a>
+                  </SheetClose>
+                ))}
+              </nav>
+              <div className="mt-auto flex flex-col gap-2 border-t pt-4">
+                <SheetClose asChild>
+                  <Button asChild variant="outline">
+                    <Link to="/login">Sign in</Link>
+                  </Button>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Button asChild style={{ backgroundColor: primary }}>
+                    <a href="#book">
+                      <CalendarCheck className="h-4 w-4" /> Book appointment
+                    </a>
+                  </Button>
+                </SheetClose>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="px-6 py-20 text-center" style={{ backgroundColor: `${primary}0d` }}>
-        <p className="text-sm font-medium uppercase tracking-wide" style={{ color: primary }}>
-          {config.tagline}
-        </p>
-        <h1 className="mx-auto mt-3 max-w-2xl text-4xl font-bold tracking-tight">
-          {config.heroHeading ?? site.organizationName}
-        </h1>
-        <p className="mx-auto mt-4 max-w-xl text-slate-600">{config.heroSubheading}</p>
+      <section
+        className="relative overflow-hidden px-6 py-20 text-center"
+        style={{ backgroundColor: hasCarousel ? undefined : `${primary}0d` }}
+      >
+        {hasCarousel ? (
+          <>
+            <HeroCarousel images={carouselImages} />
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/55 to-slate-950/75" />
+          </>
+        ) : null}
+        <div className="relative">
+          <p
+            className="text-sm font-medium uppercase tracking-wide"
+            style={{ color: hasCarousel ? "#fff" : primary }}
+          >
+            {config.tagline}
+          </p>
+          <h1
+            className={`mx-auto mt-3 max-w-2xl text-4xl font-bold tracking-tight ${hasCarousel ? "text-white" : ""}`}
+          >
+            {config.heroHeading ?? site.organizationName}
+          </h1>
+          <p
+            className={`mx-auto mt-4 max-w-xl ${hasCarousel ? "text-white/85" : "text-slate-600"}`}
+          >
+            {config.heroSubheading}
+          </p>
+          {videoUrl ? (
+            <div className="mx-auto mt-8 max-w-2xl">
+              <video
+                src={videoUrl}
+                controls
+                className="w-full rounded-xl border border-white/20 shadow-lg"
+              />
+            </div>
+          ) : null}
+        </div>
       </section>
 
       {/* About */}
@@ -239,12 +374,28 @@ function PublicSitePage() {
           <h2 className="text-2xl font-semibold">Our doctors</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {site.doctors.map((d) => (
-              <Card key={d.id} className="p-5">
-                <p className="font-semibold">Dr. {d.fullName}</p>
-                <p className="text-sm text-slate-600">{d.qualification}</p>
-                {d.specializations.length ? (
-                  <p className="mt-2 text-xs text-slate-500">{d.specializations.join(" · ")}</p>
-                ) : null}
+              <Card key={d.id} className="flex gap-3 p-5">
+                {d.photoUrl ? (
+                  <img
+                    src={resolveUploadUrl(d.photoUrl)}
+                    alt={d.fullName}
+                    className="h-14 w-14 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <span
+                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white"
+                    style={{ backgroundColor: primary }}
+                  >
+                    <Stethoscope className="h-5 w-5" />
+                  </span>
+                )}
+                <div className="min-w-0">
+                  <p className="font-semibold">Dr. {d.fullName}</p>
+                  <p className="text-sm text-slate-600">{d.qualification}</p>
+                  {d.specializations.length ? (
+                    <p className="mt-2 text-xs text-slate-500">{d.specializations.join(" · ")}</p>
+                  ) : null}
+                </div>
               </Card>
             ))}
           </div>
@@ -332,7 +483,12 @@ function PublicSitePage() {
       ) : null}
 
       {/* Book appointment — mandatory on every organization website (req #11) */}
-      <BookingSection slug={slug} doctors={site.doctors} primary={primary} />
+      <BookingSection
+        slug={slug}
+        doctors={site.doctors}
+        branches={site.branches}
+        primary={primary}
+      />
 
       {/* Contact */}
       <section id="contact" className="bg-slate-50 px-6 py-16">
@@ -388,8 +544,36 @@ function PublicSitePage() {
         </div>
       </section>
 
-      <footer className="border-t px-6 py-8 text-center text-xs text-slate-500">
-        © {new Date().getFullYear()} {site.organizationName}. Built with MediUnivers.
+      <footer className="border-t px-6 py-10 text-slate-500">
+        {footerColumns.length ? (
+          <div className="mx-auto grid max-w-6xl gap-8 pb-8 sm:grid-cols-2 lg:grid-cols-4">
+            {footerColumns.map((column, i) => (
+              <div key={i}>
+                {column.title ? (
+                  <p className="text-sm font-semibold text-slate-900">{column.title}</p>
+                ) : null}
+                <ul className="mt-3 space-y-2 text-sm">
+                  {column.links.map((link, li) => (
+                    <li key={li}>
+                      <a href={link.url} className="hover:text-slate-900">
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <p
+          className={
+            footerColumns.length
+              ? "mx-auto max-w-6xl border-t pt-6 text-center text-xs"
+              : "text-center text-xs"
+          }
+        >
+          © {new Date().getFullYear()} {site.organizationName}. Built with MediUnivers.
+        </p>
       </footer>
     </div>
   );
@@ -477,16 +661,22 @@ function ContactForm({ slug, primary }: { slug: string; primary: string }) {
 function BookingSection({
   slug,
   doctors,
+  branches,
   primary,
 }: {
   slug: string;
   doctors: PublicDoctor[];
+  branches: PublicBranch[];
   primary: string;
 }) {
+  const multiBranch = branches.length > 1;
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [branchId, setBranchId] = useState(() =>
+    multiBranch ? "" : branches[0] ? String(branches[0].id) : "",
+  );
   const [doctorId, setDoctorId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [reason, setReason] = useState("");
@@ -494,10 +684,29 @@ function BookingSection({
   const [error, setError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<string | null>(null);
 
+  // A doctor with no branch on file works anywhere — only doctors pinned to a *different*
+  // branch than the one picked drop out of the list.
+  const availableDoctors = branchId
+    ? doctors.filter((d) => d.branchId == null || d.branchId === Number(branchId))
+    : doctors;
+
+  function handleBranchChange(value: string) {
+    setBranchId(value);
+    if (
+      doctorId &&
+      !doctors.some(
+        (d) => String(d.id) === doctorId && (d.branchId == null || d.branchId === Number(value)),
+      )
+    ) {
+      setDoctorId("");
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!firstName.trim() || !phone.trim() || !doctorId)
       return setError("Name, phone and doctor are required.");
+    if (multiBranch && !branchId) return setError("Pick which branch you'd like to visit.");
     setError(null);
     setSubmitting(true);
     try {
@@ -513,6 +722,7 @@ function BookingSection({
             doctorId: Number(doctorId),
             appointmentDate: date,
             reason: reason.trim() || null,
+            branchId: branchId ? Number(branchId) : null,
           },
         },
       );
@@ -561,17 +771,39 @@ function BookingSection({
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
+            {multiBranch ? (
+              <Select value={branchId} onValueChange={handleBranchChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map((b) => (
+                    <SelectItem key={b.id} value={String(b.id)}>
+                      {b.name}
+                      {b.city ? ` · ${b.city}` : ""}
+                      {b.headOffice ? " (Head office)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
             <div className="grid gap-3 sm:grid-cols-2">
               <Select value={doctorId} onValueChange={setDoctorId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose a doctor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {doctors.map((d) => (
-                    <SelectItem key={d.id} value={String(d.id)}>
-                      Dr. {d.fullName}
-                    </SelectItem>
-                  ))}
+                  {availableDoctors.length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      No doctors at this branch yet.
+                    </div>
+                  ) : (
+                    availableDoctors.map((d) => (
+                      <SelectItem key={d.id} value={String(d.id)}>
+                        Dr. {d.fullName}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />

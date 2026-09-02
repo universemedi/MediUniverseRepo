@@ -53,6 +53,7 @@ interface GatewayOrder {
   currency: string;
   publicKey: string;
   mock: boolean;
+  proratedCredit: number;
 }
 
 function currency(n: number) {
@@ -63,20 +64,32 @@ function currency(n: number) {
   }).format(n);
 }
 
+const LIVE_STATUSES = new Set(["ACTIVE", "TRIAL", "GRACE_PERIOD"]);
+
 function ReSubscribePage() {
   const { isPlatform, roleDef } = usePermissions();
   const navigate = useNavigate();
   const orgStatus = useAppSelector((s) => s.tenant.status);
+  const currentPlanCode = useAppSelector((s) => s.tenant.planCode);
+  const renewsOn = useAppSelector((s) => s.tenant.renewsOn);
   const isDraft = orgStatus === "DRAFT";
+  const isLive = LIVE_STATUSES.has(orgStatus);
   const banner = isDraft
     ? {
         title: "Finish setting up your organization",
         body: "You created your account but haven't subscribed yet — pick a plan below to activate it.",
       }
-    : {
-        title: "Your subscription has lapsed",
-        body: "Pick a plan below to reactivate your organization.",
-      };
+    : isLive
+      ? {
+          title: "Upgrade your plan",
+          body: renewsOn
+            ? `Your current plan renews on ${new Date(renewsOn).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}. Switching now credits the unused portion of your current plan against the new one.`
+            : "Pick a higher plan below — the unused portion of your current plan is credited against the new one.",
+        }
+      : {
+          title: "Your subscription has lapsed",
+          body: "Pick a plan below to reactivate your organization.",
+        };
   const [plans, setPlans] = useState<PlanApiDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [payingCode, setPayingCode] = useState<string | null>(null);
@@ -112,6 +125,12 @@ function ReSubscribePage() {
         },
       );
 
+      if (order.proratedCredit > 0) {
+        toast.info(`${currency(order.proratedCredit)} credit applied from your current plan`, {
+          description: `You pay ${currency(order.amount)} today for ${plan.name}.`,
+        });
+      }
+
       const confirm = async (
         gatewayOrderId: string,
         gatewayPaymentId: string,
@@ -122,7 +141,7 @@ function ReSubscribePage() {
             method: "POST",
             data: { gateway: order.gateway, gatewayOrderId, gatewayPaymentId, signature },
           });
-          toast.success("Subscription reactivated");
+          toast.success(isLive ? "Plan upgraded" : "Subscription reactivated");
           setDone(true);
         } catch (err) {
           toast.error(
@@ -190,7 +209,11 @@ function ReSubscribePage() {
       <Card className="mx-auto max-w-md p-10 text-center">
         <CheckCircle2 className="mx-auto h-10 w-10 text-primary" />
         <h1 className="mt-4 text-lg font-semibold">
-          {isDraft ? "Subscription activated" : "Subscription reactivated"}
+          {isDraft
+            ? "Subscription activated"
+            : isLive
+              ? "Plan upgraded"
+              : "Subscription reactivated"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">Your organization is active.</p>
         <Button className="mt-5" onClick={() => navigate({ to: "/app", replace: true })}>
@@ -202,7 +225,13 @@ function ReSubscribePage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <Card className="border-amber-300 bg-amber-50 p-4 text-amber-800">
+      <Card
+        className={
+          isLive
+            ? "border-primary/25 bg-primary/5 p-4 text-foreground"
+            : "border-amber-300 bg-amber-50 p-4 text-amber-800"
+        }
+      >
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5" />
           <p className="text-sm font-semibold">{banner.title}</p>
@@ -216,25 +245,48 @@ function ReSubscribePage() {
         <p className="text-sm text-muted-foreground">Loading plans…</p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {plans.map((p) => (
-            <Card key={p.code} className="flex flex-col p-5">
-              <h2 className="text-sm font-semibold text-foreground">{p.name}</h2>
-              <p className="mt-1 text-xl font-semibold text-primary">
-                {currency(p.priceWithTax)} / month
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {currency(p.priceWithoutTax)} + {p.taxPercent}% tax
-              </p>
-              <ul className="mt-3 flex-1 space-y-1 text-xs text-muted-foreground">
-                {p.highlights.map((h) => (
-                  <li key={h}>• {h}</li>
-                ))}
-              </ul>
-              <Button className="mt-4" onClick={() => subscribe(p)} disabled={payingCode !== null}>
-                {payingCode === p.code ? <Loader2 className="h-4 w-4 animate-spin" /> : "Subscribe"}
-              </Button>
-            </Card>
-          ))}
+          {plans.map((p) => {
+            const isCurrent = isLive && p.code === currentPlanCode;
+            return (
+              <Card key={p.code} className="flex flex-col p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-foreground">{p.name}</h2>
+                  {isCurrent ? (
+                    <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                      Current plan
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-1 text-xl font-semibold text-primary">
+                  {currency(p.priceWithTax)} / month
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {currency(p.priceWithoutTax)} + {p.taxPercent}% tax
+                </p>
+                <ul className="mt-3 flex-1 space-y-1 text-xs text-muted-foreground">
+                  {p.highlights.map((h) => (
+                    <li key={h}>• {h}</li>
+                  ))}
+                </ul>
+                <Button
+                  className="mt-4"
+                  variant={isCurrent ? "outline" : "default"}
+                  onClick={() => subscribe(p)}
+                  disabled={payingCode !== null || isCurrent}
+                >
+                  {payingCode === p.code ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isCurrent ? (
+                    "Your current plan"
+                  ) : isLive ? (
+                    "Upgrade"
+                  ) : (
+                    "Subscribe"
+                  )}
+                </Button>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

@@ -14,7 +14,7 @@ interface PrescriptionItem {
 interface ConsultationApiDto {
   id: number;
   pharmacyStatus: string;
-  patient: { fullName: string; patientNumber: string };
+  patient: { name: string; patientNumber: string };
   doctor: { fullName: string };
   prescriptionItems: PrescriptionItem[];
   startedAt: string;
@@ -39,7 +39,7 @@ function toRow(c: ConsultationApiDto): Row {
   return {
     id: String(c.id),
     code: `RX-${String(c.id).padStart(5, "0")}`,
-    patient: `${c.patient.fullName} (${c.patient.patientNumber})`,
+    patient: `${c.patient.name} (${c.patient.patientNumber})`,
     doctor: `Dr. ${c.doctor.fullName}`,
     date: c.startedAt.slice(0, 10),
     items: c.prescriptionItems.length,

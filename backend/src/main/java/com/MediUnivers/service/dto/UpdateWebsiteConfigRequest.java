@@ -8,6 +8,6 @@ public record UpdateWebsiteConfigRequest(
         String facebookUrl, String instagramUrl, String twitterUrl, String linkedinUrl, String youtubeUrl, String whatsappNumber,
         String seoTitle, String seoDescription, String seoKeywords,
         String bannersJson, String navItemsJson, String footerColumnsJson,
-        boolean bookingEnabled
+        boolean bookingEnabled, String heroVideoUrl
 ) {
 }

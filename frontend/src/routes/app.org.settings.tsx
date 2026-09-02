@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Building2, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -77,6 +78,7 @@ function SettingsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   function load() {
     if (isPlatform) return;
@@ -110,6 +112,11 @@ function SettingsPage() {
 
   async function saveProfile() {
     if (!profile) return;
+    if (!profile.name.trim() || profile.name.trim().length < 3) {
+      setNameError("Organization name must be at least 3 characters.");
+      return;
+    }
+    setNameError(null);
     setSavingProfile(true);
     try {
       const updated = await apiFetch<OrgProfile>("/api/org/profile", {
@@ -177,12 +184,21 @@ function SettingsPage() {
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
-            <Label>Organization name</Label>
+            <Label>
+              Organization name <span className="font-bold text-destructive">*</span>
+            </Label>
             <Input
               value={profile.name}
               disabled={!canManage}
-              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+              onChange={(e) => {
+                setProfile({ ...profile, name: e.target.value });
+                if (nameError) setNameError(null);
+              }}
+              className={cn(nameError && "border-destructive")}
             />
+            {nameError ? (
+              <p className="text-[11px] font-medium text-destructive">{nameError}</p>
+            ) : null}
           </div>
           <div className="space-y-1.5">
             <Label>Email</Label>

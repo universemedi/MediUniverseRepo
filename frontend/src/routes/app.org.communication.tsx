@@ -43,6 +43,7 @@ interface EmailConfig {
 interface SmsConfig {
   apiUrl: string;
   apiKey: string;
+  apiSecret: string;
   senderId: string;
 }
 interface WhatsAppConfig {
@@ -73,7 +74,7 @@ const EMPTY_EMAIL: EmailConfig = {
   fromName: "",
   useTls: true,
 };
-const EMPTY_SMS: SmsConfig = { apiUrl: "", apiKey: "", senderId: "" };
+const EMPTY_SMS: SmsConfig = { apiUrl: "", apiKey: "", apiSecret: "", senderId: "" };
 const EMPTY_WHATSAPP: WhatsAppConfig = { apiUrl: "", apiKey: "", phoneNumberId: "" };
 
 function parseJson<T>(raw: string | null, fallback: T): T {
@@ -319,7 +320,41 @@ function CommunicationSettingsPage() {
                 </SelectContent>
               </Select>
             </div>
-            {settings.smsProvider !== "LOCAL_GATEWAY" && (
+            {settings.smsProvider === "TWILIO" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  From your Twilio console — the message is sent through Twilio's own API directly,
+                  no gateway URL needed.
+                </p>
+                <div className="space-y-1.5">
+                  <Label>Account SID</Label>
+                  <Input
+                    value={sms.apiKey}
+                    disabled={!canManage}
+                    placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    onChange={(e) => setSms({ ...sms, apiKey: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Auth token</Label>
+                  <Input
+                    type="password"
+                    value={sms.apiSecret}
+                    disabled={!canManage}
+                    onChange={(e) => setSms({ ...sms, apiSecret: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>From number</Label>
+                  <Input
+                    value={sms.senderId}
+                    disabled={!canManage}
+                    placeholder="+15551234567"
+                    onChange={(e) => setSms({ ...sms, senderId: e.target.value })}
+                  />
+                </div>
+              </div>
+            ) : settings.smsProvider !== "LOCAL_GATEWAY" ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label>Gateway API URL</Label>
@@ -348,7 +383,7 @@ function CommunicationSettingsPage() {
                   />
                 </div>
               </div>
-            )}
+            ) : null}
             {canManage && (
               <div className="flex flex-wrap items-center gap-2 border-t pt-4">
                 <Input

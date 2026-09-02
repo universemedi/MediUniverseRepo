@@ -12,6 +12,9 @@ public record PublicBookAppointmentRequest(
         String email,
         @NotNull Long doctorId,
         @NotNull LocalDate appointmentDate,
-        String reason
+        String reason,
+        /** Which branch to book at — required once an org has more than one; falls back to the
+         * head office branch when omitted (single-branch orgs never need to ask). */
+        Long branchId
 ) {
 }

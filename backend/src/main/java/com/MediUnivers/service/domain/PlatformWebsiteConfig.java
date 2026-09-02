@@ -119,4 +119,13 @@ public class PlatformWebsiteConfig {
      * (or an empty string) falls back to the flat brand-colour hero background. */
     @Column(name = "page_banners_json", length = 3000)
     private String pageBannersJson;
+
+    /** The homepage hero's own rotating carousel — a JSON array of up to 5 image URLs, distinct from
+     * pageBannersJson.home (which the homepage no longer uses once this has at least one image). */
+    @Column(name = "home_carousel_json", length = 2000)
+    private String homeCarouselJson;
+
+    /** Optional "how it works" / intro video shown alongside the homepage hero. */
+    @Column(name = "hero_video_url", length = 500)
+    private String heroVideoUrl;
 }

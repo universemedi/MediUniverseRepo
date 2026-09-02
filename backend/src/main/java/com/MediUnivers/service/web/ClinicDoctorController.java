@@ -39,6 +39,25 @@ public class ClinicDoctorController {
         return doctorService.create(requireOrgUser().getOrganization(), request);
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_CLINIC_ADMIN'))")
+    public DoctorDto update(@PathVariable Long id, @Valid @RequestBody UpdateDoctorRequest request) {
+        return doctorService.update(requireOrgUser().getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_CLINIC_ADMIN'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivate(@PathVariable Long id) {
+        doctorService.deactivate(requireOrgUser().getOrganization(), id);
+    }
+
+    @PutMapping("/{id}/photo")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_CLINIC_ADMIN') or hasAuthority('ROLE_DOCTOR'))")
+    public DoctorDto updatePhoto(@PathVariable Long id, @Valid @RequestBody UpdateDoctorPhotoRequest request) {
+        return doctorService.updatePhoto(requireOrgUser().getOrganization(), id, request);
+    }
+
     @GetMapping("/{id}/availability")
     public List<AvailabilitySlotDto> listAvailability(@PathVariable Long id) {
         return doctorService.listAvailability(requireOrgUser().getOrganization(), id);

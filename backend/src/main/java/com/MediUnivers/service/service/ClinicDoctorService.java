@@ -53,11 +53,11 @@ public class ClinicDoctorService {
         if (appUserRepository.existsByEmailIgnoreCase(request.email())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "An account with this email already exists.");
         }
-        // A doctor's login occupies a seat just like any other staff account (spec §30) —
+        // A doctor's login occupies a STAFF seat just like any other staff account (spec §30) —
         // enforced here too, not just in UserService, so this creation path can't be used
-        // to bypass the subscription's user limit.
-        long occupiedSeats = appUserRepository.countByOrganizationIdAndStatusIn(
-                organization.getId(), List.of(UserStatus.ACTIVE, UserStatus.INVITED));
+        // to bypass the subscription's user limit. Patient Portal accounts never count here.
+        long occupiedSeats = appUserRepository.countByOrganizationIdAndPortalAndStatusIn(
+                organization.getId(), Portal.TENANT, List.of(UserStatus.ACTIVE, UserStatus.INVITED));
         if (occupiedSeats >= organization.getPlan().getMaxUsers()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Your subscription user limit has been reached.");
         }
@@ -93,6 +93,8 @@ public class ClinicDoctorService {
         doctor.setAppUser(user);
         doctor.setFullName(request.fullName());
         doctor.setQualification(request.qualification());
+        doctor.setRegistrationNumber(request.registrationNumber());
+        doctor.setPhotoUrl(request.photoUrl());
         doctor.setExperienceYears(request.experienceYears());
         doctor.setConsultationFee(request.consultationFee());
         doctor.setTaxPercent(request.taxPercent() != null ? request.taxPercent() : java.math.BigDecimal.ZERO);
@@ -103,6 +105,64 @@ public class ClinicDoctorService {
         }
         doctor = doctorRepository.save(doctor);
         return toDto(doctor);
+    }
+
+    /** Photo upload is a common "add it later, once onboarding settles" step — kept as its own
+     * lightweight endpoint (a single click on the doctor card) alongside the full edit form. */
+    public DoctorDto updatePhoto(Organization organization, Long doctorId, UpdateDoctorPhotoRequest request) {
+        Doctor doctor = requireOwned(organization, doctorId);
+        doctor.setPhotoUrl(request.photoUrl());
+        return toDto(doctor);
+    }
+
+    public DoctorDto update(Organization organization, Long doctorId, UpdateDoctorRequest request) {
+        Doctor doctor = requireOwned(organization, doctorId);
+
+        Branch branch = null;
+        if (request.branchId() != null) {
+            branch = branchRepository.findById(request.branchId())
+                    .filter(b -> b.getOrganization().getId().equals(organization.getId()))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Branch does not belong to this organization."));
+            if (!branch.getId().equals(doctor.getBranch() != null ? doctor.getBranch().getId() : null)) {
+                long doctorsInBranch = doctorRepository.countByBranchId(branch.getId());
+                if (doctorsInBranch >= organization.getPlan().getMaxDoctorsPerBranch()) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "This branch has reached its subscription's doctor limit.");
+                }
+            }
+        }
+
+        doctor.setFullName(request.fullName());
+        doctor.setQualification(request.qualification());
+        doctor.setRegistrationNumber(request.registrationNumber());
+        doctor.setExperienceYears(request.experienceYears());
+        doctor.setConsultationFee(request.consultationFee());
+        doctor.setTaxPercent(request.taxPercent() != null ? request.taxPercent() : java.math.BigDecimal.ZERO);
+        doctor.setBranch(branch);
+        doctor.setVisibleOnWebsite(request.visibleOnWebsite());
+        if (request.status() != null && !request.status().isBlank()) {
+            doctor.setStatus(request.status());
+        }
+        doctor.getSpecializations().clear();
+        if (request.specializationIds() != null && !request.specializationIds().isEmpty()) {
+            doctor.getSpecializations().addAll(specializationRepository.findAllById(request.specializationIds()));
+        }
+
+        // Keep the linked login's name and branch in step with the profile — same identity,
+        // shouldn't drift apart from what Users/Branches shows for this person elsewhere.
+        if (doctor.getAppUser() != null) {
+            doctor.getAppUser().setFullName(request.fullName());
+            doctor.getAppUser().setBranch(branch);
+        }
+
+        return toDto(doctor);
+    }
+
+    public void deactivate(Organization organization, Long doctorId) {
+        Doctor doctor = requireOwned(organization, doctorId);
+        doctor.setStatus("INACTIVE");
+        if (doctor.getAppUser() != null) {
+            doctor.getAppUser().setStatus(UserStatus.DISABLED);
+        }
     }
 
     public List<AvailabilitySlotDto> setAvailability(Organization organization, Long doctorId, SetAvailabilityRequest request) {
@@ -138,8 +198,10 @@ public class ClinicDoctorService {
     }
 
     private DoctorDto toDto(Doctor d) {
-        return new DoctorDto(d.getId(), d.getFullName(), d.getQualification(), d.getExperienceYears(),
+        return new DoctorDto(d.getId(), d.getFullName(), d.getQualification(), d.getRegistrationNumber(), d.getPhotoUrl(), d.getExperienceYears(),
                 d.getConsultationFee(), d.getTaxPercent(), d.getSpecializations().stream().map(Specialization::getName).toList(),
+                d.getSpecializations().stream().map(Specialization::getId).toList(),
+                d.isVisibleOnWebsite(),
                 d.getStatus(), d.getAppUser() != null ? d.getAppUser().getEmail() : null,
                 d.getBranch() != null ? d.getBranch().getId() : null,
                 d.getBranch() != null ? d.getBranch().getName() : null);

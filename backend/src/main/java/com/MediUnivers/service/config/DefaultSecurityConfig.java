@@ -30,7 +30,10 @@ public class DefaultSecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsSource))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/error", "/actuator/health").permitAll()
+                        // The STOMP handshake itself carries no session — WebSocketAuthChannelInterceptor
+                        // validates the JWT on the STOMP CONNECT frame instead, same bearer token the SPA
+                        // already holds.
+                        .requestMatchers("/error", "/actuator/health", "/ws/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 // No .loginPage(...) call on purpose: Spring Security auto-generates a

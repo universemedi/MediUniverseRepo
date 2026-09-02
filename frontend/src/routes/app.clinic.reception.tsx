@@ -13,7 +13,10 @@ function ReceptionPage() {
       emptyMessage="No visitors waiting at reception right now."
       actions={(a, { setStatus }) =>
         a.status === "BOOKED"
-          ? [{ label: "Check In", onClick: () => setStatus(a, "CHECKED_IN") }]
+          ? [
+              { label: "Check In", onClick: () => setStatus(a, "CHECKED_IN") },
+              { label: "No-show", onClick: () => setStatus(a, "NO_SHOW") },
+            ]
           : []
       }
     />

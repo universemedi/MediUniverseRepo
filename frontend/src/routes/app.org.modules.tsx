@@ -120,9 +120,7 @@ function ModulesPage() {
                     size="sm"
                     className="mt-auto h-auto justify-start px-0"
                   >
-                    <Link to="/app/$" params={{ _splat: "org/subscription" }}>
-                      Upgrade to unlock →
-                    </Link>
+                    <Link to="/app/org/plans">Upgrade to unlock →</Link>
                   </Button>
                 ) : null}
               </Card>

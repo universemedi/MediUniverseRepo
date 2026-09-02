@@ -70,6 +70,29 @@ public class ClinicPatientService {
         return toDto(p);
     }
 
+    public PatientDto update(Organization organization, Long patientId, CreatePatientRequest request) {
+        Patient p = requireOwned(organization, patientId);
+
+        Branch branch = null;
+        if (request.branchId() != null) {
+            branch = branchRepository.findById(request.branchId())
+                    .filter(b -> b.getOrganization().getId().equals(organization.getId()))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Branch does not belong to this organization."));
+        }
+
+        p.setBranch(branch);
+        p.setFirstName(request.firstName());
+        p.setLastName(request.lastName());
+        p.setGender(request.gender() != null && !request.gender().isBlank()
+                ? Gender.valueOf(request.gender().toUpperCase(Locale.ROOT)) : null);
+        p.setDateOfBirth(request.dateOfBirth());
+        p.setPhone(request.phone());
+        p.setEmail(request.email());
+        p.setBloodGroup(request.bloodGroup());
+        p.setAddress(request.address());
+        return toDto(p);
+    }
+
     public FamilyMemberDto addFamilyMember(Organization organization, Long patientId, CreateFamilyMemberRequest request) {
         Patient patient = requireOwned(organization, patientId);
         FamilyMember m = new FamilyMember();

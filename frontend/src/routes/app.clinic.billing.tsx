@@ -11,7 +11,7 @@ interface InvoiceApiDto {
   id: number;
   invoiceNumber: string;
   status: string;
-  patient: { fullName: string } | null;
+  patient: { name: string } | null;
   grandTotal: number;
   discountTotal: number;
   createdAt: string;
@@ -38,7 +38,7 @@ function toRow(i: InvoiceApiDto): Row {
   return {
     id: String(i.id),
     code: i.invoiceNumber,
-    patient: i.patient?.fullName ?? "",
+    patient: i.patient?.name ?? "",
     date: i.createdAt.slice(0, 10),
     amount: `₹ ${i.grandTotal.toLocaleString("en-IN")}`,
     discount: `₹ ${i.discountTotal.toLocaleString("en-IN")}`,

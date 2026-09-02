@@ -2,10 +2,9 @@ import { resolveUploadUrl } from "@/lib/api";
 import { usePlatformSite } from "@/lib/platformSite";
 
 export type PageBannerKey =
-  "home" | "features" | "solutions" | "pricing" | "testimonials" | "blog" | "about" | "contact";
+  "features" | "solutions" | "pricing" | "testimonials" | "blog" | "about" | "contact";
 
 export const PAGE_BANNER_LABELS: Record<PageBannerKey, string> = {
-  home: "Home",
   features: "Features",
   solutions: "Solutions",
   pricing: "Pricing",

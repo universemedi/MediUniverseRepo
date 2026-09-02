@@ -50,6 +50,24 @@ public class RoleController {
         return roleService.createCustomRole(me.getOrganization(), request);
     }
 
+    /** Org Owner/Admin edits their own organization's custom role. */
+    @PutMapping("/api/org/roles/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN'))")
+    public RoleDto updateOrgRole(@PathVariable Long id, @Valid @RequestBody CreateRoleRequest request) {
+        AppUser me = currentUserService.require();
+        requireOrganization(me);
+        return roleService.updateOrgRole(me.getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/api/org/roles/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteOrgRole(@PathVariable Long id) {
+        AppUser me = currentUserService.require();
+        requireOrganization(me);
+        roleService.deleteOrgRole(me.getOrganization(), id);
+    }
+
     /** Super Admin builds a brand-new platform-portal role (staff role, not tenant). */
     @PostMapping("/api/platform/roles")
     @PreAuthorize("hasAuthority('PORTAL_PLATFORM') and hasAuthority('ROLE_SUPER_ADMIN')")

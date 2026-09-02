@@ -46,7 +46,7 @@ function CollectSampleDialog({
         method: "POST",
         data: { sampleTypes: sampleTypes.trim(), remarks: remarks.trim() || null },
       });
-      toast.success(`Sample collected for ${order.patient.fullName}`);
+      toast.success(`Sample collected for ${order.patient.name}`);
       onDone();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't record this collection.");
@@ -59,7 +59,7 @@ function CollectSampleDialog({
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Collect sample — {order.patient.fullName}</DialogTitle>
+          <DialogTitle>Collect sample — {order.patient.name}</DialogTitle>
           <DialogDescription>{order.orderNumber}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

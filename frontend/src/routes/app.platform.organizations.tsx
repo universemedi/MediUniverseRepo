@@ -77,6 +77,7 @@ interface CreateForm {
   country: string;
   state: string;
   city: string;
+  gstNumber: string;
   paymentMethod: string;
 }
 
@@ -92,6 +93,7 @@ const EMPTY_FORM: CreateForm = {
   country: "India",
   state: "",
   city: "",
+  gstNumber: "",
   paymentMethod: "",
 };
 
@@ -304,6 +306,7 @@ function OrganizationsPage() {
           country: form.country,
           state: form.state,
           city: form.city,
+          gstNumber: form.gstNumber.trim() || null,
           paymentMethod: selectedPlan?.freeTrial ? null : form.paymentMethod,
           creationSource: "DIRECT_SALES",
         },
@@ -609,6 +612,15 @@ function OrganizationsPage() {
                 {fieldErrors.city ? (
                   <p className="text-xs font-medium text-destructive">{fieldErrors.city}</p>
                 ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label>GST number (optional)</Label>
+                <Input
+                  value={form.gstNumber}
+                  onChange={(e) => setForm({ ...form, gstNumber: e.target.value.toUpperCase() })}
+                  placeholder="22AAAAA0000A1Z5"
+                  maxLength={15}
+                />
               </div>
             </div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}

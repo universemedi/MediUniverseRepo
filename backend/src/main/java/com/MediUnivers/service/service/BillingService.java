@@ -175,7 +175,7 @@ public class BillingService {
         }
         PaymentGatewayService gateway = resolveGateway(request == null ? null : request.gateway());
         GatewayOrderResult result = gateway.createOrder(invoice.balanceDue(), "INR", invoice.getInvoiceNumber());
-        return new GatewayOrderDto(invoice.getId(), gateway.gatewayName(), result.gatewayOrderId(), result.amount(), result.currency(), result.publicKey(), result.mock());
+        return new GatewayOrderDto(invoice.getId(), gateway.gatewayName(), result.gatewayOrderId(), result.amount(), result.currency(), result.publicKey(), result.mock(), java.math.BigDecimal.ZERO);
     }
 
     /** Step 2: the frontend hands back what the gateway returned after checkout — verify it, then record the payment. */

@@ -241,6 +241,8 @@ export interface PlatformSiteConfigDto {
   termsContent: string | null;
   securityContent: string | null;
   pageBannersJson: string | null;
+  homeCarouselJson: string | null;
+  heroVideoUrl: string | null;
 }
 
 export interface PlatformSiteStat {

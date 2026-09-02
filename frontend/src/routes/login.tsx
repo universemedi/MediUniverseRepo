@@ -6,7 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { API_BASE_URL, OAUTH_CLIENT_ID, apiFetchPublic, clearTokens } from "@/lib/api";
+import {
+  API_BASE_URL,
+  OAUTH_CLIENT_ID,
+  apiFetchPublic,
+  clearTokens,
+  resolveUploadUrl,
+} from "@/lib/api";
+import { useOrgBranding } from "@/lib/orgDomain";
+import { useDynamicSeo } from "@/lib/useDynamicSeo";
 import {
   generateCodeChallenge,
   generateCodeVerifier,
@@ -45,6 +53,11 @@ interface FieldErrors {
 
 function LoginPage() {
   const { redirect } = Route.useSearch();
+  const { branding } = useOrgBranding();
+  useDynamicSeo(
+    branding ? `Sign in — ${branding.name}` : null,
+    branding ? `Sign in to your ${branding.name} account.` : null,
+  );
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -147,39 +160,72 @@ function LoginPage() {
 
   return (
     <div className="grid min-h-screen bg-background lg:grid-cols-2">
-      {/* Branding Column */}
-      <div className="relative hidden flex-col justify-between bg-primary p-10 text-primary-foreground lg:flex">
+      {/* Branding Column — an org's own domain shows their own logo/name/color instead of
+          MediUnivers' own, so "sign in through your own website" actually feels like it. */}
+      <div
+        className={cn(
+          "relative hidden flex-col justify-between p-10 text-primary-foreground lg:flex",
+          !branding && "bg-primary",
+        )}
+        style={branding ? { backgroundColor: branding.primaryColor } : undefined}
+      >
         <div className="flex items-center gap-2 text-lg font-semibold [&_svg]:text-primary-foreground">
-          <span className="h-8 w-8 overflow-hidden rounded-lg bg-primary-foreground/15 p-1">
-            <svg viewBox="0 0 32 32" className="h-full w-full" aria-hidden="true">
-              <path
-                d="M16 7v18M7 16h18"
-                stroke="currentColor"
-                strokeWidth="3.4"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-          MediUnivers
+          {branding?.logoUrl ? (
+            <img
+              src={resolveUploadUrl(branding.logoUrl)}
+              alt={branding.name}
+              className="h-8 w-8 rounded-lg bg-primary-foreground/15 object-cover p-1"
+            />
+          ) : (
+            <span className="h-8 w-8 overflow-hidden rounded-lg bg-primary-foreground/15 p-1">
+              <svg viewBox="0 0 32 32" className="h-full w-full" aria-hidden="true">
+                <path
+                  d="M16 7v18M7 16h18"
+                  stroke="currentColor"
+                  strokeWidth="3.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+          )}
+          {branding?.name ?? "MediUnivers"}
         </div>
         <div className="space-y-4">
           <h1 className="text-3xl font-semibold leading-tight">
-            Healthcare operations, clinics, pharmacies and laboratories in one place.
+            {branding
+              ? (branding.tagline ?? `Sign in to your ${branding.name} console.`)
+              : "Healthcare operations, clinics, pharmacies and laboratories in one place."}
           </h1>
-          <p className="max-w-sm text-sm opacity-80">
-            Secure OAuth2 authentication with role-based dashboard routing.
-          </p>
+          {branding ? null : (
+            <p className="max-w-sm text-sm opacity-80">
+              Secure OAuth2 authentication with role-based dashboard routing.
+            </p>
+          )}
         </div>
-        <p className="text-xs opacity-70">Backend-authenticated · OAuth2 & PKCE · JWT session</p>
+        <p className="text-xs opacity-70">
+          {branding
+            ? "Powered by MediUnivers"
+            : "Backend-authenticated · OAuth2 & PKCE · JWT session"}
+        </p>
       </div>
 
       {/* Form Column */}
       <div className="flex items-center justify-center p-6">
         <Card className="w-full max-w-md p-6 shadow-sm">
           <div className="mb-4 lg:hidden">
-            <Logo size="sm" />
+            {branding?.logoUrl ? (
+              <img
+                src={resolveUploadUrl(branding.logoUrl)}
+                alt={branding.name}
+                className="h-8 w-8 rounded-lg object-cover"
+              />
+            ) : (
+              <Logo size="sm" />
+            )}
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">Sign in</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">
+            {branding ? `Sign in to ${branding.name}` : "Sign in"}
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Enter your account credentials to access your console.
           </p>

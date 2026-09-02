@@ -4,6 +4,19 @@ import { CalendarCheck, ExternalLink, Globe, Lock, Save, ShieldAlert } from "luc
 import { toast } from "sonner";
 import { apiFetch, apiFetchPublic, ApiError } from "@/lib/api";
 import { usePermissions } from "@/hooks/usePermissions";
+import { ImageUploadField } from "@/components/common/ImageUploadField";
+import { MultiImageUploadField } from "@/components/common/MultiImageUploadField";
+import { VideoUploadField } from "@/components/common/VideoUploadField";
+import {
+  cleanFooterColumnsJson,
+  cleanNavLinksJson,
+  FooterColumnsEditor,
+  NavLinksEditor,
+  parseFooterColumns,
+  parseNavLinks,
+  serializeFooterColumns,
+  serializeNavLinks,
+} from "@/components/common/SiteNavFooterEditors";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +77,8 @@ interface WebsiteConfig {
   footerColumnsJson: string | null;
   bookingEnabled: boolean;
   siteUrl: string;
+  heroVideoUrl: string | null;
+  slug: string;
 }
 
 interface WebsiteTemplateOption {
@@ -72,6 +87,17 @@ interface WebsiteTemplateOption {
   name: string;
   description: string | null;
   previewImageUrl: string | null;
+}
+
+function parseImageArray(json: string | null | undefined): string[] {
+  if (!json) return [];
+  try {
+    const parsed: unknown = JSON.parse(json);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+  } catch {
+    return [];
+  }
 }
 
 function BrandingPage() {
@@ -136,7 +162,11 @@ function BrandingPage() {
     try {
       const updated = await apiFetch<WebsiteConfig>("/api/org/website/config", {
         method: "PUT",
-        data: config,
+        data: {
+          ...config,
+          navItemsJson: cleanNavLinksJson(config.navItemsJson),
+          footerColumnsJson: cleanFooterColumnsJson(config.footerColumnsJson),
+        },
       });
       setConfig(updated);
       toast.success("Website settings saved", {
@@ -183,7 +213,7 @@ function BrandingPage() {
           </Badge>
           {config.published ? (
             <Button asChild variant="outline" size="sm">
-              <a href={`/site/${config.siteUrl.split(".")[0]}`} target="_blank" rel="noreferrer">
+              <a href={`/site/${config.slug}`} target="_blank" rel="noreferrer">
                 <ExternalLink className="h-3.5 w-3.5" /> View site
               </a>
             </Button>
@@ -199,6 +229,10 @@ function BrandingPage() {
             </p>
             <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
               <Globe className="h-3.5 w-3.5" /> {config.siteUrl}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              That address goes live once this domain is purchased and pointed at MediUnivers — use
+              "View site" above to preview your published site right now.
             </p>
           </div>
           <Switch
@@ -241,11 +275,11 @@ function BrandingPage() {
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
-            <Label>Logo URL</Label>
-            <Input
-              value={config.logoUrl ?? ""}
-              onChange={(e) => setConfig({ ...config, logoUrl: e.target.value })}
-              placeholder="https://…"
+            <ImageUploadField
+              label="Logo"
+              value={config.logoUrl ?? null}
+              onChange={(url) => setConfig({ ...config, logoUrl: url })}
+              uploadPath="/api/org/uploads"
             />
           </div>
           <div className="space-y-1.5">
@@ -348,6 +382,21 @@ function BrandingPage() {
               onChange={(e) => setConfig({ ...config, heroSubheading: e.target.value })}
             />
           </div>
+          <MultiImageUploadField
+            label="Hero carousel photos"
+            values={parseImageArray(config.bannersJson)}
+            onChange={(urls) =>
+              setConfig({ ...config, bannersJson: urls.length ? JSON.stringify(urls) : null })
+            }
+            max={5}
+            uploadPath="/api/org/uploads"
+          />
+          <VideoUploadField
+            label="Intro video"
+            value={config.heroVideoUrl ?? null}
+            onChange={(url) => setConfig({ ...config, heroVideoUrl: url })}
+            uploadPath="/api/org/uploads"
+          />
         </div>
       </Card>
 
@@ -448,38 +497,28 @@ function BrandingPage() {
 
       <Card className="space-y-4 p-5">
         <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Advanced layout
+          Header & footer
         </p>
         <p className="text-xs text-muted-foreground">
-          Optional JSON for banners, navigation links and footer columns — leave blank to use the
-          template's defaults.
+          Your site already shows About, Services, Doctors, Testimonials, Blog and Contact — add
+          extra links here (e.g. a Careers page) and they'll appear alongside those, in the header
+          menu and in the footer.
         </p>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Banners (JSON)</Label>
-            <Textarea
-              rows={3}
-              value={config.bannersJson ?? ""}
-              onChange={(e) => setConfig({ ...config, bannersJson: e.target.value })}
-              placeholder='[{"imageUrl":"https://…","heading":"Spring health checkup camp"}]'
+            <Label>Extra navigation links</Label>
+            <NavLinksEditor
+              value={parseNavLinks(config.navItemsJson)}
+              onChange={(next) => setConfig({ ...config, navItemsJson: serializeNavLinks(next) })}
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Navigation links (JSON)</Label>
-            <Textarea
-              rows={2}
-              value={config.navItemsJson ?? ""}
-              onChange={(e) => setConfig({ ...config, navItemsJson: e.target.value })}
-              placeholder='[{"label":"Careers","url":"#careers"}]'
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Footer columns (JSON)</Label>
-            <Textarea
-              rows={3}
-              value={config.footerColumnsJson ?? ""}
-              onChange={(e) => setConfig({ ...config, footerColumnsJson: e.target.value })}
-              placeholder='[{"title":"Company","links":[{"label":"About","url":"#about"}]}]'
+            <Label>Footer link columns</Label>
+            <FooterColumnsEditor
+              value={parseFooterColumns(config.footerColumnsJson)}
+              onChange={(next) =>
+                setConfig({ ...config, footerColumnsJson: serializeFooterColumns(next) })
+              }
             />
           </div>
         </div>

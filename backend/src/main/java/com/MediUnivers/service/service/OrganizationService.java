@@ -54,6 +54,7 @@ public class OrganizationService {
     private final PaymentGatewayService paymentGatewayService;
     private final ModulePriceRepository modulePriceRepository;
     private final PlatformNotificationService platformNotificationService;
+    private final com.MediUnivers.service.realtime.RealtimeEventService realtimeEventService;
 
     private static final java.math.BigDecimal CUSTOM_PLAN_TAX_PERCENT = java.math.BigDecimal.valueOf(18);
 
@@ -107,6 +108,7 @@ public class OrganizationService {
         org.setCountry(request.country());
         org.setState(request.state());
         org.setCity(request.city());
+        org.setGstNumber(request.gstNumber());
 
         // A platform staff member is provisioning this org directly — they've
         // already closed the deal (or approved the trial), so there's no
@@ -311,7 +313,7 @@ public class OrganizationService {
 
     private GatewayOrderDto requestGatewayOrder(Organization org, Subscription sub) {
         GatewayOrderResult result = paymentGatewayService.createOrder(sub.getPriceWithTax(), "INR", org.getOrganizationCode());
-        return new GatewayOrderDto(org.getId(), paymentGatewayService.gatewayName(), result.gatewayOrderId(), result.amount(), result.currency(), result.publicKey(), result.mock());
+        return new GatewayOrderDto(org.getId(), paymentGatewayService.gatewayName(), result.gatewayOrderId(), result.amount(), result.currency(), result.publicKey(), result.mock(), java.math.BigDecimal.ZERO);
     }
 
     /** One reserved, non-public Plan row per organization for its custom selection — reused (upserted) if they change their mind before paying, rather than accumulating a new row per attempt. */
@@ -398,8 +400,37 @@ public class OrganizationService {
         sub.setStatus(SubscriptionStatus.PENDING_PAYMENT);
         subscriptionRepository.save(sub);
 
-        GatewayOrderResult result = paymentGatewayService.createOrder(sub.getPriceWithTax(), "INR", organization.getOrganizationCode());
-        return new GatewayOrderDto(organization.getId(), paymentGatewayService.gatewayName(), result.gatewayOrderId(), result.amount(), result.currency(), result.publicKey(), result.mock());
+        java.math.BigDecimal amountDue = sub.getPriceWithTax();
+        java.math.BigDecimal proratedCredit = proratedCreditFromCurrentPlan(organization);
+        if (proratedCredit.signum() > 0) {
+            amountDue = amountDue.subtract(proratedCredit).max(java.math.BigDecimal.ZERO);
+        }
+
+        GatewayOrderResult result = paymentGatewayService.createOrder(amountDue, "INR", organization.getOrganizationCode());
+        return new GatewayOrderDto(organization.getId(), paymentGatewayService.gatewayName(), result.gatewayOrderId(), result.amount(), result.currency(), result.publicKey(), result.mock(), proratedCredit);
+    }
+
+    /** How much credit the org has left on its CURRENT active, still-running (not lapsed) paid
+     * subscription — the unused portion of what they already paid, applied against an upgrade's
+     * full price so switching plans mid-cycle only charges the remaining amount owed, not the
+     * new plan's price again from scratch. Zero for a lapsed/draft org (nothing left to credit) or
+     * a free trial (never paid anything). */
+    private java.math.BigDecimal proratedCreditFromCurrentPlan(Organization organization) {
+        return subscriptionRepository
+                .findFirstByOrganizationIdAndStatusOrderByStartDateDesc(organization.getId(), SubscriptionStatus.ACTIVE)
+                .filter(active -> !active.isFreeTrial())
+                .filter(active -> active.getStartDate() != null && active.getEndDate() != null)
+                .filter(active -> active.getEndDate().isAfter(active.getStartDate()))
+                .map(active -> {
+                    LocalDate today = LocalDate.now();
+                    long totalCycleDays = java.time.temporal.ChronoUnit.DAYS.between(active.getStartDate(), active.getEndDate());
+                    long daysRemaining = java.time.temporal.ChronoUnit.DAYS.between(today, active.getEndDate());
+                    if (daysRemaining <= 0) return java.math.BigDecimal.ZERO;
+                    java.math.BigDecimal remainingFraction = java.math.BigDecimal.valueOf(daysRemaining)
+                            .divide(java.math.BigDecimal.valueOf(totalCycleDays), 6, java.math.RoundingMode.HALF_UP);
+                    return active.getPriceWithTax().multiply(remainingFraction).setScale(2, java.math.RoundingMode.HALF_UP);
+                })
+                .orElse(java.math.BigDecimal.ZERO);
     }
 
     public OrganizationDto confirmPlanChangePayment(Organization organization, ConfirmGatewayPaymentRequest request) {
@@ -430,7 +461,9 @@ public class OrganizationService {
         organizationRepository.save(organization);
         notifyRenewed(organization, sub);
 
-        return DtoMapper.toDto(organization, branchRepository.findByOrganizationId(organization.getId()));
+        OrganizationDto dto = DtoMapper.toDto(organization, branchRepository.findByOrganizationId(organization.getId()));
+        realtimeEventService.notifyOrg(organization.getId(), "ORG_UPDATED", dto);
+        return dto;
     }
 
     /** Fires on every successful activation/renewal — first paid signup and every later plan change/renewal alike. */
@@ -561,9 +594,36 @@ public class OrganizationService {
         branch.setCountry(request.country());
         branch.setPostalCode(request.postalCode());
 
+        applyEnabledModules(branch, organization, request.enabledModules());
+
+        branch = branchRepository.save(branch);
+        return DtoMapper.toDto(branch);
+    }
+
+    public BranchDto updateBranch(Organization organization, Long branchId, UpdateBranchRequest request) {
+        Branch branch = branchRepository.findById(branchId)
+                .filter(b -> b.getOrganization().getId().equals(organization.getId()))
+                .orElseThrow(() -> new EntityNotFoundException("Branch not found: " + branchId));
+        branch.setName(request.name());
+        branch.setEmail(request.email());
+        branch.setPhone(request.phone());
+        branch.setAddressLine1(request.addressLine1());
+        branch.setCity(request.city());
+        branch.setState(request.state());
+        branch.setCountry(request.country());
+        branch.setPostalCode(request.postalCode());
+
+        branch.getEnabledModules().clear();
+        applyEnabledModules(branch, organization, request.enabledModules());
+
+        branch = branchRepository.save(branch);
+        return DtoMapper.toDto(branch);
+    }
+
+    private void applyEnabledModules(Branch branch, Organization organization, List<String> requested) {
         Set<ModuleGroup> allowed = effectiveModules(organization);
-        if (request.enabledModules() != null && !request.enabledModules().isEmpty()) {
-            for (String raw : request.enabledModules()) {
+        if (requested != null && !requested.isEmpty()) {
+            for (String raw : requested) {
                 ModuleGroup group;
                 try {
                     group = ModuleGroup.valueOf(raw.toUpperCase(Locale.ROOT));
@@ -579,9 +639,6 @@ public class OrganizationService {
         } else {
             branch.getEnabledModules().addAll(allowed);
         }
-
-        branch = branchRepository.save(branch);
-        return DtoMapper.toDto(branch);
     }
 
     public BranchDto updateBranchStatus(Organization organization, Long branchId, UpdateBranchStatusRequest request) {

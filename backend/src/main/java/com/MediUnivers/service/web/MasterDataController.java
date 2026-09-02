@@ -35,6 +35,21 @@ public class MasterDataController {
         return masterDataService.createDepartment(me.getOrganization(), request);
     }
 
+    @PutMapping("/api/org/departments/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_CLINIC_ADMIN'))")
+    public DepartmentDto updateDepartment(@PathVariable Long id, @Valid @RequestBody UpdateDepartmentRequest request) {
+        AppUser me = requireOrgUser();
+        return masterDataService.updateDepartment(me.getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/api/org/departments/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_CLINIC_ADMIN'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivateDepartment(@PathVariable Long id) {
+        AppUser me = requireOrgUser();
+        masterDataService.deactivateDepartment(me.getOrganization(), id);
+    }
+
     /** Platform default specializations + this org's own — no auth required so the public site / login can show them too. */
     @GetMapping("/api/public/specializations")
     public List<SpecializationDto> listPlatformSpecializations() {

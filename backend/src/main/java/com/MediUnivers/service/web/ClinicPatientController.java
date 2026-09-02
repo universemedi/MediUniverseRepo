@@ -37,6 +37,11 @@ public class ClinicPatientController {
         return patientService.get(requireOrgUser().getOrganization(), id);
     }
 
+    @PutMapping("/{id}")
+    public PatientDto update(@PathVariable Long id, @Valid @RequestBody CreatePatientRequest request) {
+        return patientService.update(requireOrgUser().getOrganization(), id, request);
+    }
+
     @GetMapping("/{id}/family")
     public List<FamilyMemberDto> listFamily(@PathVariable Long id) {
         return patientService.listFamilyMembers(requireOrgUser().getOrganization(), id);
