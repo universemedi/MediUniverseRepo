@@ -77,6 +77,8 @@ const ITEM_ICONS: Record<string, string> = {
   "org/settings": "Settings",
   "org/branches": "MapPin",
   "org/departments": "Network",
+  "org/specializations": "Stethoscope",
+  "org/tax-rules": "Percent",
   "org/users": "Users",
   "org/roles": "KeyRound",
   "org/subscription": "CreditCard",
@@ -100,6 +102,7 @@ const ITEM_ICONS: Record<string, string> = {
   "clinic/reports": "ChartNoAxesColumn",
   /* pharmacy */
   "pharmacy/categories": "Shapes",
+  "pharmacy/units": "Ruler",
   "pharmacy/medicines": "Pill",
   "pharmacy/manufacturers": "Factory",
   "pharmacy/suppliers": "Truck",

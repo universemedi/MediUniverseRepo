@@ -56,6 +56,8 @@ export interface DataTableProps {
   onDelete?: (row: Row) => void;
   /** Extra row actions between Edit and Delete — e.g. "Share via email". Omit for the default Edit/Delete-only menu. */
   rowActions?: (row: Row) => { label: string; icon: ReactNode; onClick: () => void }[];
+  /** Row-level override that disables Edit/Delete regardless of canUpdate/canDelete — e.g. a platform-default record an org can use but not modify. */
+  isRowLocked?: (row: Row) => boolean;
 }
 
 function cellClass(type: ColumnDef["type"]) {
@@ -87,6 +89,7 @@ export function DataTable(props: DataTableProps) {
     canExport,
     createLabel,
     rowActions,
+    isRowLocked,
   } = props;
   const t = useDataTable({ id, rows, columns });
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -380,7 +383,7 @@ export function DataTable(props: DataTableProps) {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
                               onClick={() => props.onEdit?.(r)}
-                              disabled={!canUpdate}
+                              disabled={!canUpdate || Boolean(isRowLocked?.(r))}
                             >
                               <Pencil className="h-4 w-4" />
                               Edit
@@ -393,7 +396,7 @@ export function DataTable(props: DataTableProps) {
                             ))}
                             <DropdownMenuItem
                               onClick={() => props.onDelete?.(r)}
-                              disabled={!canDelete}
+                              disabled={!canDelete || Boolean(isRowLocked?.(r))}
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -459,7 +462,10 @@ export function DataTable(props: DataTableProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => props.onEdit?.(r)} disabled={!canUpdate}>
+                          <DropdownMenuItem
+                            onClick={() => props.onEdit?.(r)}
+                            disabled={!canUpdate || Boolean(isRowLocked?.(r))}
+                          >
                             <Pencil className="h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
@@ -471,7 +477,7 @@ export function DataTable(props: DataTableProps) {
                           ))}
                           <DropdownMenuItem
                             onClick={() => props.onDelete?.(r)}
-                            disabled={!canDelete}
+                            disabled={!canDelete || Boolean(isRowLocked?.(r))}
                             className="text-destructive focus:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />

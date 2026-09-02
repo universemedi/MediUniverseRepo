@@ -40,6 +40,12 @@ public class GoodsReceipt {
     @Column(name = "grn_number", nullable = false, length = 30)
     private String grnNumber;
 
+    @Column(name = "supplier_invoice_number", length = 60)
+    private String supplierInvoiceNumber;
+
+    @Column(name = "supplier_invoice_date")
+    private java.time.LocalDate supplierInvoiceDate;
+
     @OneToMany(mappedBy = "goodsReceipt", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<GoodsReceiptItem> items = new ArrayList<>();
 

@@ -11,6 +11,7 @@ public record GoodsReceiptItemInput(
         @NotNull Long medicineId,
         @NotBlank String batchNumber,
         @NotNull LocalDate expiryDate,
+        LocalDate manufacturingDate,
         @Positive int quantity,
         @NotNull BigDecimal purchasePrice,
         @NotNull BigDecimal mrp

@@ -70,6 +70,13 @@ public class PharmacyInventoryService {
 
     // ---------------- Goods Receipt (GRN) ----------------
 
+    @Transactional(readOnly = true)
+    public List<GoodsReceiptDto> listGoodsReceipts(Organization organization) {
+        accessService.requireModuleEnabled(organization, ModuleGroup.PHARMACY);
+        return goodsReceiptRepository.findByOrganizationIdOrderByReceivedAtDesc(organization.getId())
+                .stream().map(this::toDto).toList();
+    }
+
     public GoodsReceiptDto receiveGoods(Organization organization, CreateGoodsReceiptRequest request) {
         accessService.requireModuleEnabled(organization, ModuleGroup.PHARMACY);
         Supplier supplier = supplierRepository.findById(request.supplierId())
@@ -90,6 +97,8 @@ public class PharmacyInventoryService {
         grn.setSupplier(supplier);
         grn.setPurchaseOrder(po);
         grn.setGrnNumber(numberSeriesService.next(organization, "GRN", "GRN", ResetPolicy.YEARLY, 6));
+        grn.setSupplierInvoiceNumber(request.supplierInvoiceNumber());
+        grn.setSupplierInvoiceDate(request.supplierInvoiceDate());
 
         for (GoodsReceiptItemInput input : request.items()) {
             Medicine medicine = catalogService.requireOwned(organization, input.medicineId());
@@ -98,6 +107,7 @@ public class PharmacyInventoryService {
             grnItem.setMedicine(medicine);
             grnItem.setBatchNumber(input.batchNumber());
             grnItem.setExpiryDate(input.expiryDate());
+            grnItem.setManufacturingDate(input.manufacturingDate());
             grnItem.setQuantity(input.quantity());
             grnItem.setPurchasePrice(input.purchasePrice());
             grnItem.setMrp(input.mrp());
@@ -110,6 +120,7 @@ public class PharmacyInventoryService {
             batch.setSupplier(supplier);
             batch.setBatchNumber(input.batchNumber());
             batch.setExpiryDate(input.expiryDate());
+            batch.setManufacturingDate(input.manufacturingDate());
             batch.setPurchasePrice(input.purchasePrice());
             batch.setMrp(input.mrp());
             batch.setQuantityReceived(input.quantity());
@@ -132,7 +143,18 @@ public class PharmacyInventoryService {
         }
 
         grn = goodsReceiptRepository.save(grn);
-        return new GoodsReceiptDto(grn.getId(), grn.getGrnNumber(), supplier.getName(), grn.getReceivedAt(), grn.getItems().size());
+        return toDto(grn);
+    }
+
+    private GoodsReceiptDto toDto(GoodsReceipt grn) {
+        List<GoodsReceiptItemDto> items = grn.getItems().stream()
+                .map(i -> new GoodsReceiptItemDto(i.getId(), i.getMedicine().getName(), i.getBatchNumber(),
+                        i.getExpiryDate(), i.getManufacturingDate(), i.getQuantity(), i.getPurchasePrice(), i.getMrp()))
+                .toList();
+        return new GoodsReceiptDto(grn.getId(), grn.getGrnNumber(), grn.getSupplier().getName(),
+                grn.getBranch() != null ? grn.getBranch().getName() : null,
+                grn.getPurchaseOrder() != null ? grn.getPurchaseOrder().getPoNumber() : null,
+                grn.getSupplierInvoiceNumber(), grn.getSupplierInvoiceDate(), grn.getReceivedAt(), items);
     }
 
     // ---------------- Stock queries ----------------
@@ -141,7 +163,7 @@ public class PharmacyInventoryService {
     public List<BatchDto> listBatches(Organization organization, Long medicineId, Long branchId) {
         accessService.requireModuleEnabled(organization, ModuleGroup.PHARMACY);
         return batchRepository.findByMedicineIdAndBranchIdOrderByExpiryDateAsc(medicineId, branchId).stream()
-                .map(b -> new BatchDto(b.getId(), b.getBatchNumber(), b.getExpiryDate(), b.getPurchasePrice(), b.getMrp(),
+                .map(b -> new BatchDto(b.getId(), b.getBatchNumber(), b.getExpiryDate(), b.getManufacturingDate(), b.getPurchasePrice(), b.getMrp(),
                         b.getQuantityReceived(), b.getQuantityAvailable(), b.getSupplier() != null ? b.getSupplier().getName() : null, b.isExpired()))
                 .toList();
     }

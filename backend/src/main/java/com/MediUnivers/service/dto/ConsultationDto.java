@@ -19,6 +19,7 @@ public record ConsultationDto(
         String bloodPressure,
         Integer pulseBpm,
         Integer spo2Percent,
+        String prescriptionNumber,
         List<PrescriptionItemInput> prescriptionItems,
         String pharmacyStatus,
         LocalDate followUpDate,

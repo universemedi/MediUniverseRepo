@@ -18,6 +18,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -47,7 +54,11 @@ interface EmailConfig {
   password: string;
   fromEmail: string;
   fromName: string;
-  useTls: boolean;
+  replyTo: string;
+  tlsMode: "NONE" | "STARTTLS" | "SSL";
+  connectionTimeoutMs: number;
+  readTimeoutMs: number;
+  writeTimeoutMs: number;
 }
 interface SmsConfig {
   apiUrl: string;
@@ -62,7 +73,11 @@ const EMPTY_EMAIL: EmailConfig = {
   password: "",
   fromEmail: "",
   fromName: "MediUnivers",
-  useTls: true,
+  replyTo: "",
+  tlsMode: "STARTTLS",
+  connectionTimeoutMs: 10000,
+  readTimeoutMs: 10000,
+  writeTimeoutMs: 10000,
 };
 const EMPTY_SMS: SmsConfig = { apiUrl: "", apiKey: "", senderId: "" };
 
@@ -95,6 +110,15 @@ function parseJson<T>(raw: string | null, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+/** Older saved configs only have the boolean "useTls" — carry it forward as the equivalent tlsMode. */
+function parseEmailConfig(raw: string | null): EmailConfig {
+  const parsed = parseJson<EmailConfig & { useTls?: boolean }>(raw, EMPTY_EMAIL);
+  if (!parsed.tlsMode && parsed.useTls !== undefined) {
+    parsed.tlsMode = parsed.useTls ? "STARTTLS" : "NONE";
+  }
+  return parsed;
 }
 
 function TemplateRow({
@@ -196,7 +220,7 @@ function PlatformCommunicationPage() {
     apiFetch<PlatformCommunicationSettingsDto>("/api/platform/communication/settings")
       .then((s) => {
         setSettings(s);
-        setEmail(parseJson(s.emailConfigJson, EMPTY_EMAIL));
+        setEmail(parseEmailConfig(s.emailConfigJson));
         setSms(parseJson(s.smsConfigJson, EMPTY_SMS));
       })
       .catch((err) =>
@@ -341,8 +365,16 @@ function PlatformCommunicationPage() {
                 <Input
                   type="password"
                   value={email.password}
+                  placeholder={
+                    settings.emailPasswordConfigured ? "•••••••• (saved — leave blank to keep)" : ""
+                  }
                   onChange={(e) => setEmail({ ...email, password: e.target.value })}
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  {settings.emailPasswordConfigured
+                    ? "A password is already saved and never shown again for security — leave this blank to keep it."
+                    : "No password saved yet."}
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label>From email</Label>
@@ -358,6 +390,68 @@ function PlatformCommunicationPage() {
                 <Input
                   value={email.fromName}
                   onChange={(e) => setEmail({ ...email, fromName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Reply-to (optional)</Label>
+                <Input
+                  type="email"
+                  value={email.replyTo}
+                  placeholder="support@mediunivers.io"
+                  onChange={(e) => setEmail({ ...email, replyTo: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Encryption</Label>
+                <Select
+                  value={email.tlsMode}
+                  onValueChange={(v) =>
+                    setEmail({ ...email, tlsMode: v as EmailConfig["tlsMode"] })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STARTTLS">STARTTLS (most common, port 587)</SelectItem>
+                    <SelectItem value="SSL">SSL / implicit TLS (port 465)</SelectItem>
+                    <SelectItem value="NONE">None (unencrypted — not recommended)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid gap-4 border-t pt-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label>Connection timeout (ms)</Label>
+                <Input
+                  type="number"
+                  min="1000"
+                  value={email.connectionTimeoutMs}
+                  onChange={(e) =>
+                    setEmail({ ...email, connectionTimeoutMs: Number(e.target.value) || 10000 })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Read timeout (ms)</Label>
+                <Input
+                  type="number"
+                  min="1000"
+                  value={email.readTimeoutMs}
+                  onChange={(e) =>
+                    setEmail({ ...email, readTimeoutMs: Number(e.target.value) || 10000 })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Write timeout (ms)</Label>
+                <Input
+                  type="number"
+                  min="1000"
+                  value={email.writeTimeoutMs}
+                  onChange={(e) =>
+                    setEmail({ ...email, writeTimeoutMs: Number(e.target.value) || 10000 })
+                  }
                 />
               </div>
             </div>
@@ -413,6 +507,9 @@ function PlatformCommunicationPage() {
                 <Input
                   type="password"
                   value={sms.apiKey}
+                  placeholder={
+                    settings.smsKeyConfigured ? "•••••••• (saved — leave blank to keep)" : ""
+                  }
                   onChange={(e) => setSms({ ...sms, apiKey: e.target.value })}
                 />
               </div>

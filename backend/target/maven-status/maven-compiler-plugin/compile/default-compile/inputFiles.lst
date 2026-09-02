@@ -192,6 +192,7 @@ C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\se
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\ForgotPasswordRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\GatewayOrderDto.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\GoodsReceiptDto.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\GoodsReceiptItemDto.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\GoodsReceiptItemInput.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\InvitationPreviewDto.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\InvoiceDto.java
@@ -296,7 +297,9 @@ C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\se
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateDepartmentRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateDoctorPhotoRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateDoctorRequest.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateLabTestRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateLeadStatusRequest.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateMasterItemRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateModulePriceRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateMyProfileRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateOrganizationCommunicationSettingsRequest.java
@@ -309,6 +312,7 @@ C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\se
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdatePlatformWebsiteConfigRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateReferralCodeRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateSupportTicketRequest.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateTaxRuleRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateUserRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpdateWebsiteConfigRequest.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\dto\UpsertNotificationTemplateRequest.java
@@ -467,6 +471,7 @@ C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\se
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\service\ReferralCodeService.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\service\RoleService.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\service\SavedReportService.java
+C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\service\SecretJsonConfig.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\service\SubscriptionLifecycleService.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\service\SubscriptionService.java
 C:\myspace\Medi\github\MediUniverseRepo\backend\src\main\java\com\MediUnivers\service\service\SupportTicketService.java

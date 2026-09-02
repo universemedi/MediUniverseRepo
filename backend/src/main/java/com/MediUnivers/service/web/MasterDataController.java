@@ -70,6 +70,21 @@ public class MasterDataController {
         return masterDataService.createSpecialization(me.getOrganization(), request);
     }
 
+    @PutMapping("/api/org/specializations/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_CLINIC_ADMIN'))")
+    public SpecializationDto updateSpecialization(@PathVariable Long id, @Valid @RequestBody UpdateMasterItemRequest request) {
+        AppUser me = requireOrgUser();
+        return masterDataService.updateSpecialization(me.getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/api/org/specializations/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_CLINIC_ADMIN'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivateSpecialization(@PathVariable Long id) {
+        AppUser me = requireOrgUser();
+        masterDataService.deactivateSpecialization(me.getOrganization(), id);
+    }
+
     // --- Pharmacy master data ---
 
     @GetMapping("/api/org/medicine-categories")
@@ -86,6 +101,21 @@ public class MasterDataController {
         return masterDataService.createMedicineCategory(me.getOrganization(), request);
     }
 
+    @PutMapping("/api/org/medicine-categories/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_PHARMACIST'))")
+    public MasterItemDto updateMedicineCategory(@PathVariable Long id, @Valid @RequestBody UpdateMasterItemRequest request) {
+        AppUser me = requireOrgUser();
+        return masterDataService.updateMedicineCategory(me.getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/api/org/medicine-categories/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_PHARMACIST'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivateMedicineCategory(@PathVariable Long id) {
+        AppUser me = requireOrgUser();
+        masterDataService.deactivateMedicineCategory(me.getOrganization(), id);
+    }
+
     @GetMapping("/api/org/medicine-units")
     @PreAuthorize("hasAuthority('PORTAL_TENANT')")
     public List<MasterItemDto> listMedicineUnits() {
@@ -100,6 +130,21 @@ public class MasterDataController {
         return masterDataService.createMedicineUnit(me.getOrganization(), request);
     }
 
+    @PutMapping("/api/org/medicine-units/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_PHARMACIST'))")
+    public MasterItemDto updateMedicineUnit(@PathVariable Long id, @Valid @RequestBody UpdateMasterItemRequest request) {
+        AppUser me = requireOrgUser();
+        return masterDataService.updateMedicineUnit(me.getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/api/org/medicine-units/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_PHARMACIST'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivateMedicineUnit(@PathVariable Long id) {
+        AppUser me = requireOrgUser();
+        masterDataService.deactivateMedicineUnit(me.getOrganization(), id);
+    }
+
     @GetMapping("/api/org/manufacturers")
     @PreAuthorize("hasAuthority('PORTAL_TENANT')")
     public List<MasterItemDto> listManufacturers() {
@@ -112,6 +157,21 @@ public class MasterDataController {
     public MasterItemDto createManufacturer(@Valid @RequestBody CreateMasterItemRequest request) {
         AppUser me = requireOrgUser();
         return masterDataService.createManufacturer(me.getOrganization(), request);
+    }
+
+    @PutMapping("/api/org/manufacturers/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_PHARMACIST'))")
+    public MasterItemDto updateManufacturer(@PathVariable Long id, @Valid @RequestBody UpdateMasterItemRequest request) {
+        AppUser me = requireOrgUser();
+        return masterDataService.updateManufacturer(me.getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/api/org/manufacturers/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_PHARMACIST'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivateManufacturer(@PathVariable Long id) {
+        AppUser me = requireOrgUser();
+        masterDataService.deactivateManufacturer(me.getOrganization(), id);
     }
 
     // --- GST / Tax rules ---
@@ -134,6 +194,21 @@ public class MasterDataController {
     public TaxRuleDto createTaxRule(@Valid @RequestBody CreateTaxRuleRequest request) {
         AppUser me = requireOrgUser();
         return masterDataService.createTaxRule(me.getOrganization(), request);
+    }
+
+    @PutMapping("/api/org/tax-rules/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_ACCOUNTANT'))")
+    public TaxRuleDto updateTaxRule(@PathVariable Long id, @Valid @RequestBody UpdateTaxRuleRequest request) {
+        AppUser me = requireOrgUser();
+        return masterDataService.updateTaxRule(me.getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/api/org/tax-rules/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_ACCOUNTANT'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivateTaxRule(@PathVariable Long id) {
+        AppUser me = requireOrgUser();
+        masterDataService.deactivateTaxRule(me.getOrganization(), id);
     }
 
     private AppUser requireOrgUser() {

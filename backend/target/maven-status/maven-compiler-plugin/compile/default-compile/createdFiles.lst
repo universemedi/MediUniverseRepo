@@ -264,6 +264,7 @@ com\MediUnivers\service\payment\PaymentGatewayService.class
 com\MediUnivers\service\dto\CreateMedicineRequest.class
 com\MediUnivers\service\domain\CrmLead.class
 com\MediUnivers\service\service\OrganizationService.class
+com\MediUnivers\service\dto\UpdateMasterItemRequest.class
 com\MediUnivers\service\domain\ReturnStatus.class
 com\MediUnivers\service\dto\PlatformContentCardDto.class
 com\MediUnivers\service\web\LabDashboardController.class
@@ -288,6 +289,7 @@ com\MediUnivers\service\dto\VerifyResultsRequest.class
 com\MediUnivers\service\config\AppProperties.class
 com\MediUnivers\service\dto\UpdateSupportTicketRequest.class
 com\MediUnivers\service\dto\SupplierDto.class
+com\MediUnivers\service\dto\GoodsReceiptItemDto.class
 com\MediUnivers\service\dto\SetAvailabilityRequest.class
 com\MediUnivers\service\repository\WebsiteTestimonialRepository.class
 com\MediUnivers\service\repository\CrmLeadSourceRepository.class
@@ -390,6 +392,7 @@ com\MediUnivers\service\notification\PlatformSmsChannelSender.class
 com\MediUnivers\service\dto\PlatformTestimonialDto.class
 com\MediUnivers\service\dto\SubmitContactFormRequest.class
 com\MediUnivers\service\dto\RoleDto.class
+com\MediUnivers\service\dto\UpdateTaxRuleRequest.class
 com\MediUnivers\service\dto\ChangePlanRequest.class
 com\MediUnivers\service\repository\DepartmentRepository.class
 com\MediUnivers\service\dto\PlatformStaffDto.class
@@ -411,6 +414,7 @@ com\MediUnivers\service\domain\PlatformContentSection.class
 com\MediUnivers\service\service\AuditLogService.class
 com\MediUnivers\service\service\OrgTypeService.class
 com\MediUnivers\service\config\TrustedOrigins.class
+com\MediUnivers\service\dto\UpdateLabTestRequest.class
 com\MediUnivers\service\web\WebsiteContentController.class
 com\MediUnivers\service\config\SchedulingConfig.class
 com\MediUnivers\service\dto\DoctorDto.class
@@ -444,6 +448,7 @@ com\MediUnivers\service\dto\GoodsReceiptDto.class
 com\MediUnivers\service\repository\LabResultRepository.class
 com\MediUnivers\service\dto\SupportTicketDto.class
 com\MediUnivers\service\web\LeadController.class
+com\MediUnivers\service\service\SecretJsonConfig.class
 com\MediUnivers\service\dto\PlatformWebsiteConfigDto.class
 com\MediUnivers\service\domain\FamilyMember.class
 com\MediUnivers\service\domain\RoleGroupAccess.class

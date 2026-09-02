@@ -11,6 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ConsultationSearch {
   appointmentId?: number | undefined;
@@ -42,14 +49,21 @@ interface Appointment {
 }
 
 interface PrescriptionRow {
+  medicineId: number | null;
   medicineName: string;
   dosage: string;
   frequency: string;
   duration: string;
   instructions: string;
 }
+interface CatalogMedicine {
+  id: number;
+  name: string;
+  controlled: boolean;
+}
 
 const EMPTY_ROW: PrescriptionRow = {
+  medicineId: null,
   medicineName: "",
   dosage: "",
   frequency: "",
@@ -81,6 +95,14 @@ function ConsultationsPage() {
   const [followUpDate, setFollowUpDate] = useState("");
   const [followUpNotes, setFollowUpNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [catalogMedicines, setCatalogMedicines] = useState<CatalogMedicine[]>([]);
+
+  useEffect(() => {
+    if (isPlatform) return;
+    apiFetch<CatalogMedicine[]>("/api/pharmacy/medicines")
+      .then(setCatalogMedicines)
+      .catch(() => setCatalogMedicines([])); // Pharmacy may not be enabled for this org — free-text prescribing still works.
+  }, [isPlatform]);
 
   function loadQueue() {
     if (isPlatform || unavailable) return;
@@ -183,7 +205,9 @@ function ConsultationsPage() {
           bloodPressure: bp.trim() || null,
           pulseBpm: pulse ? Number(pulse) : null,
           spo2Percent: spo2 ? Number(spo2) : null,
-          prescriptionItems: items.filter((i) => i.medicineName.trim()),
+          prescriptionItems: items
+            .filter((i) => i.medicineName.trim())
+            .map((i) => ({ ...i, medicineName: i.medicineName.trim() })),
           followUpDate: followUpDate || null,
           followUpNotes: followUpNotes.trim() || null,
         },
@@ -285,73 +309,125 @@ function ConsultationsPage() {
             </Button>
           </div>
           <div className="space-y-3">
-            {items.map((item, idx) => (
-              <div
-                key={idx}
-                className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-5"
-              >
-                <Input
-                  placeholder="Medicine"
-                  value={item.medicineName}
-                  onChange={(e) =>
-                    setItems((prev) =>
-                      prev.map((it, i) =>
-                        i === idx ? { ...it, medicineName: e.target.value } : it,
-                      ),
-                    )
-                  }
-                />
-                <Input
-                  placeholder="Dosage"
-                  value={item.dosage}
-                  onChange={(e) =>
-                    setItems((prev) =>
-                      prev.map((it, i) => (i === idx ? { ...it, dosage: e.target.value } : it)),
-                    )
-                  }
-                />
-                <Input
-                  placeholder="Frequency"
-                  value={item.frequency}
-                  onChange={(e) =>
-                    setItems((prev) =>
-                      prev.map((it, i) => (i === idx ? { ...it, frequency: e.target.value } : it)),
-                    )
-                  }
-                />
-                <Input
-                  placeholder="Duration"
-                  value={item.duration}
-                  onChange={(e) =>
-                    setItems((prev) =>
-                      prev.map((it, i) => (i === idx ? { ...it, duration: e.target.value } : it)),
-                    )
-                  }
-                />
-                <div className="flex gap-1">
+            {items.map((item, idx) => {
+              const linkedControlled = catalogMedicines.find(
+                (m) => m.id === item.medicineId,
+              )?.controlled;
+              return (
+                <div
+                  key={idx}
+                  className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-5"
+                >
+                  <div className="space-y-1 sm:col-span-1">
+                    <div className="flex items-center gap-1">
+                      <Input
+                        placeholder="Medicine"
+                        value={item.medicineName}
+                        onChange={(e) =>
+                          setItems((prev) =>
+                            prev.map((it, i) =>
+                              i === idx
+                                ? { ...it, medicineName: e.target.value, medicineId: null }
+                                : it,
+                            ),
+                          )
+                        }
+                      />
+                      {linkedControlled ? (
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 border-destructive/25 bg-destructive/10 text-[10px] text-destructive"
+                        >
+                          Controlled
+                        </Badge>
+                      ) : null}
+                    </div>
+                    {catalogMedicines.length ? (
+                      <Select
+                        value={item.medicineId ? String(item.medicineId) : ""}
+                        onValueChange={(v) => {
+                          const m = catalogMedicines.find((x) => String(x.id) === v);
+                          setItems((prev) =>
+                            prev.map((it, i) =>
+                              i === idx
+                                ? {
+                                    ...it,
+                                    medicineId: m?.id ?? null,
+                                    medicineName: m?.name ?? it.medicineName,
+                                  }
+                                : it,
+                            ),
+                          );
+                        }}
+                      >
+                        <SelectTrigger className="h-7 text-[11px]">
+                          <SelectValue placeholder="Or pick from catalogue" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {catalogMedicines.map((m) => (
+                            <SelectItem key={m.id} value={String(m.id)}>
+                              {m.name}
+                              {m.controlled ? " (controlled)" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : null}
+                  </div>
                   <Input
-                    placeholder="Instructions"
-                    value={item.instructions}
+                    placeholder="Dosage"
+                    value={item.dosage}
+                    onChange={(e) =>
+                      setItems((prev) =>
+                        prev.map((it, i) => (i === idx ? { ...it, dosage: e.target.value } : it)),
+                      )
+                    }
+                  />
+                  <Input
+                    placeholder="Frequency"
+                    value={item.frequency}
                     onChange={(e) =>
                       setItems((prev) =>
                         prev.map((it, i) =>
-                          i === idx ? { ...it, instructions: e.target.value } : it,
+                          i === idx ? { ...it, frequency: e.target.value } : it,
                         ),
                       )
                     }
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 text-destructive"
-                    onClick={() => setItems((prev) => prev.filter((_, i) => i !== idx))}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <Input
+                    placeholder="Duration"
+                    value={item.duration}
+                    onChange={(e) =>
+                      setItems((prev) =>
+                        prev.map((it, i) => (i === idx ? { ...it, duration: e.target.value } : it)),
+                      )
+                    }
+                  />
+                  <div className="flex gap-1">
+                    <Input
+                      placeholder="Instructions"
+                      value={item.instructions}
+                      onChange={(e) =>
+                        setItems((prev) =>
+                          prev.map((it, i) =>
+                            i === idx ? { ...it, instructions: e.target.value } : it,
+                          ),
+                        )
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-destructive"
+                      onClick={() => setItems((prev) => prev.filter((_, i) => i !== idx))}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
 

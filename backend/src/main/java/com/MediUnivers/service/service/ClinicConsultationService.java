@@ -24,6 +24,7 @@ public class ClinicConsultationService {
     private final ClinicAppointmentService appointmentService;
     private final AccessService accessService;
     private final BillingService billingService;
+    private final NumberSeriesService numberSeriesService;
 
     /** Doctor opens the appointment from the queue — this is what moves it into "In Consultation". */
     public ConsultationDto start(Organization organization, Long appointmentId) {
@@ -67,6 +68,7 @@ public class ClinicConsultationService {
         if (request.prescriptionItems() != null) {
             for (PrescriptionItemInput in : request.prescriptionItems()) {
                 PrescriptionItem item = new PrescriptionItem();
+                item.setMedicineId(in.medicineId());
                 item.setMedicineName(in.medicineName());
                 item.setDosage(in.dosage());
                 item.setFrequency(in.frequency());
@@ -76,6 +78,9 @@ public class ClinicConsultationService {
             }
         }
         c.setPrescriptionItems(items);
+        if (!items.isEmpty() && c.getPrescriptionNumber() == null) {
+            c.setPrescriptionNumber(numberSeriesService.next(organization, "PRESCRIPTION", "RX", ResetPolicy.YEARLY, 6));
+        }
         c.setStatus(ConsultationStatus.COMPLETED);
         c.setCompletedAt(Instant.now());
         c.setPharmacyStatus(items.isEmpty() ? PharmacyQueueStatus.NONE : PharmacyQueueStatus.PENDING);
@@ -134,14 +139,14 @@ public class ClinicConsultationService {
 
     private ConsultationDto toDto(Consultation c) {
         List<PrescriptionItemInput> items = c.getPrescriptionItems().stream()
-                .map(i -> new PrescriptionItemInput(i.getMedicineName(), i.getDosage(), i.getFrequency(), i.getDuration(), i.getInstructions()))
+                .map(i -> new PrescriptionItemInput(i.getMedicineId(), i.getMedicineName(), i.getDosage(), i.getFrequency(), i.getDuration(), i.getInstructions()))
                 .toList();
         Patient p = c.getPatient();
         Doctor d = c.getDoctor();
         return new ConsultationDto(c.getId(), c.getAppointment().getId(), c.getStatus().name(),
                 c.getChiefComplaint(), c.getClinicalNotes(), c.getDiagnosis(),
                 c.getHeightCm(), c.getWeightKg(), c.bmi(), c.getTemperatureF(), c.getBloodPressure(),
-                c.getPulseBpm(), c.getSpo2Percent(), items, c.getPharmacyStatus().name(),
+                c.getPulseBpm(), c.getSpo2Percent(), c.getPrescriptionNumber(), items, c.getPharmacyStatus().name(),
                 c.getFollowUpDate(), c.getFollowUpNotes(),
                 new PatientSummaryDto(p.getId(), p.getPatientNumber(), p.fullName(), p.getPhone()),
                 new DoctorSummaryDto(d.getId(), d.getFullName()),

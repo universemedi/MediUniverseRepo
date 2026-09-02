@@ -60,6 +60,12 @@ public class Branch {
     @Column(name = "postal_code", length = 20)
     private String postalCode;
 
+    /** Same shape as OrganizationSettings#businessHoursJson — a branch can run different hours
+     * than the org-wide default (e.g. a satellite clinic closed Sundays). Null means "use the
+     * organization's own business hours". */
+    @Column(name = "business_hours_json", length = 2000)
+    private String businessHoursJson;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 }

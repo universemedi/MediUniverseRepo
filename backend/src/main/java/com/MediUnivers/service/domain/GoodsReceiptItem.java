@@ -33,6 +33,9 @@ public class GoodsReceiptItem {
     @Column(name = "expiry_date", nullable = false)
     private LocalDate expiryDate;
 
+    @Column(name = "manufacturing_date")
+    private LocalDate manufacturingDate;
+
     @Column(nullable = false)
     private int quantity;
 

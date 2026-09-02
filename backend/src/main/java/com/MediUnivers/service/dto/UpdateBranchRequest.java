@@ -13,6 +13,7 @@ public record UpdateBranchRequest(
         String city,
         String state,
         String country,
-        String postalCode
+        String postalCode,
+        String businessHoursJson
 ) {
 }

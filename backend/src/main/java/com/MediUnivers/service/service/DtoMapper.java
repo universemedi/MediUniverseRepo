@@ -45,7 +45,7 @@ public final class DtoMapper {
         List<String> modules = b.getEnabledModules().stream()
                 .map(Enum::name).map(String::toLowerCase).sorted().collect(Collectors.toList());
         return new BranchDto(b.getId(), b.getName(), b.isHeadOffice(), b.getStatus().name(), modules,
-                b.getEmail(), b.getPhone(), b.getCity());
+                b.getEmail(), b.getPhone(), b.getCity(), b.getBusinessHoursJson());
     }
 
     public static RoleDto toDto(Role r) {

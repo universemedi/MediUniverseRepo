@@ -60,9 +60,10 @@ public class EmailChannelSender implements NotificationChannelSender {
             Properties props = mailSender.getJavaMailProperties();
             props.put("mail.transport.protocol", "smtp");
             props.put("mail.smtp.auth", username != null && !username.isBlank());
-            props.put("mail.smtp.starttls.enable", boolOrDefault(config, "useTls", true));
-            props.put("mail.smtp.connectiontimeout", "10000");
-            props.put("mail.smtp.timeout", "10000");
+            applyTlsMode(props, config);
+            props.put("mail.smtp.connectiontimeout", String.valueOf(intOrDefault(config, "connectionTimeoutMs", 10000)));
+            props.put("mail.smtp.timeout", String.valueOf(intOrDefault(config, "readTimeoutMs", 10000)));
+            props.put("mail.smtp.writetimeout", String.valueOf(intOrDefault(config, "writeTimeoutMs", 10000)));
 
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
@@ -70,6 +71,8 @@ public class EmailChannelSender implements NotificationChannelSender {
             String fromName = text(config, "fromName");
             helper.setFrom(fromName != null && !fromName.isBlank() ? fromName + " <" + fromEmail + ">" : fromEmail);
             helper.setTo(notification.getRecipientEmail());
+            String replyTo = text(config, "replyTo");
+            if (replyTo != null && !replyTo.isBlank()) helper.setReplyTo(replyTo);
             helper.setSubject(notification.getSubject() != null ? notification.getSubject() : "");
             helper.setText(notification.getBody(), false);
 
@@ -108,5 +111,14 @@ public class EmailChannelSender implements NotificationChannelSender {
     private boolean boolOrDefault(JsonNode node, String field, boolean fallback) {
         JsonNode v = node.get(field);
         return v != null && !v.isNull() ? v.asBoolean() : fallback;
+    }
+
+    /** "tlsMode": NONE / STARTTLS / SSL — falls back to the older boolean "useTls" (true -> STARTTLS) when absent. */
+    private void applyTlsMode(Properties props, JsonNode config) {
+        String mode = textOrDefault(config, "tlsMode", boolOrDefault(config, "useTls", true) ? "STARTTLS" : "NONE");
+        boolean ssl = "SSL".equalsIgnoreCase(mode);
+        boolean startTls = "STARTTLS".equalsIgnoreCase(mode);
+        props.put("mail.smtp.ssl.enable", String.valueOf(ssl));
+        props.put("mail.smtp.starttls.enable", String.valueOf(startTls));
     }
 }

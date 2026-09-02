@@ -72,6 +72,11 @@ public class Consultation {
     private Integer spo2Percent;
 
     // --- Prescription ---
+    /** Real business identity for the prescription this consultation issued — assigned once, the first time
+     * prescriptionItems become non-empty. Null for a consultation that never prescribed anything. */
+    @Column(name = "prescription_number", length = 30)
+    private String prescriptionNumber;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "prescription_items", joinColumns = @JoinColumn(name = "consultation_id"))
     private List<PrescriptionItem> prescriptionItems = new ArrayList<>();

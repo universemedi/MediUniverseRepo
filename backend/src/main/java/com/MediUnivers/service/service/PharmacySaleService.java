@@ -95,6 +95,10 @@ public class PharmacySaleService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Quantity must be greater than zero.");
             }
             Medicine medicine = catalogService.requireOwned(organization, cartItem.medicineId());
+            if (medicine.isControlled() && !prescribedFor(consultation, medicine)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        medicine.getName() + " is a controlled medicine and can only be dispensed against a doctor's prescription for it.");
+            }
             int remaining = cartItem.quantity();
             BigDecimal discountPerUnit = cartItem.discount() != null ? cartItem.discount() : BigDecimal.ZERO;
             // GST configurable at the entry level: use the override if the pharmacist set one
@@ -165,6 +169,15 @@ public class PharmacySaleService {
         sale.setInvoice(invoice);
 
         return toDto(sale);
+    }
+
+    /** Matches by catalogue medicineId when the prescribing doctor picked one, otherwise falls back to a case-insensitive name match against the free-text line. */
+    private boolean prescribedFor(Consultation consultation, Medicine medicine) {
+        if (consultation == null) return false;
+        return consultation.getPrescriptionItems().stream().anyMatch(item ->
+                (item.getMedicineId() != null && item.getMedicineId().equals(medicine.getId()))
+                        || (item.getMedicineId() == null && item.getMedicineName() != null
+                                && item.getMedicineName().equalsIgnoreCase(medicine.getName())));
     }
 
     PharmacySale requireOwned(Organization organization, Long saleId) {

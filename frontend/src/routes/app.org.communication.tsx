@@ -38,7 +38,11 @@ interface EmailConfig {
   password: string;
   fromEmail: string;
   fromName: string;
-  useTls: boolean;
+  replyTo: string;
+  tlsMode: "NONE" | "STARTTLS" | "SSL";
+  connectionTimeoutMs: number;
+  readTimeoutMs: number;
+  writeTimeoutMs: number;
 }
 interface SmsConfig {
   apiUrl: string;
@@ -56,12 +60,15 @@ interface Settings {
   emailEnabled: boolean;
   emailProvider: string;
   emailConfigJson: string | null;
+  emailPasswordConfigured: boolean;
   smsEnabled: boolean;
   smsProvider: string;
   smsConfigJson: string | null;
+  smsSecretConfigured: boolean;
   whatsappEnabled: boolean;
   whatsappProvider: string;
   whatsappConfigJson: string | null;
+  whatsappKeyConfigured: boolean;
   inAppEnabled: boolean;
 }
 
@@ -72,7 +79,11 @@ const EMPTY_EMAIL: EmailConfig = {
   password: "",
   fromEmail: "",
   fromName: "",
-  useTls: true,
+  replyTo: "",
+  tlsMode: "STARTTLS",
+  connectionTimeoutMs: 10000,
+  readTimeoutMs: 10000,
+  writeTimeoutMs: 10000,
 };
 const EMPTY_SMS: SmsConfig = { apiUrl: "", apiKey: "", apiSecret: "", senderId: "" };
 const EMPTY_WHATSAPP: WhatsAppConfig = { apiUrl: "", apiKey: "", phoneNumberId: "" };
@@ -84,6 +95,15 @@ function parseJson<T>(raw: string | null, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+/** Older saved configs only have the boolean "useTls" — carry it forward as the equivalent tlsMode so a pre-existing org doesn't silently flip to STARTTLS. */
+function parseEmailConfig(raw: string | null): EmailConfig {
+  const parsed = parseJson<EmailConfig & { useTls?: boolean }>(raw, EMPTY_EMAIL);
+  if (!parsed.tlsMode && parsed.useTls !== undefined) {
+    parsed.tlsMode = parsed.useTls ? "STARTTLS" : "NONE";
+  }
+  return parsed;
 }
 
 function CommunicationSettingsPage() {
@@ -104,7 +124,7 @@ function CommunicationSettingsPage() {
     apiFetch<Settings>("/api/org/communication/settings")
       .then((s) => {
         setSettings(s);
-        setEmail(parseJson(s.emailConfigJson, EMPTY_EMAIL));
+        setEmail(parseEmailConfig(s.emailConfigJson));
         setSms(parseJson(s.smsConfigJson, EMPTY_SMS));
         setWhatsapp(parseJson(s.whatsappConfigJson, EMPTY_WHATSAPP));
       })
@@ -241,8 +261,16 @@ function CommunicationSettingsPage() {
                   type="password"
                   value={email.password}
                   disabled={!canManage}
+                  placeholder={
+                    settings.emailPasswordConfigured ? "•••••••• (saved — leave blank to keep)" : ""
+                  }
                   onChange={(e) => setEmail({ ...email, password: e.target.value })}
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  {settings.emailPasswordConfigured
+                    ? "A password is already saved and never shown again for security — leave this blank to keep it."
+                    : "No password saved yet."}
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label>From email</Label>
@@ -259,6 +287,73 @@ function CommunicationSettingsPage() {
                   value={email.fromName}
                   disabled={!canManage}
                   onChange={(e) => setEmail({ ...email, fromName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Reply-to (optional)</Label>
+                <Input
+                  type="email"
+                  value={email.replyTo}
+                  disabled={!canManage}
+                  placeholder="replies@yourdomain.com"
+                  onChange={(e) => setEmail({ ...email, replyTo: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Encryption</Label>
+                <Select
+                  value={email.tlsMode}
+                  disabled={!canManage}
+                  onValueChange={(v) =>
+                    setEmail({ ...email, tlsMode: v as EmailConfig["tlsMode"] })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STARTTLS">STARTTLS (most common, port 587)</SelectItem>
+                    <SelectItem value="SSL">SSL / implicit TLS (port 465)</SelectItem>
+                    <SelectItem value="NONE">None (unencrypted — not recommended)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid gap-4 border-t pt-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label>Connection timeout (ms)</Label>
+                <Input
+                  type="number"
+                  min="1000"
+                  value={email.connectionTimeoutMs}
+                  disabled={!canManage}
+                  onChange={(e) =>
+                    setEmail({ ...email, connectionTimeoutMs: Number(e.target.value) || 10000 })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Read timeout (ms)</Label>
+                <Input
+                  type="number"
+                  min="1000"
+                  value={email.readTimeoutMs}
+                  disabled={!canManage}
+                  onChange={(e) =>
+                    setEmail({ ...email, readTimeoutMs: Number(e.target.value) || 10000 })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Write timeout (ms)</Label>
+                <Input
+                  type="number"
+                  min="1000"
+                  value={email.writeTimeoutMs}
+                  disabled={!canManage}
+                  onChange={(e) =>
+                    setEmail({ ...email, writeTimeoutMs: Number(e.target.value) || 10000 })
+                  }
                 />
               </div>
             </div>
@@ -341,6 +436,9 @@ function CommunicationSettingsPage() {
                     type="password"
                     value={sms.apiSecret}
                     disabled={!canManage}
+                    placeholder={
+                      settings.smsSecretConfigured ? "•••••••• (saved — leave blank to keep)" : ""
+                    }
                     onChange={(e) => setSms({ ...sms, apiSecret: e.target.value })}
                   />
                 </div>
@@ -436,6 +534,9 @@ function CommunicationSettingsPage() {
                   type="password"
                   value={whatsapp.apiKey}
                   disabled={!canManage}
+                  placeholder={
+                    settings.whatsappKeyConfigured ? "•••••••• (saved — leave blank to keep)" : ""
+                  }
                   onChange={(e) => setWhatsapp({ ...whatsapp, apiKey: e.target.value })}
                 />
               </div>

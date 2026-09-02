@@ -80,6 +80,8 @@ import { Route as AppOrgOnboardingRouteImport } from './routes/app.org.onboardin
 import { Route as AppOrgPlansRouteImport } from './routes/app.org.plans'
 import { Route as AppOrgRolesRouteImport } from './routes/app.org.roles'
 import { Route as AppOrgSettingsRouteImport } from './routes/app.org.settings'
+import { Route as AppOrgSpecializationsRouteImport } from './routes/app.org.specializations'
+import { Route as AppOrgTaxRulesRouteImport } from './routes/app.org.tax-rules'
 import { Route as AppOrgUsersRouteImport } from './routes/app.org.users'
 import { Route as AppPatientAppointmentsRouteImport } from './routes/app.patient.appointments'
 import { Route as AppPatientBookRouteImport } from './routes/app.patient.book'
@@ -98,6 +100,7 @@ import { Route as AppPharmacyReturnsRouteImport } from './routes/app.pharmacy.re
 import { Route as AppPharmacySalesRouteImport } from './routes/app.pharmacy.sales'
 import { Route as AppPharmacyStockRouteImport } from './routes/app.pharmacy.stock'
 import { Route as AppPharmacySuppliersRouteImport } from './routes/app.pharmacy.suppliers'
+import { Route as AppPharmacyUnitsRouteImport } from './routes/app.pharmacy.units'
 import { Route as AppPlatformAuditLogsRouteImport } from './routes/app.platform.audit-logs'
 import { Route as AppPlatformBlogRouteImport } from './routes/app.platform.blog'
 import { Route as AppPlatformCmsRouteImport } from './routes/app.platform.cms'
@@ -474,6 +477,16 @@ const AppOrgSettingsRoute = AppOrgSettingsRouteImport.update({
   path: '/org/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOrgSpecializationsRoute = AppOrgSpecializationsRouteImport.update({
+  id: '/org/specializations',
+  path: '/org/specializations',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOrgTaxRulesRoute = AppOrgTaxRulesRouteImport.update({
+  id: '/org/tax-rules',
+  path: '/org/tax-rules',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOrgUsersRoute = AppOrgUsersRouteImport.update({
   id: '/org/users',
   path: '/org/users',
@@ -563,6 +576,11 @@ const AppPharmacyStockRoute = AppPharmacyStockRouteImport.update({
 const AppPharmacySuppliersRoute = AppPharmacySuppliersRouteImport.update({
   id: '/pharmacy/suppliers',
   path: '/pharmacy/suppliers',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPharmacyUnitsRoute = AppPharmacyUnitsRouteImport.update({
+  id: '/pharmacy/units',
+  path: '/pharmacy/units',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPlatformAuditLogsRoute = AppPlatformAuditLogsRouteImport.update({
@@ -737,6 +755,8 @@ export interface FileRoutesByFullPath {
   '/app/org/plans': typeof AppOrgPlansRoute
   '/app/org/roles': typeof AppOrgRolesRoute
   '/app/org/settings': typeof AppOrgSettingsRoute
+  '/app/org/specializations': typeof AppOrgSpecializationsRoute
+  '/app/org/tax-rules': typeof AppOrgTaxRulesRoute
   '/app/org/users': typeof AppOrgUsersRoute
   '/app/patient/appointments': typeof AppPatientAppointmentsRoute
   '/app/patient/book': typeof AppPatientBookRoute
@@ -755,6 +775,7 @@ export interface FileRoutesByFullPath {
   '/app/pharmacy/sales': typeof AppPharmacySalesRoute
   '/app/pharmacy/stock': typeof AppPharmacyStockRoute
   '/app/pharmacy/suppliers': typeof AppPharmacySuppliersRoute
+  '/app/pharmacy/units': typeof AppPharmacyUnitsRoute
   '/app/platform/audit-logs': typeof AppPlatformAuditLogsRoute
   '/app/platform/blog': typeof AppPlatformBlogRoute
   '/app/platform/cms': typeof AppPlatformCmsRoute
@@ -844,6 +865,8 @@ export interface FileRoutesByTo {
   '/app/org/plans': typeof AppOrgPlansRoute
   '/app/org/roles': typeof AppOrgRolesRoute
   '/app/org/settings': typeof AppOrgSettingsRoute
+  '/app/org/specializations': typeof AppOrgSpecializationsRoute
+  '/app/org/tax-rules': typeof AppOrgTaxRulesRoute
   '/app/org/users': typeof AppOrgUsersRoute
   '/app/patient/appointments': typeof AppPatientAppointmentsRoute
   '/app/patient/book': typeof AppPatientBookRoute
@@ -862,6 +885,7 @@ export interface FileRoutesByTo {
   '/app/pharmacy/sales': typeof AppPharmacySalesRoute
   '/app/pharmacy/stock': typeof AppPharmacyStockRoute
   '/app/pharmacy/suppliers': typeof AppPharmacySuppliersRoute
+  '/app/pharmacy/units': typeof AppPharmacyUnitsRoute
   '/app/platform/audit-logs': typeof AppPlatformAuditLogsRoute
   '/app/platform/blog': typeof AppPlatformBlogRoute
   '/app/platform/cms': typeof AppPlatformCmsRoute
@@ -955,6 +979,8 @@ export interface FileRoutesById {
   '/app/org/plans': typeof AppOrgPlansRoute
   '/app/org/roles': typeof AppOrgRolesRoute
   '/app/org/settings': typeof AppOrgSettingsRoute
+  '/app/org/specializations': typeof AppOrgSpecializationsRoute
+  '/app/org/tax-rules': typeof AppOrgTaxRulesRoute
   '/app/org/users': typeof AppOrgUsersRoute
   '/app/patient/appointments': typeof AppPatientAppointmentsRoute
   '/app/patient/book': typeof AppPatientBookRoute
@@ -973,6 +999,7 @@ export interface FileRoutesById {
   '/app/pharmacy/sales': typeof AppPharmacySalesRoute
   '/app/pharmacy/stock': typeof AppPharmacyStockRoute
   '/app/pharmacy/suppliers': typeof AppPharmacySuppliersRoute
+  '/app/pharmacy/units': typeof AppPharmacyUnitsRoute
   '/app/platform/audit-logs': typeof AppPlatformAuditLogsRoute
   '/app/platform/blog': typeof AppPlatformBlogRoute
   '/app/platform/cms': typeof AppPlatformCmsRoute
@@ -1067,6 +1094,8 @@ export interface FileRouteTypes {
     | '/app/org/plans'
     | '/app/org/roles'
     | '/app/org/settings'
+    | '/app/org/specializations'
+    | '/app/org/tax-rules'
     | '/app/org/users'
     | '/app/patient/appointments'
     | '/app/patient/book'
@@ -1085,6 +1114,7 @@ export interface FileRouteTypes {
     | '/app/pharmacy/sales'
     | '/app/pharmacy/stock'
     | '/app/pharmacy/suppliers'
+    | '/app/pharmacy/units'
     | '/app/platform/audit-logs'
     | '/app/platform/blog'
     | '/app/platform/cms'
@@ -1174,6 +1204,8 @@ export interface FileRouteTypes {
     | '/app/org/plans'
     | '/app/org/roles'
     | '/app/org/settings'
+    | '/app/org/specializations'
+    | '/app/org/tax-rules'
     | '/app/org/users'
     | '/app/patient/appointments'
     | '/app/patient/book'
@@ -1192,6 +1224,7 @@ export interface FileRouteTypes {
     | '/app/pharmacy/sales'
     | '/app/pharmacy/stock'
     | '/app/pharmacy/suppliers'
+    | '/app/pharmacy/units'
     | '/app/platform/audit-logs'
     | '/app/platform/blog'
     | '/app/platform/cms'
@@ -1284,6 +1317,8 @@ export interface FileRouteTypes {
     | '/app/org/plans'
     | '/app/org/roles'
     | '/app/org/settings'
+    | '/app/org/specializations'
+    | '/app/org/tax-rules'
     | '/app/org/users'
     | '/app/patient/appointments'
     | '/app/patient/book'
@@ -1302,6 +1337,7 @@ export interface FileRouteTypes {
     | '/app/pharmacy/sales'
     | '/app/pharmacy/stock'
     | '/app/pharmacy/suppliers'
+    | '/app/pharmacy/units'
     | '/app/platform/audit-logs'
     | '/app/platform/blog'
     | '/app/platform/cms'
@@ -1846,6 +1882,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/org/specializations': {
+      id: '/app/org/specializations'
+      path: '/org/specializations'
+      fullPath: '/app/org/specializations'
+      preLoaderRoute: typeof AppOrgSpecializationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/org/tax-rules': {
+      id: '/app/org/tax-rules'
+      path: '/org/tax-rules'
+      fullPath: '/app/org/tax-rules'
+      preLoaderRoute: typeof AppOrgTaxRulesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/org/users': {
       id: '/app/org/users'
       path: '/org/users'
@@ -1970,6 +2020,13 @@ declare module '@tanstack/react-router' {
       path: '/pharmacy/suppliers'
       fullPath: '/app/pharmacy/suppliers'
       preLoaderRoute: typeof AppPharmacySuppliersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/pharmacy/units': {
+      id: '/app/pharmacy/units'
+      path: '/pharmacy/units'
+      fullPath: '/app/pharmacy/units'
+      preLoaderRoute: typeof AppPharmacyUnitsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/platform/audit-logs': {
@@ -2155,6 +2212,8 @@ interface AppRouteChildren {
   AppOrgPlansRoute: typeof AppOrgPlansRoute
   AppOrgRolesRoute: typeof AppOrgRolesRoute
   AppOrgSettingsRoute: typeof AppOrgSettingsRoute
+  AppOrgSpecializationsRoute: typeof AppOrgSpecializationsRoute
+  AppOrgTaxRulesRoute: typeof AppOrgTaxRulesRoute
   AppOrgUsersRoute: typeof AppOrgUsersRoute
   AppPatientAppointmentsRoute: typeof AppPatientAppointmentsRoute
   AppPatientBookRoute: typeof AppPatientBookRoute
@@ -2173,6 +2232,7 @@ interface AppRouteChildren {
   AppPharmacySalesRoute: typeof AppPharmacySalesRoute
   AppPharmacyStockRoute: typeof AppPharmacyStockRoute
   AppPharmacySuppliersRoute: typeof AppPharmacySuppliersRoute
+  AppPharmacyUnitsRoute: typeof AppPharmacyUnitsRoute
   AppPlatformAuditLogsRoute: typeof AppPlatformAuditLogsRoute
   AppPlatformBlogRoute: typeof AppPlatformBlogRoute
   AppPlatformCmsRoute: typeof AppPlatformCmsRoute
@@ -2240,6 +2300,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppOrgPlansRoute: AppOrgPlansRoute,
   AppOrgRolesRoute: AppOrgRolesRoute,
   AppOrgSettingsRoute: AppOrgSettingsRoute,
+  AppOrgSpecializationsRoute: AppOrgSpecializationsRoute,
+  AppOrgTaxRulesRoute: AppOrgTaxRulesRoute,
   AppOrgUsersRoute: AppOrgUsersRoute,
   AppPatientAppointmentsRoute: AppPatientAppointmentsRoute,
   AppPatientBookRoute: AppPatientBookRoute,
@@ -2258,6 +2320,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPharmacySalesRoute: AppPharmacySalesRoute,
   AppPharmacyStockRoute: AppPharmacyStockRoute,
   AppPharmacySuppliersRoute: AppPharmacySuppliersRoute,
+  AppPharmacyUnitsRoute: AppPharmacyUnitsRoute,
   AppPlatformAuditLogsRoute: AppPlatformAuditLogsRoute,
   AppPlatformBlogRoute: AppPlatformBlogRoute,
   AppPlatformCmsRoute: AppPlatformCmsRoute,

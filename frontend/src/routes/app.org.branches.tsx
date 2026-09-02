@@ -26,6 +26,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  BusinessHoursEditor,
+  defaultBusinessHours,
+  parseBusinessHours,
+  validateBusinessHours,
+  type BusinessHours,
+} from "@/components/common/BusinessHoursEditor";
 
 export const Route = createFileRoute("/app/org/branches")({
   head: () => ({
@@ -49,6 +56,7 @@ interface Branch {
   email: string | null;
   phone: string | null;
   city: string | null;
+  businessHoursJson: string | null;
 }
 interface OrgModuleStatus {
   group: "CLINIC" | "PHARMACY" | "LAB" | "CRM" | "CMS";
@@ -79,6 +87,8 @@ function BranchesPage() {
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
   const [modules, setModules] = useState<string[]>([]);
+  const [useOrgHours, setUseOrgHours] = useState(true);
+  const [businessHours, setBusinessHours] = useState<BusinessHours>(defaultBusinessHours());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
@@ -118,6 +128,8 @@ function BranchesPage() {
     setPhone("");
     setCity("");
     setModules(availableModules.map((m) => m.group));
+    setUseOrgHours(true);
+    setBusinessHours(defaultBusinessHours());
     setError(null);
     setNameError(null);
   }
@@ -129,6 +141,8 @@ function BranchesPage() {
     setPhone(b.phone ?? "");
     setCity(b.city ?? "");
     setModules(b.enabledModules.map((m) => m.toUpperCase()));
+    setUseOrgHours(!b.businessHoursJson);
+    setBusinessHours(parseBusinessHours(b.businessHoursJson));
     setError(null);
     setNameError(null);
     setOpen(true);
@@ -138,6 +152,13 @@ function BranchesPage() {
     e.preventDefault();
     if (!name.trim()) return setNameError("Branch name is required.");
     setNameError(null);
+    if (!useOrgHours) {
+      const hoursError = validateBusinessHours(businessHours);
+      if (hoursError) {
+        setError(hoursError);
+        return;
+      }
+    }
     setError(null);
     setSubmitting(true);
     try {
@@ -147,6 +168,7 @@ function BranchesPage() {
         phone: phone.trim() || null,
         city: city.trim() || null,
         enabledModules: modules,
+        businessHoursJson: useOrgHours ? null : JSON.stringify(businessHours),
       };
       if (editing) {
         await apiFetch(`/api/org/branches/${editing.id}`, { method: "PUT", data: body });
@@ -349,6 +371,23 @@ function BranchesPage() {
                   </label>
                 ))}
               </div>
+            </div>
+            <div className="space-y-2 border-t pt-4">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={useOrgHours} onCheckedChange={(v) => setUseOrgHours(!!v)} />
+                Use the organization's default business hours
+              </label>
+              {!useOrgHours ? (
+                <BusinessHoursEditor
+                  value={businessHours}
+                  onChange={setBusinessHours}
+                  title="This branch's hours"
+                />
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  This branch follows the hours set in Organization Settings.
+                </p>
+              )}
             </div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <div className="flex justify-end gap-2 border-t pt-4">

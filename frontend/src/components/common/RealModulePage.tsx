@@ -46,6 +46,8 @@ interface RealModulePageProps<T> {
   supportsDelete?: boolean;
   /** Extra row actions between Edit and Delete — e.g. "Share via email". */
   rowActions?: (row: Row) => { label: string; icon: React.ReactNode; onClick: () => void }[];
+  /** Row-level override that disables Edit/Delete regardless of role — e.g. a platform default record this org can use but not modify. */
+  isRowLocked?: (row: Row) => boolean;
 }
 
 function Shell({
@@ -78,6 +80,7 @@ export function RealModulePage<T>({
   toUpdateBody,
   supportsDelete = true,
   rowActions,
+  isRowLocked,
 }: RealModulePageProps<T>) {
   const mod = moduleByPath(path);
   const { reasonForPath, can, plan, isPlatform } = usePermissions();
@@ -158,6 +161,7 @@ export function RealModulePage<T>({
   const canDelete = can("delete") && supportsDelete;
 
   async function handleSubmit(values: Record<string, string>) {
+    if (editing && isRowLocked?.(editing)) return;
     if (editing && toUpdateBody) {
       await apiFetch(`${basePath}/${editing.id}`, {
         method: "PUT",
@@ -174,7 +178,7 @@ export function RealModulePage<T>({
   }
 
   async function confirmDelete() {
-    if (!deleting) return;
+    if (!deleting || isRowLocked?.(deleting)) return;
     try {
       await apiFetch(`${basePath}/${deleting.id}`, { method: "DELETE" });
       toast.success(`${mod!.singular} removed`);
@@ -223,6 +227,7 @@ export function RealModulePage<T>({
           }}
           onDelete={(row) => setDeleting(row)}
           {...(rowActions ? { rowActions } : {})}
+          {...(isRowLocked ? { isRowLocked } : {})}
         />
       )}
 

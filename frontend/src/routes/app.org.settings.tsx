@@ -18,6 +18,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  BusinessHoursEditor,
+  defaultBusinessHours,
+  parseBusinessHours,
+  validateBusinessHours,
+  type BusinessHours,
+} from "@/components/common/BusinessHoursEditor";
+
+const TIMEZONES = [
+  { value: "Asia/Kolkata", label: "India (Asia/Kolkata, GMT+5:30)" },
+  { value: "Asia/Dubai", label: "Dubai (Asia/Dubai, GMT+4:00)" },
+  { value: "Asia/Colombo", label: "Sri Lanka (Asia/Colombo, GMT+5:30)" },
+  { value: "Asia/Dhaka", label: "Bangladesh (Asia/Dhaka, GMT+6:00)" },
+  { value: "Asia/Kathmandu", label: "Nepal (Asia/Kathmandu, GMT+5:45)" },
+  { value: "Asia/Singapore", label: "Singapore (Asia/Singapore, GMT+8:00)" },
+  { value: "Europe/London", label: "United Kingdom (Europe/London, GMT+0:00)" },
+  { value: "America/New_York", label: "US Eastern (America/New_York, GMT-5:00)" },
+  { value: "America/Los_Angeles", label: "US Pacific (America/Los_Angeles, GMT-8:00)" },
+  { value: "Australia/Sydney", label: "Australia (Australia/Sydney, GMT+11:00)" },
+  { value: "UTC", label: "UTC" },
+];
+
+const CURRENCIES = [
+  { value: "INR", label: "INR — Indian Rupee (₹)" },
+  { value: "USD", label: "USD — US Dollar ($)" },
+  { value: "EUR", label: "EUR — Euro (€)" },
+  { value: "GBP", label: "GBP — British Pound (£)" },
+  { value: "AED", label: "AED — UAE Dirham" },
+  { value: "SGD", label: "SGD — Singapore Dollar" },
+  { value: "AUD", label: "AUD — Australian Dollar" },
+  { value: "LKR", label: "LKR — Sri Lankan Rupee" },
+  { value: "BDT", label: "BDT — Bangladeshi Taka" },
+  { value: "NPR", label: "NPR — Nepalese Rupee" },
+];
 
 export const Route = createFileRoute("/app/org/settings")({
   head: () => ({
@@ -57,6 +91,7 @@ interface OrgSettings {
   appointmentSlotMinutes: number;
   appointmentBufferMinutes: number;
   allowOverbooking: boolean;
+  businessHoursJson: string | null;
   emailNotificationsEnabled: boolean;
   smsNotificationsEnabled: boolean;
 }
@@ -75,6 +110,7 @@ function SettingsPage() {
 
   const [profile, setProfile] = useState<OrgProfile | null>(null);
   const [settings, setSettings] = useState<OrgSettings | null>(null);
+  const [businessHours, setBusinessHours] = useState<BusinessHours>(defaultBusinessHours());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -89,6 +125,7 @@ function SettingsPage() {
       .then(([p, s]) => {
         setProfile(p);
         setSettings(s);
+        setBusinessHours(parseBusinessHours(s.businessHoursJson));
       })
       .catch((err) =>
         setLoadError(
@@ -134,13 +171,19 @@ function SettingsPage() {
 
   async function saveSettings() {
     if (!settings) return;
+    const hoursError = validateBusinessHours(businessHours);
+    if (hoursError) {
+      toast.error(hoursError);
+      return;
+    }
     setSavingSettings(true);
     try {
       const updated = await apiFetch<OrgSettings>("/api/org/settings", {
         method: "PUT",
-        data: { ...settings, businessHoursJson: null },
+        data: { ...settings, businessHoursJson: JSON.stringify(businessHours) },
       });
       setSettings(updated);
+      setBusinessHours(parseBusinessHours(updated.businessHoursJson));
       toast.success("Settings saved");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Couldn't save settings.");
@@ -274,6 +317,50 @@ function SettingsPage() {
               onChange={(e) => setProfile({ ...profile, website: e.target.value })}
             />
           </div>
+          <div className="space-y-1.5">
+            <Label>Timezone</Label>
+            <Select
+              value={profile.timezone}
+              onValueChange={(v) => setProfile({ ...profile, timezone: v })}
+              disabled={!canManage}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEZONES.map((tz) => (
+                  <SelectItem key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              Used for appointment times, invoices and reports.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Currency</Label>
+            <Select
+              value={profile.currency}
+              onValueChange={(v) => setProfile({ ...profile, currency: v })}
+              disabled={!canManage}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              Used across invoices, consultation fees and pricing.
+            </p>
+          </div>
         </div>
         {canManage ? (
           <div className="flex justify-end border-t pt-4">
@@ -347,6 +434,15 @@ function SettingsPage() {
             />
           </div>
         </div>
+
+        <div className="border-t pt-4">
+          <BusinessHoursEditor
+            value={businessHours}
+            onChange={setBusinessHours}
+            disabled={!canManage}
+          />
+        </div>
+
         {canManage ? (
           <div className="flex justify-end border-t pt-4">
             <Button onClick={saveSettings} disabled={savingSettings}>

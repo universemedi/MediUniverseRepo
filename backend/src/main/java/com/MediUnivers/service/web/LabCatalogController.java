@@ -32,6 +32,18 @@ public class LabCatalogController {
         return catalogService.createCategory(requireOrgUser().getOrganization(), request);
     }
 
+    @PutMapping("/api/lab/categories/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_LAB_MANAGER'))")
+    public MasterItemDto updateCategory(@PathVariable Long id, @Valid @RequestBody UpdateMasterItemRequest request) {
+        return catalogService.updateCategory(requireOrgUser().getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/api/lab/categories/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_LAB_MANAGER'))")
+    public void deactivateCategory(@PathVariable Long id) {
+        catalogService.deactivateCategory(requireOrgUser().getOrganization(), id);
+    }
+
     @GetMapping("/api/lab/tests")
     public List<LabTestDto> listTests(@RequestParam(value = "search", required = false) String search) {
         return catalogService.listTests(requireOrgUser().getOrganization(), search);
@@ -41,6 +53,18 @@ public class LabCatalogController {
     @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_LAB_MANAGER'))")
     public LabTestDto createTest(@Valid @RequestBody CreateLabTestRequest request) {
         return catalogService.createTest(requireOrgUser().getOrganization(), request);
+    }
+
+    @PutMapping("/api/lab/tests/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_LAB_MANAGER'))")
+    public LabTestDto updateTest(@PathVariable Long id, @Valid @RequestBody UpdateLabTestRequest request) {
+        return catalogService.updateTest(requireOrgUser().getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/api/lab/tests/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_LAB_MANAGER'))")
+    public void deactivateTest(@PathVariable Long id) {
+        catalogService.deactivateTest(requireOrgUser().getOrganization(), id);
     }
 
     private AppUser requireOrgUser() {

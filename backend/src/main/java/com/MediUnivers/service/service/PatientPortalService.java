@@ -60,9 +60,22 @@ public class PatientPortalService {
         return appointmentService.listForPatient(user.getOrganization(), patient.getId());
     }
 
+    /** Only consultations that actually issued a prescription — not every past visit. */
     public List<ConsultationDto> listPrescriptions(AppUser user) {
         Patient patient = requireCurrentPatient(user);
-        return consultationService.historyForPatient(user.getOrganization(), patient.getId());
+        return consultationService.historyForPatient(user.getOrganization(), patient.getId()).stream()
+                .filter(c -> !c.prescriptionItems().isEmpty())
+                .toList();
+    }
+
+    /** One prescription's full detail (for the patient's own print/view) — 404s rather than leaking another patient's record. */
+    public ConsultationDto getPrescription(AppUser user, Long consultationId) {
+        Patient patient = requireCurrentPatient(user);
+        ConsultationDto dto = consultationService.get(user.getOrganization(), consultationId);
+        if (!dto.patient().id().equals(patient.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Prescription not found.");
+        }
+        return dto;
     }
 
     /** Only released (verified) reports — a patient shouldn't see raw, unverified lab results. */

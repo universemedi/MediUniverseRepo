@@ -35,6 +35,11 @@ public class PatientPortalController {
         return portalService.listPrescriptions(currentUserService.require());
     }
 
+    @GetMapping("/prescriptions/{consultationId}")
+    public ConsultationDto prescription(@PathVariable Long consultationId) {
+        return portalService.getPrescription(currentUserService.require(), consultationId);
+    }
+
     @GetMapping("/reports")
     public List<LabOrderDto> reports() {
         return portalService.listLabReports(currentUserService.require());

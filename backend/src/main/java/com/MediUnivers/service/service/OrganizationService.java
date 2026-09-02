@@ -593,6 +593,7 @@ public class OrganizationService {
         branch.setState(request.state());
         branch.setCountry(request.country());
         branch.setPostalCode(request.postalCode());
+        branch.setBusinessHoursJson(request.businessHoursJson());
 
         applyEnabledModules(branch, organization, request.enabledModules());
 
@@ -612,6 +613,7 @@ public class OrganizationService {
         branch.setState(request.state());
         branch.setCountry(request.country());
         branch.setPostalCode(request.postalCode());
+        branch.setBusinessHoursJson(request.businessHoursJson());
 
         branch.getEnabledModules().clear();
         applyEnabledModules(branch, organization, request.enabledModules());

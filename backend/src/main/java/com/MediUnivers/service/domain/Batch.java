@@ -43,6 +43,9 @@ public class Batch {
     @Column(name = "expiry_date", nullable = false)
     private LocalDate expiryDate;
 
+    @Column(name = "manufacturing_date")
+    private LocalDate manufacturingDate;
+
     @Column(name = "purchase_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal purchasePrice;
 

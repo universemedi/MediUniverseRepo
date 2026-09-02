@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Lock, Plus, Search, ShieldAlert, TestTube } from "lucide-react";
+import { Lock, Pencil, Plus, Power, Search, ShieldAlert, TestTube } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/lib/api";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -63,10 +63,13 @@ interface LabTest {
   id: number;
   code: string;
   name: string;
+  categoryId: number | null;
   category: string | null;
+  departmentId: number | null;
   department: string | null;
   sampleType: string;
   price: number;
+  taxPercent: number;
   tatHours: number;
   status: string;
   referenceRanges: ReferenceRange[];
@@ -99,15 +102,19 @@ function TestsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<LabTest | null>(null);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [sampleType, setSampleType] = useState("Blood");
   const [price, setPrice] = useState("");
+  const [taxPercent, setTaxPercent] = useState("0");
   const [tatHours, setTatHours] = useState("24");
+  const [status, setStatus] = useState("ACTIVE");
   const [ranges, setRanges] = useState<RangeRow[]>([{ ...EMPTY_RANGE }]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   function load(term?: string) {
     if (isPlatform || unavailable) return;
@@ -151,14 +158,58 @@ function TestsPage() {
   }
 
   function resetForm() {
+    setEditing(null);
     setCode("");
     setName("");
     setCategoryId("");
     setSampleType("Blood");
     setPrice("");
+    setTaxPercent("0");
     setTatHours("24");
+    setStatus("ACTIVE");
     setRanges([{ ...EMPTY_RANGE }]);
     setError(null);
+  }
+
+  function openEdit(t: LabTest) {
+    setEditing(t);
+    setCode(t.code);
+    setName(t.name);
+    setCategoryId(t.categoryId ? String(t.categoryId) : "");
+    setSampleType(t.sampleType);
+    setPrice(String(t.price));
+    setTaxPercent(String(t.taxPercent));
+    setTatHours(String(t.tatHours));
+    setStatus(t.status);
+    setRanges(
+      t.referenceRanges.length
+        ? t.referenceRanges.map((r) => ({
+            gender: r.gender ?? "",
+            ageMin: r.ageMin != null ? String(r.ageMin) : "",
+            ageMax: r.ageMax != null ? String(r.ageMax) : "",
+            minValue: r.minValue != null ? String(r.minValue) : "",
+            maxValue: r.maxValue != null ? String(r.maxValue) : "",
+            criticalLow: r.criticalLow != null ? String(r.criticalLow) : "",
+            criticalHigh: r.criticalHigh != null ? String(r.criticalHigh) : "",
+            unit: r.unit ?? "",
+          }))
+        : [{ ...EMPTY_RANGE }],
+    );
+    setError(null);
+    setOpen(true);
+  }
+
+  async function deactivate(t: LabTest) {
+    setTogglingId(t.id);
+    try {
+      await apiFetch(`/api/lab/tests/${t.id}`, { method: "DELETE" });
+      toast.success(`${t.name} deactivated`);
+      load(search);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't deactivate this test.");
+    } finally {
+      setTogglingId(null);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -168,35 +219,42 @@ function TestsPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await apiFetch("/api/lab/tests", {
-        method: "POST",
-        data: {
-          code: code.trim(),
-          name: name.trim(),
-          categoryId: categoryId ? Number(categoryId) : null,
-          sampleType: sampleType.trim(),
-          price: Number(price),
-          tatHours: Number(tatHours) || 24,
-          referenceRanges: ranges
-            .filter((r) => r.minValue || r.maxValue)
-            .map((r) => ({
-              gender: r.gender || null,
-              ageMin: r.ageMin ? Number(r.ageMin) : null,
-              ageMax: r.ageMax ? Number(r.ageMax) : null,
-              minValue: r.minValue ? Number(r.minValue) : null,
-              maxValue: r.maxValue ? Number(r.maxValue) : null,
-              criticalLow: r.criticalLow ? Number(r.criticalLow) : null,
-              criticalHigh: r.criticalHigh ? Number(r.criticalHigh) : null,
-              unit: r.unit || null,
-            })),
-        },
-      });
-      toast.success(`${name.trim()} added to the test master`);
+      const body = {
+        code: code.trim(),
+        name: name.trim(),
+        categoryId: categoryId ? Number(categoryId) : null,
+        sampleType: sampleType.trim(),
+        price: Number(price),
+        taxPercent: taxPercent ? Number(taxPercent) : 0,
+        tatHours: Number(tatHours) || 24,
+        status: editing ? status : undefined,
+        referenceRanges: ranges
+          .filter((r) => r.minValue || r.maxValue)
+          .map((r) => ({
+            gender: r.gender || null,
+            ageMin: r.ageMin ? Number(r.ageMin) : null,
+            ageMax: r.ageMax ? Number(r.ageMax) : null,
+            minValue: r.minValue ? Number(r.minValue) : null,
+            maxValue: r.maxValue ? Number(r.maxValue) : null,
+            criticalLow: r.criticalLow ? Number(r.criticalLow) : null,
+            criticalHigh: r.criticalHigh ? Number(r.criticalHigh) : null,
+            unit: r.unit || null,
+          })),
+      };
+      if (editing) {
+        await apiFetch(`/api/lab/tests/${editing.id}`, { method: "PUT", data: body });
+        toast.success(`${name.trim()} updated`);
+      } else {
+        await apiFetch("/api/lab/tests", { method: "POST", data: body });
+        toast.success(`${name.trim()} added to the test master`);
+      }
       setOpen(false);
       resetForm();
       load(search);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't add this test. Please try again.");
+      setError(
+        err instanceof ApiError ? err.message : "Couldn't save this test. Please try again.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -257,6 +315,7 @@ function TestsPage() {
                 <p className="truncate text-sm font-medium">{t.name}</p>
                 <p className="truncate text-xs text-muted-foreground">
                   {t.code} · {t.category ?? "Uncategorized"} · {t.sampleType} · {t.tatHours}h TAT
+                  {t.taxPercent > 0 ? ` · ${t.taxPercent}% tax` : ""}
                 </p>
               </div>
               <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
@@ -267,15 +326,50 @@ function TestsPage() {
                   {t.referenceRanges.length} range(s)
                 </Badge>
               ) : null}
+              {t.status === "INACTIVE" ? (
+                <Badge
+                  variant="outline"
+                  className="border-destructive/25 bg-destructive/10 text-destructive"
+                >
+                  Inactive
+                </Badge>
+              ) : null}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground"
+                onClick={() => openEdit(t)}
+                aria-label={`Edit ${t.name}`}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              {t.status !== "INACTIVE" ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground"
+                  disabled={togglingId === t.id}
+                  onClick={() => deactivate(t)}
+                  aria-label={`Deactivate ${t.name}`}
+                >
+                  <Power className="h-3.5 w-3.5" />
+                </Button>
+              ) : null}
             </div>
           ))}
         </Card>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) resetForm();
+        }}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Add a test</DialogTitle>
+            <DialogTitle>{editing ? `Edit ${editing.name}` : "Add a test"}</DialogTitle>
             <DialogDescription>
               Reference ranges drive automatic Low/Normal/High/Critical flagging on results.
             </DialogDescription>
@@ -335,6 +429,31 @@ function TestsPage() {
                   onChange={(e) => setTatHours(e.target.value)}
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label>Tax / GST (%)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={taxPercent}
+                  onChange={(e) => setTaxPercent(e.target.value)}
+                />
+              </div>
+              {editing ? (
+                <div className="space-y-1.5">
+                  <Label>Status</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="INACTIVE">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -447,7 +566,13 @@ function TestsPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Adding…" : "Add test"}
+                {submitting
+                  ? editing
+                    ? "Saving…"
+                    : "Adding…"
+                  : editing
+                    ? "Save changes"
+                    : "Add test"}
               </Button>
             </div>
           </form>

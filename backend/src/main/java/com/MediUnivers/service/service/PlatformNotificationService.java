@@ -36,17 +36,20 @@ public class PlatformNotificationService {
     private final PlatformNotificationTemplateService templateService;
     private final TemplateRenderService renderService;
     private final Map<NotificationChannel, PlatformNotificationChannelSender> senders;
+    private final SecretJsonConfig secretJsonConfig;
 
     public PlatformNotificationService(PlatformNotificationRepository notificationRepository,
                                         PlatformCommunicationSettingsRepository settingsRepository,
                                         PlatformNotificationTemplateService templateService,
                                         TemplateRenderService renderService,
-                                        List<PlatformNotificationChannelSender> senderBeans) {
+                                        List<PlatformNotificationChannelSender> senderBeans,
+                                        SecretJsonConfig secretJsonConfig) {
         this.notificationRepository = notificationRepository;
         this.settingsRepository = settingsRepository;
         this.templateService = templateService;
         this.renderService = renderService;
         this.senders = senderBeans.stream().collect(Collectors.toMap(PlatformNotificationChannelSender::channel, s -> s));
+        this.secretJsonConfig = secretJsonConfig;
     }
 
     @Transactional
@@ -198,15 +201,21 @@ public class PlatformNotificationService {
     public PlatformCommunicationSettingsDto updateSettings(UpdatePlatformCommunicationSettingsRequest request) {
         PlatformCommunicationSettings settings = getOrCreateSettings();
         settings.setEmailEnabled(request.emailEnabled());
-        settings.setEmailConfigJson(request.emailConfigJson());
+        settings.setEmailConfigJson(secretJsonConfig.preserveSecretIfBlank(
+                settings.getEmailConfigJson(), request.emailConfigJson(), "password"));
         settings.setSmsEnabled(request.smsEnabled());
-        settings.setSmsConfigJson(request.smsConfigJson());
+        settings.setSmsConfigJson(secretJsonConfig.preserveSecretIfBlank(
+                settings.getSmsConfigJson(), request.smsConfigJson(), "apiKey"));
         settingsRepository.save(settings);
         return toDto(settings);
     }
 
     private PlatformCommunicationSettingsDto toDto(PlatformCommunicationSettings s) {
-        return new PlatformCommunicationSettingsDto(s.isEmailEnabled(), s.getEmailConfigJson(), s.isSmsEnabled(), s.getSmsConfigJson());
+        return new PlatformCommunicationSettingsDto(
+                s.isEmailEnabled(), secretJsonConfig.redacted(s.getEmailConfigJson(), "password"),
+                secretJsonConfig.isConfigured(s.getEmailConfigJson(), "password"),
+                s.isSmsEnabled(), secretJsonConfig.redacted(s.getSmsConfigJson(), "apiKey"),
+                secretJsonConfig.isConfigured(s.getSmsConfigJson(), "apiKey"));
     }
 
     // ---------------- Read side (log) ----------------

@@ -31,6 +31,11 @@ public class PharmacyInventoryController {
         return inventoryService.createPurchaseOrder(requireOrgUser().getOrganization(), request);
     }
 
+    @GetMapping("/api/pharmacy/goods-receipts")
+    public List<GoodsReceiptDto> listGoodsReceipts() {
+        return inventoryService.listGoodsReceipts(requireOrgUser().getOrganization());
+    }
+
     @PostMapping("/api/pharmacy/goods-receipts")
     public GoodsReceiptDto receiveGoods(@Valid @RequestBody CreateGoodsReceiptRequest request) {
         return inventoryService.receiveGoods(requireOrgUser().getOrganization(), request);

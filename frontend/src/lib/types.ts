@@ -278,8 +278,10 @@ export interface PlatformContentCardDto {
 export interface PlatformCommunicationSettingsDto {
   emailEnabled: boolean;
   emailConfigJson: string | null;
+  emailPasswordConfigured: boolean;
   smsEnabled: boolean;
   smsConfigJson: string | null;
+  smsKeyConfigured: boolean;
 }
 
 export interface PlatformNotificationTemplateDto {
