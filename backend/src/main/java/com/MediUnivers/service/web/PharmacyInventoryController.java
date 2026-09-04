@@ -31,6 +31,12 @@ public class PharmacyInventoryController {
         return inventoryService.createPurchaseOrder(requireOrgUser().getOrganization(), request);
     }
 
+    @PostMapping("/api/pharmacy/purchase-orders/{id}/cancel")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cancelPurchaseOrder(@PathVariable Long id) {
+        inventoryService.cancelPurchaseOrder(requireOrgUser().getOrganization(), id);
+    }
+
     @GetMapping("/api/pharmacy/goods-receipts")
     public List<GoodsReceiptDto> listGoodsReceipts() {
         return inventoryService.listGoodsReceipts(requireOrgUser().getOrganization());
@@ -39,6 +45,11 @@ public class PharmacyInventoryController {
     @PostMapping("/api/pharmacy/goods-receipts")
     public GoodsReceiptDto receiveGoods(@Valid @RequestBody CreateGoodsReceiptRequest request) {
         return inventoryService.receiveGoods(requireOrgUser().getOrganization(), request);
+    }
+
+    @PostMapping("/api/pharmacy/goods-receipts/{id}/reverse")
+    public GoodsReceiptDto reverseGoodsReceipt(@PathVariable Long id) {
+        return inventoryService.reverseGoodsReceipt(requireOrgUser().getOrganization(), id);
     }
 
     @GetMapping("/api/pharmacy/medicines/{medicineId}/batches")
@@ -69,6 +80,16 @@ public class PharmacyInventoryController {
     @PostMapping("/api/pharmacy/stock-transfers")
     public StockTransferDto transferStock(@Valid @RequestBody CreateStockTransferRequest request) {
         return inventoryService.transferStock(requireOrgUser().getOrganization(), request);
+    }
+
+    @PostMapping("/api/pharmacy/stock-adjustments")
+    public StockLedgerEntryDto adjustStock(@Valid @RequestBody CreateStockAdjustmentRequest request) {
+        return inventoryService.adjustStock(requireOrgUser().getOrganization(), request);
+    }
+
+    @GetMapping("/api/pharmacy/stock-adjustments")
+    public List<StockLedgerEntryDto> listAdjustments(@RequestParam Long branchId) {
+        return inventoryService.listAdjustments(requireOrgUser().getOrganization(), branchId);
     }
 
     private AppUser requireOrgUser() {

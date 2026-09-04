@@ -1,5 +1,6 @@
 package com.MediUnivers.service.service;
 
+import com.MediUnivers.service.domain.AddonType;
 import com.MediUnivers.service.domain.NotificationChannel;
 import com.MediUnivers.service.domain.Organization;
 import com.MediUnivers.service.domain.OrganizationCommunicationSettings;
@@ -32,6 +33,7 @@ public class OrganizationCommunicationService {
     private final OrganizationCommunicationSettingsRepository settingsRepository;
     private final NotificationService notificationService;
     private final SecretJsonConfig secretJsonConfig;
+    private final AddonAccessService addonAccessService;
 
     @Transactional(readOnly = true)
     public OrganizationCommunicationSettingsDto getSettings(Organization organization) {
@@ -39,6 +41,12 @@ public class OrganizationCommunicationService {
     }
 
     public OrganizationCommunicationSettingsDto updateSettings(Organization organization, UpdateOrganizationCommunicationSettingsRequest request) {
+        if (request.smsEnabled() && !addonAccessService.hasAddon(organization, AddonType.SMS)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Buy the SMS addon to turn on SMS notifications.");
+        }
+        if (request.whatsappEnabled() && !addonAccessService.hasAddon(organization, AddonType.WHATSAPP)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Buy the WhatsApp addon to turn on WhatsApp messaging.");
+        }
         OrganizationCommunicationSettings settings = notificationService.getOrCreateSettings(organization);
         settings.setEmailEnabled(request.emailEnabled());
         settings.setEmailProvider(orDefault(request.emailProvider(), "SMTP"));

@@ -22,9 +22,14 @@ export interface PlanApiDto {
   priceWithoutTax: number;
   taxPercent: number;
   priceWithTax: number;
+  /** Null when this plan isn't offered yearly yet — checkout falls back to priceWithoutTax x 12. */
+  priceWithoutTaxYearly: number | null;
+  priceWithTaxYearly: number | null;
   freeTrial: boolean;
   freeTrialDays: number;
   active: boolean;
+  /** The plan pre-selected on the public site's plan picker — at most one plan is ever true. */
+  defaultSelected: boolean;
   /** Availability window for new signups — null means always available (ISO date strings). */
   validFrom: string | null;
   validTo: string | null;
@@ -37,6 +42,26 @@ export interface ModulePriceApiDto {
   label: string;
   pricePerMonth: number;
   active: boolean;
+}
+
+export interface AddonPricingApiDto {
+  addonType: string;
+  label: string;
+  quantityBased: boolean;
+  unitLabel: string | null;
+  pricePerUnitMonthly: number;
+  pricePerUnitYearly: number | null;
+  active: boolean;
+}
+
+export interface SubscriptionAddonApiDto {
+  addonType: string;
+  label: string;
+  quantityBased: boolean;
+  unitLabel: string | null;
+  quantity: number;
+  unitPriceWithTax: number;
+  lineTotalWithTax: number;
 }
 
 export interface SubscriptionApiDto {
@@ -162,9 +187,18 @@ export interface OrganizationApiDto {
   branches: BranchApiDto[];
   email: string | null;
   phone: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
   city: string | null;
   state: string | null;
   country: string | null;
+  postalCode: string | null;
+  timezone: string | null;
+  currency: string | null;
+  gstNumber: string | null;
+  registrationNumber: string | null;
+  website: string | null;
+  logoUrl: string | null;
 }
 
 export interface RoleApiDto {
@@ -329,11 +363,13 @@ export interface PlatformBlogPostDto {
 export interface PlatformDashboardStatsApiDto {
   activeOrganizations: number;
   newOrganizationsLast30Days: number;
-  appointmentsToday: number;
-  appointmentsYesterday: number;
-  pharmacyRevenueToday: number;
-  pharmacyRevenueYesterday: number;
-  pendingLabResults: number;
+  openDemoRequests: number;
+  newDemoRequestsLast30Days: number;
+  organizationsExpiringWithin30Days: number;
+  demoConversionRatePercent: number | null;
+  revenueVisible: boolean;
+  subscriptionRevenueThisMonth: number | null;
+  subscriptionRevenueLastMonth: number | null;
 }
 
 export interface ChartRow {
@@ -341,10 +377,21 @@ export interface ChartRow {
   [seriesKey: string]: string | number;
 }
 
+export interface ExpiringOrganizationApiDto {
+  id: number;
+  name: string;
+  planName: string | null;
+  renewsOn: string;
+  daysLeft: number;
+}
+
 export interface PlatformDashboardApiDto {
   stats: PlatformDashboardStatsApiDto;
-  appointmentsRevenueTrend: ChartRow[];
-  organizationsByType: ChartRow[];
+  organizationsExpiringSoon: ExpiringOrganizationApiDto[];
+  modulePopularity: ChartRow[];
+  demoConversionTrend: ChartRow[];
+  subscriptionTypeMix: ChartRow[];
+  subscriptionRevenueTrend: ChartRow[];
 }
 
 export interface ClinicDashboardApiDto {

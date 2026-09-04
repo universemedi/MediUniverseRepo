@@ -49,7 +49,9 @@ com\MediUnivers\service\domain\BranchScope.class
 com\MediUnivers\service\dto\AvailableSlotDto.class
 com\MediUnivers\service\dto\CrmLeadDto.class
 com\MediUnivers\service\domain\LabTestCategory.class
+com\MediUnivers\service\dto\RescheduleAppointmentRequest.class
 com\MediUnivers\service\dto\CreateCrmLeadRequest.class
+com\MediUnivers\service\service\AddonAccessService.class
 com\MediUnivers\service\service\ClinicPatientService.class
 com\MediUnivers\service\service\ClinicAppointmentService.class
 com\MediUnivers\service\dto\CreateBranchRequest.class
@@ -69,6 +71,7 @@ com\MediUnivers\service\web\PharmacySaleController.class
 com\MediUnivers\service\domain\TemplateAudience.class
 com\MediUnivers\service\dto\UpdateCouponRequest.class
 com\MediUnivers\service\service\PlatformStaffService.class
+com\MediUnivers\service\dto\CreateStockAdjustmentRequest.class
 com\MediUnivers\service\dto\UpdateOrganizationSettingsRequest.class
 com\MediUnivers\service\service\IndiaLocationsCatalog.class
 com\MediUnivers\service\dto\SaleCartItemInput.class
@@ -110,6 +113,8 @@ com\MediUnivers\service\seed\DataSeeder.class
 com\MediUnivers\service\service\MasterDataService.class
 com\MediUnivers\service\web\PublicLeadController.class
 com\MediUnivers\service\notification\InAppChannelSender.class
+com\MediUnivers\service\dto\UpdatePatientRequest.class
+com\MediUnivers\service\dto\AddonSelectionInput.class
 com\MediUnivers\service\dto\BranchDto.class
 com\MediUnivers\service\dto\CollectSampleRequest.class
 com\MediUnivers\service\domain\PlatformNotificationTemplate.class
@@ -154,6 +159,7 @@ com\MediUnivers\service\domain\CrmActivity.class
 com\MediUnivers\service\dto\PharmacySaleItemDto.class
 com\MediUnivers\service\dto\UpdatePlatformCommunicationSettingsRequest.class
 com\MediUnivers\service\security\AppUserPrincipal.class
+com\MediUnivers\service\repository\SubscriptionAddonRepository.class
 com\MediUnivers\service\service\LabDashboardService.class
 com\MediUnivers\service\domain\Role.class
 com\MediUnivers\service\domain\NotificationStatus.class
@@ -173,6 +179,7 @@ com\MediUnivers\service\repository\PlatformNotificationTemplateRepository.class
 com\MediUnivers\service\repository\PlatformWebsiteConfigRepository.class
 com\MediUnivers\service\dto\SelectPlanRequest.class
 com\MediUnivers\service\dto\LowStockAlertDto.class
+com\MediUnivers\service\dto\RejectSampleRequest.class
 com\MediUnivers\service\web\PlatformUploadController.class
 com\MediUnivers\service\dto\UpsertNotificationTemplateRequest.class
 com\MediUnivers\service\domain\Notification.class
@@ -216,6 +223,7 @@ com\MediUnivers\service\web\CrmController.class
 com\MediUnivers\service\web\SupportTicketController.class
 com\MediUnivers\service\repository\PlatformContentCardRepository.class
 com\MediUnivers\service\repository\TaxRuleRepository.class
+com\MediUnivers\service\domain\BillingCycle.class
 com\MediUnivers\service\config\WebConfig.class
 com\MediUnivers\service\repository\WebsiteTemplateRepository.class
 com\MediUnivers\service\repository\SupplierRepository.class
@@ -224,6 +232,7 @@ com\MediUnivers\service\domain\Doctor.class
 com\MediUnivers\service\dto\MeResponse.class
 com\MediUnivers\service\service\UserService.class
 com\MediUnivers\service\service\CrmFollowUpService.class
+com\MediUnivers\service\dto\CancelLabOrderRequest.class
 com\MediUnivers\service\domain\Plan.class
 com\MediUnivers\service\web\OrganizationController.class
 com\MediUnivers\service\domain\PlatformTestimonial.class
@@ -233,6 +242,7 @@ com\MediUnivers\service\repository\WebsiteServiceItemRepository.class
 com\MediUnivers\service\service\PharmacySaleService.class
 com\MediUnivers\service\domain\WebsiteBlogPost.class
 com\MediUnivers\service\web\PharmacyQueueController.class
+com\MediUnivers\service\dto\UpdateLabPackageRequest.class
 com\MediUnivers\service\dto\InvoiceLineItemInput.class
 com\MediUnivers\service\service\OrganizationCommunicationService.class
 com\MediUnivers\service\domain\LabOrderStatus.class
@@ -273,6 +283,7 @@ com\MediUnivers\service\domain\OrgCreationSource.class
 com\MediUnivers\service\dto\LabOrderItemDto.class
 com\MediUnivers\service\repository\OrganizationRepository.class
 com\MediUnivers\service\domain\Branch.class
+com\MediUnivers\service\domain\AddonPricing.class
 com\MediUnivers\service\service\PlatformWebsiteService.class
 com\MediUnivers\service\service\CouponService.class
 com\MediUnivers\service\repository\BranchRepository.class
@@ -291,6 +302,7 @@ com\MediUnivers\service\dto\UpdateSupportTicketRequest.class
 com\MediUnivers\service\dto\SupplierDto.class
 com\MediUnivers\service\dto\GoodsReceiptItemDto.class
 com\MediUnivers\service\dto\SetAvailabilityRequest.class
+com\MediUnivers\service\dto\ExpiringOrganizationDto.class
 com\MediUnivers\service\repository\WebsiteTestimonialRepository.class
 com\MediUnivers\service\repository\CrmLeadSourceRepository.class
 com\MediUnivers\service\domain\Specialization.class
@@ -301,6 +313,7 @@ com\MediUnivers\service\domain\MedicineUnit.class
 com\MediUnivers\service\web\MasterDataController.class
 com\MediUnivers\service\dto\LabPackageDto.class
 com\MediUnivers\service\domain\NotificationCategory.class
+com\MediUnivers\service\repository\AddonPricingRepository.class
 com\MediUnivers\service\dto\MyProfileDto.class
 com\MediUnivers\service\dto\UpdateOrganizationProfileRequest.class
 com\MediUnivers\service\dto\OrgModuleStatusDto.class
@@ -329,6 +342,7 @@ com\MediUnivers\service\dto\UpdateCrmLeadRequest.class
 com\MediUnivers\service\service\NumberSeriesService.class
 com\MediUnivers\service\domain\NotificationEventType.class
 com\MediUnivers\service\domain\ConsultationStatus.class
+com\MediUnivers\service\web\AddonPricingController.class
 com\MediUnivers\service\service\LocationService.class
 com\MediUnivers\service\repository\OrgTypeRepository.class
 com\MediUnivers\service\config\CorsConfig.class
@@ -343,6 +357,7 @@ com\MediUnivers\service\dto\NotificationDto.class
 com\MediUnivers\service\dto\CreateCrmLeadSourceRequest.class
 com\MediUnivers\service\dto\CreateReturnRequest.class
 com\MediUnivers\service\dto\OrgBatchDto.class
+com\MediUnivers\service\dto\UpdateAddonPricingRequest.class
 com\MediUnivers\service\web\SubscriptionController.class
 com\MediUnivers\service\dto\PlatformDashboardDto.class
 com\MediUnivers\service\service\UserInvitationService.class
@@ -367,6 +382,7 @@ com\MediUnivers\service\web\PlatformDashboardController.class
 com\MediUnivers\service\web\NotificationController.class
 com\MediUnivers\service\domain\Coupon.class
 com\MediUnivers\service\dto\ModulePriceDto.class
+com\MediUnivers\service\service\AddonPricingService.class
 com\MediUnivers\service\domain\AuditLog.class
 com\MediUnivers\service\web\ClinicPatientController.class
 com\MediUnivers\service\domain\AppointmentStatus.class
@@ -386,6 +402,7 @@ com\MediUnivers\service\service\NotificationTemplateService.class
 com\MediUnivers\service\dto\StockTransferDto.class
 com\MediUnivers\service\dto\CreateUserRequest.class
 com\MediUnivers\service\repository\StockLedgerEntryRepository.class
+com\MediUnivers\service\dto\UpdateSupplierRequest.class
 com\MediUnivers\service\service\PharmacyReturnService.class
 com\MediUnivers\service\dto\PublicBookAppointmentRequest.class
 com\MediUnivers\service\notification\PlatformSmsChannelSender.class
@@ -403,6 +420,7 @@ com\MediUnivers\service\dto\ConsultationDto.class
 com\MediUnivers\service\dto\LabReferenceRangeInput.class
 com\MediUnivers\service\service\TrialExpiryService.class
 com\MediUnivers\service\repository\PharmacySaleItemRepository.class
+com\MediUnivers\service\domain\SubscriptionAddon.class
 com\MediUnivers\service\service\LeadService.class
 com\MediUnivers\service\domain\ResultFlag.class
 com\MediUnivers\service\dto\PublicBranchDto.class
@@ -415,6 +433,7 @@ com\MediUnivers\service\service\AuditLogService.class
 com\MediUnivers\service\service\OrgTypeService.class
 com\MediUnivers\service\config\TrustedOrigins.class
 com\MediUnivers\service\dto\UpdateLabTestRequest.class
+com\MediUnivers\service\domain\AddonType.class
 com\MediUnivers\service\web\WebsiteContentController.class
 com\MediUnivers\service\config\SchedulingConfig.class
 com\MediUnivers\service\dto\DoctorDto.class
@@ -425,6 +444,7 @@ com\MediUnivers\service\domain\Payment.class
 com\MediUnivers\service\dto\PatientDto.class
 com\MediUnivers\service\service\SubscriptionService.class
 com\MediUnivers\service\dto\UpdatePlatformWebsiteConfigRequest.class
+com\MediUnivers\service\dto\SubscriptionAddonDto.class
 com\MediUnivers\service\web\ClinicAppointmentController.class
 com\MediUnivers\service\web\ClinicConsultationController.class
 com\MediUnivers\service\dto\SaveWebsiteServiceItemRequest.class
@@ -439,6 +459,7 @@ com\MediUnivers\service\dto\CreatePatientRequest.class
 com\MediUnivers\service\dto\GatewayOrderDto.class
 com\MediUnivers\service\repository\PlatformTestimonialRepository.class
 com\MediUnivers\service\repository\NotificationRepository.class
+com\MediUnivers\service\dto\SampleCollectionDto.class
 com\MediUnivers\service\dto\SaveBlogPostRequest.class
 com\MediUnivers\service\service\ClinicConsultationService.class
 com\MediUnivers\service\service\PlatformNotificationTemplateService.class
@@ -497,6 +518,7 @@ com\MediUnivers\service\domain\Lead.class
 com\MediUnivers\service\dto\StockLedgerEntryDto.class
 com\MediUnivers\service\dto\UpdateLeadStatusRequest.class
 com\MediUnivers\service\web\AuditLogController.class
+com\MediUnivers\service\dto\AddonPricingDto.class
 com\MediUnivers\service\dto\PublicSignupResultDto.class
 com\MediUnivers\service\dto\WebsiteConfigDto.class
 com\MediUnivers\service\service\SubscriptionLifecycleService.class
@@ -523,6 +545,7 @@ com\MediUnivers\service\service\NotificationService$1.class
 com\MediUnivers\service\service\CrmLeadService.class
 com\MediUnivers\service\web\PatientPortalController.class
 com\MediUnivers\service\dto\DepartmentDto.class
+com\MediUnivers\service\dto\UpdateMedicineRequest.class
 com\MediUnivers\service\service\RoleService.class
 com\MediUnivers\service\config\AuthorizationServerConfig.class
 com\MediUnivers\service\dto\LoginRequest.class

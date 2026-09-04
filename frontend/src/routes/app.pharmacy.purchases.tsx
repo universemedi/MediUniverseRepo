@@ -25,6 +25,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/app/pharmacy/purchases")({
   head: () => ({
@@ -78,6 +88,7 @@ interface GoodsReceipt {
   poNumber: string | null;
   supplierInvoiceNumber: string | null;
   supplierInvoiceDate: string | null;
+  status: string;
   receivedAt: string;
   items: GrnItem[];
 }
@@ -142,6 +153,9 @@ function PurchasesPage() {
   ]);
   const [grnError, setGrnError] = useState<string | null>(null);
   const [grnSubmitting, setGrnSubmitting] = useState(false);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [reversing, setReversing] = useState<GoodsReceipt | null>(null);
+  const [reverseSubmitting, setReverseSubmitting] = useState(false);
 
   function load() {
     if (isPlatform || unavailable) return;
@@ -217,6 +231,36 @@ function PurchasesPage() {
       setPoError(err instanceof ApiError ? err.message : "Couldn't create this purchase order.");
     } finally {
       setPoSubmitting(false);
+    }
+  }
+
+  async function cancelPo(po: PurchaseOrder) {
+    setCancellingId(po.id);
+    try {
+      await apiFetch(`/api/pharmacy/purchase-orders/${po.id}/cancel`, { method: "POST" });
+      toast.success(`${po.poNumber} cancelled`);
+      load();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't cancel this purchase order.");
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
+  async function confirmReverse() {
+    if (!reversing) return;
+    setReverseSubmitting(true);
+    try {
+      await apiFetch(`/api/pharmacy/goods-receipts/${reversing.id}/reverse`, { method: "POST" });
+      toast.success(`${reversing.grnNumber} reversed`, {
+        description: "The batches it created are now empty.",
+      });
+      setReversing(null);
+      load();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't reverse this goods receipt.");
+    } finally {
+      setReverseSubmitting(false);
     }
   }
 
@@ -331,6 +375,16 @@ function PurchasesPage() {
               <Badge variant="outline" className={STATUS_STYLE[po.status] ?? ""}>
                 {po.status.replace("_", " ")}
               </Badge>
+              {po.status === "DRAFT" || po.status === "ORDERED" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={cancellingId === po.id}
+                  onClick={() => cancelPo(po)}
+                >
+                  Cancel
+                </Button>
+              ) : null}
             </div>
           ))}
         </Card>
@@ -372,9 +426,22 @@ function PurchasesPage() {
                   {g.supplierInvoiceDate ? ` (${g.supplierInvoiceDate})` : ""}
                 </p>
               </div>
+              {g.status === "REVERSED" ? (
+                <Badge
+                  variant="outline"
+                  className="border-destructive/25 bg-destructive/10 text-destructive"
+                >
+                  Reversed
+                </Badge>
+              ) : null}
               <Badge variant="outline" className="text-[10px] text-muted-foreground">
                 {new Date(g.receivedAt).toLocaleDateString()}
               </Badge>
+              {g.status !== "REVERSED" ? (
+                <Button variant="outline" size="sm" onClick={() => setReversing(g)}>
+                  Reverse
+                </Button>
+              ) : null}
             </div>
           ))}
         </Card>
@@ -719,6 +786,25 @@ function PurchasesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!reversing} onOpenChange={(v) => !v && setReversing(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reverse {reversing?.grnNumber}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This empties every batch this receipt created and reopens the purchase order if it was
+              linked to one. Only possible while none of that stock has been sold, transferred or
+              adjusted yet.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={reverseSubmitting} onClick={confirmReverse}>
+              {reverseSubmitting ? "Reversing…" : "Reverse"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

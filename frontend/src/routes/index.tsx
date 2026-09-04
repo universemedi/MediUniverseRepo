@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -8,20 +7,20 @@ import {
   Pill,
   ShieldCheck,
   Target,
-  Check,
 } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
-import { apiFetchPublic, resolveUploadUrl } from "@/lib/api";
+import { PlanAddonPicker } from "@/components/site/PlanAddonPicker";
+import { TestimonialsPreview } from "@/components/site/TestimonialsPreview";
+import { resolveUploadUrl } from "@/lib/api";
 import { usePlatformSite } from "@/lib/platformSite";
 import { useDynamicSeo } from "@/lib/useDynamicSeo";
 import { cn } from "@/lib/utils";
 import { HeroCarousel } from "@/components/common/HeroCarousel";
 import { useOrgDomainRedirect } from "@/lib/orgDomain";
-import type { PlanApiDto, PlatformSiteStat } from "@/lib/types";
+import type { PlatformSiteStat } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 
 function parseImageArray(json: string | null | undefined): string[] {
   if (!json) return [];
@@ -109,12 +108,6 @@ const STEPS = [
     body: "Doctors, reception, pharmacists and lab staff get exactly the pages they need.",
   },
 ];
-
-function priceLine(p: PlanApiDto): string {
-  if (p.freeTrial) return `Free / ${p.freeTrialDays} days`;
-  if (!p.priceWithoutTax) return "Custom";
-  return `₹${p.priceWithTax.toLocaleString("en-IN")} / month`;
-}
 
 /** Rendered inside <SiteLayout>, which is what actually provides usePlatformSite()'s context. */
 function HomeSeo() {
@@ -212,14 +205,7 @@ function HomeHero() {
 }
 
 function Landing() {
-  const [plans, setPlans] = useState<PlanApiDto[] | null>(null);
   const checkingOrgDomain = useOrgDomainRedirect();
-
-  useEffect(() => {
-    apiFetchPublic<PlanApiDto[]>("/api/public/plans")
-      .then(setPlans)
-      .catch(() => setPlans([]));
-  }, []);
 
   // Landing on an org's own domain resolves to their site instead — render nothing while that
   // lookup is in flight so the MediUnivers homepage never flashes before the redirect.
@@ -267,55 +253,14 @@ function Landing() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-16">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            Plans that grow with you
-          </h2>
-          <Button asChild variant="outline">
-            <Link to="/pricing">See full pricing</Link>
-          </Button>
-        </div>
-        {!plans ? (
-          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-72 rounded-xl" />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {plans.map((p) => (
-              <Card key={p.code} className="flex flex-col p-6">
-                <h3 className="text-sm font-semibold text-foreground">{p.name}</h3>
-                <p className="mt-1 text-xl font-semibold text-primary">{priceLine(p)}</p>
-                <p className="mt-2 text-sm text-muted-foreground">{p.tagline}</p>
-                <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
-                  {p.highlights.map((h) => (
-                    <li key={h} className="flex items-start gap-2">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {h}
-                    </li>
-                  ))}
-                </ul>
-                {p.freeTrial ? (
-                  <Button asChild className="mt-5">
-                    <Link to="/free-trial">Start free trial</Link>
-                  </Button>
-                ) : (
-                  <Button
-                    asChild
-                    className="mt-5"
-                    variant={p.code === "PROFESSIONAL" ? "default" : "outline"}
-                  >
-                    <Link to="/subscribe" search={{ plan: p.code }}>
-                      Subscribe now
-                    </Link>
-                  </Button>
-                )}
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
+      <div className="mx-auto flex max-w-6xl items-center justify-end px-4 pt-16">
+        <Button asChild variant="outline">
+          <Link to="/pricing">See full pricing</Link>
+        </Button>
+      </div>
+      <PlanAddonPicker />
+
+      <TestimonialsPreview />
 
       <section className="border-t border-border bg-primary/5">
         <div className="mx-auto max-w-4xl px-4 py-16 text-center">

@@ -303,6 +303,30 @@ function DoctorsPage() {
     }
   }
 
+  async function reactivateDoctor(d: Doctor) {
+    try {
+      await apiFetch(`/api/clinic/doctors/${d.id}`, {
+        method: "PUT",
+        data: {
+          fullName: d.fullName,
+          qualification: d.qualification,
+          registrationNumber: d.registrationNumber,
+          experienceYears: d.experienceYears,
+          consultationFee: d.consultationFee,
+          taxPercent: d.taxPercent ?? 0,
+          specializationIds: d.specializationIds,
+          branchId: d.branchId,
+          visibleOnWebsite: d.visibleOnWebsite,
+          status: "ACTIVE",
+        },
+      });
+      toast.success(`Dr. ${d.fullName} reactivated`);
+      load();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't reactivate this doctor.");
+    }
+  }
+
   async function updateDoctorPhoto(doctorId: number, url: string | null) {
     setPhotoUploadingFor(doctorId);
     try {
@@ -492,7 +516,11 @@ function DoctorsPage() {
                   >
                     Deactivate
                   </Button>
-                ) : null}
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => reactivateDoctor(d)}>
+                    Reactivate
+                  </Button>
+                )}
               </div>
             </Card>
           ))}

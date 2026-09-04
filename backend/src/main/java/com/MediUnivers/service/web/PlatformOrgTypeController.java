@@ -38,10 +38,11 @@ public class PlatformOrgTypeController {
         return orgTypeService.update(id, request);
     }
 
+    /** Real delete — rejected while any organization still uses this type; deactivate it from the edit dialog instead. */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('PORTAL_PLATFORM') and hasAuthority('ROLE_SUPER_ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deactivate(@PathVariable Long id) {
-        orgTypeService.deactivate(id);
+    public void delete(@PathVariable Long id) {
+        orgTypeService.delete(id);
     }
 }

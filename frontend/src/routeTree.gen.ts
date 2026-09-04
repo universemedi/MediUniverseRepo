@@ -85,6 +85,7 @@ import { Route as AppOrgTaxRulesRouteImport } from './routes/app.org.tax-rules'
 import { Route as AppOrgUsersRouteImport } from './routes/app.org.users'
 import { Route as AppPatientAppointmentsRouteImport } from './routes/app.patient.appointments'
 import { Route as AppPatientBookRouteImport } from './routes/app.patient.book'
+import { Route as AppPatientFamilyRouteImport } from './routes/app.patient.family'
 import { Route as AppPatientInvoicesRouteImport } from './routes/app.patient.invoices'
 import { Route as AppPatientPrescriptionsRouteImport } from './routes/app.patient.prescriptions'
 import { Route as AppPatientReportsRouteImport } from './routes/app.patient.reports'
@@ -502,6 +503,11 @@ const AppPatientBookRoute = AppPatientBookRouteImport.update({
   path: '/patient/book',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPatientFamilyRoute = AppPatientFamilyRouteImport.update({
+  id: '/patient/family',
+  path: '/patient/family',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPatientInvoicesRoute = AppPatientInvoicesRouteImport.update({
   id: '/patient/invoices',
   path: '/patient/invoices',
@@ -760,6 +766,7 @@ export interface FileRoutesByFullPath {
   '/app/org/users': typeof AppOrgUsersRoute
   '/app/patient/appointments': typeof AppPatientAppointmentsRoute
   '/app/patient/book': typeof AppPatientBookRoute
+  '/app/patient/family': typeof AppPatientFamilyRoute
   '/app/patient/invoices': typeof AppPatientInvoicesRoute
   '/app/patient/prescriptions': typeof AppPatientPrescriptionsRoute
   '/app/patient/reports': typeof AppPatientReportsRoute
@@ -870,6 +877,7 @@ export interface FileRoutesByTo {
   '/app/org/users': typeof AppOrgUsersRoute
   '/app/patient/appointments': typeof AppPatientAppointmentsRoute
   '/app/patient/book': typeof AppPatientBookRoute
+  '/app/patient/family': typeof AppPatientFamilyRoute
   '/app/patient/invoices': typeof AppPatientInvoicesRoute
   '/app/patient/prescriptions': typeof AppPatientPrescriptionsRoute
   '/app/patient/reports': typeof AppPatientReportsRoute
@@ -984,6 +992,7 @@ export interface FileRoutesById {
   '/app/org/users': typeof AppOrgUsersRoute
   '/app/patient/appointments': typeof AppPatientAppointmentsRoute
   '/app/patient/book': typeof AppPatientBookRoute
+  '/app/patient/family': typeof AppPatientFamilyRoute
   '/app/patient/invoices': typeof AppPatientInvoicesRoute
   '/app/patient/prescriptions': typeof AppPatientPrescriptionsRoute
   '/app/patient/reports': typeof AppPatientReportsRoute
@@ -1099,6 +1108,7 @@ export interface FileRouteTypes {
     | '/app/org/users'
     | '/app/patient/appointments'
     | '/app/patient/book'
+    | '/app/patient/family'
     | '/app/patient/invoices'
     | '/app/patient/prescriptions'
     | '/app/patient/reports'
@@ -1209,6 +1219,7 @@ export interface FileRouteTypes {
     | '/app/org/users'
     | '/app/patient/appointments'
     | '/app/patient/book'
+    | '/app/patient/family'
     | '/app/patient/invoices'
     | '/app/patient/prescriptions'
     | '/app/patient/reports'
@@ -1322,6 +1333,7 @@ export interface FileRouteTypes {
     | '/app/org/users'
     | '/app/patient/appointments'
     | '/app/patient/book'
+    | '/app/patient/family'
     | '/app/patient/invoices'
     | '/app/patient/prescriptions'
     | '/app/patient/reports'
@@ -1917,6 +1929,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPatientBookRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/patient/family': {
+      id: '/app/patient/family'
+      path: '/patient/family'
+      fullPath: '/app/patient/family'
+      preLoaderRoute: typeof AppPatientFamilyRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/patient/invoices': {
       id: '/app/patient/invoices'
       path: '/patient/invoices'
@@ -2217,6 +2236,7 @@ interface AppRouteChildren {
   AppOrgUsersRoute: typeof AppOrgUsersRoute
   AppPatientAppointmentsRoute: typeof AppPatientAppointmentsRoute
   AppPatientBookRoute: typeof AppPatientBookRoute
+  AppPatientFamilyRoute: typeof AppPatientFamilyRoute
   AppPatientInvoicesRoute: typeof AppPatientInvoicesRoute
   AppPatientPrescriptionsRoute: typeof AppPatientPrescriptionsRoute
   AppPatientReportsRoute: typeof AppPatientReportsRoute
@@ -2305,6 +2325,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOrgUsersRoute: AppOrgUsersRoute,
   AppPatientAppointmentsRoute: AppPatientAppointmentsRoute,
   AppPatientBookRoute: AppPatientBookRoute,
+  AppPatientFamilyRoute: AppPatientFamilyRoute,
   AppPatientInvoicesRoute: AppPatientInvoicesRoute,
   AppPatientPrescriptionsRoute: AppPatientPrescriptionsRoute,
   AppPatientReportsRoute: AppPatientReportsRoute,

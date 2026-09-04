@@ -26,6 +26,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/app/clinic/patients")({
   head: () => ({
@@ -69,6 +79,15 @@ interface Branch {
   status: string;
 }
 
+interface VisitAppointment {
+  id: number;
+  appointmentNumber: string;
+  status: string;
+  appointmentDate: string;
+  reason: string | null;
+  doctor: { fullName: string };
+}
+
 const RELATIONS = ["Spouse", "Child", "Parent", "Sibling", "Guardian", "Other"];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -103,12 +122,19 @@ function PatientsPage() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const [viewing, setViewing] = useState<Patient | null>(null);
+  const [visits, setVisits] = useState<VisitAppointment[] | null>(null);
   const [family, setFamily] = useState<FamilyMember[] | null>(null);
   const [famName, setFamName] = useState("");
   const [famRelation, setFamRelation] = useState("");
   const [famPhone, setFamPhone] = useState("");
+  const [famGender, setFamGender] = useState("");
+  const [famDob, setFamDob] = useState("");
   const [famSubmitting, setFamSubmitting] = useState(false);
   const [famError, setFamError] = useState<string | null>(null);
+
+  const [deactivating, setDeactivating] = useState<Patient | null>(null);
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [invitingPortal, setInvitingPortal] = useState(false);
 
   const unavailable = !isPlatform && isUnavailable("clinic");
 
@@ -243,15 +269,23 @@ function PatientsPage() {
   function openProfile(p: Patient) {
     setViewing(p);
     setFamily(null);
+    setVisits(null);
     setFamName("");
     setFamRelation("");
     setFamPhone("");
+    setFamGender("");
+    setFamDob("");
     setFamError(null);
     apiFetch<FamilyMember[]>(`/api/clinic/patients/${p.id}/family`, {
       method: "GET",
     })
       .then(setFamily)
       .catch(() => setFamily([]));
+    apiFetch<VisitAppointment[]>(`/api/clinic/appointments/patient/${p.id}`, {
+      method: "GET",
+    })
+      .then(setVisits)
+      .catch(() => setVisits([]));
   }
 
   async function addFamilyMember(e: React.FormEvent) {
@@ -266,17 +300,79 @@ function PatientsPage() {
     try {
       const member = await apiFetch<FamilyMember>(`/api/clinic/patients/${viewing.id}/family`, {
         method: "POST",
-        data: { name: famName.trim(), relation: famRelation, phone: famPhone.trim() || null },
+        data: {
+          name: famName.trim(),
+          relation: famRelation,
+          phone: famPhone.trim() || null,
+          gender: famGender || null,
+          dateOfBirth: famDob || null,
+        },
       });
       setFamily((prev) => (prev ? [...prev, member] : [member]));
       setFamName("");
       setFamRelation("");
       setFamPhone("");
+      setFamGender("");
+      setFamDob("");
       toast.success(`${member.name} added`);
     } catch (err) {
       setFamError(err instanceof ApiError ? err.message : "Couldn't add this family member.");
     } finally {
       setFamSubmitting(false);
+    }
+  }
+
+  async function confirmDeactivate() {
+    if (!deactivating) return;
+    const patient = deactivating;
+    setDeactivating(null);
+    try {
+      await apiFetch(`/api/clinic/patients/${patient.id}`, { method: "DELETE" });
+      toast.success(`${patient.firstName} deactivated`);
+      setViewing(null);
+      load(search);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't deactivate this patient.");
+    }
+  }
+
+  async function reactivatePatient(p: Patient) {
+    setStatusBusy(true);
+    try {
+      await apiFetch(`/api/clinic/patients/${p.id}`, {
+        method: "PUT",
+        data: {
+          firstName: p.firstName,
+          lastName: p.lastName,
+          gender: p.gender,
+          dateOfBirth: p.dateOfBirth,
+          phone: p.phone,
+          email: p.email,
+          bloodGroup: p.bloodGroup,
+          address: p.address,
+          branchId: p.branchId,
+          status: "ACTIVE",
+        },
+      });
+      toast.success(`${p.firstName} reactivated`);
+      setViewing({ ...p, status: "ACTIVE" });
+      load(search);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't reactivate this patient.");
+    } finally {
+      setStatusBusy(false);
+    }
+  }
+
+  async function invitePortal(p: Patient) {
+    setInvitingPortal(true);
+    try {
+      await apiFetch(`/api/clinic/patients/${p.id}/invite-portal`, { method: "POST" });
+      toast.success(`Portal invitation sent to ${p.email}`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't send the portal invitation.");
+    } finally {
+      setInvitingPortal(false);
     }
   }
 
@@ -352,6 +448,14 @@ function PatientsPage() {
                 </Badge>
               ) : null}
               {p.bloodGroup ? <Badge variant="outline">{p.bloodGroup}</Badge> : null}
+              {p.status !== "ACTIVE" ? (
+                <Badge
+                  variant="outline"
+                  className="border-destructive/25 bg-destructive/10 text-destructive"
+                >
+                  {p.status}
+                </Badge>
+              ) : null}
             </button>
           ))}
         </Card>
@@ -529,10 +633,49 @@ function PatientsPage() {
                 <div className="flex items-center justify-between gap-2 pr-6">
                   <DialogTitle className="flex items-center gap-2">
                     <UserRound className="h-4 w-4" /> {viewing.firstName} {viewing.lastName ?? ""}
+                    {viewing.status !== "ACTIVE" ? (
+                      <Badge
+                        variant="outline"
+                        className="border-destructive/25 bg-destructive/10 text-[10px] text-destructive"
+                      >
+                        {viewing.status}
+                      </Badge>
+                    ) : null}
                   </DialogTitle>
-                  <Button variant="outline" size="sm" onClick={() => openEdit(viewing)}>
-                    <Pencil className="h-3.5 w-3.5" /> Edit
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openEdit(viewing)}>
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </Button>
+                    {viewing.email ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={invitingPortal}
+                        onClick={() => invitePortal(viewing)}
+                      >
+                        Invite to portal
+                      </Button>
+                    ) : null}
+                    {viewing.status === "ACTIVE" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDeactivating(viewing)}
+                      >
+                        Deactivate
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={statusBusy}
+                        onClick={() => reactivatePatient(viewing)}
+                      >
+                        Reactivate
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <DialogDescription>{viewing.patientNumber}</DialogDescription>
               </DialogHeader>
@@ -564,6 +707,36 @@ function PatientsPage() {
                   <p>{viewing.address ?? "—"}</p>
                 </div>
               </div>
+              <div className="border-t pt-3">
+                <p className="mb-2 text-sm font-medium">Visit history</p>
+                {!visits ? (
+                  <Skeleton className="h-10 rounded-md" />
+                ) : visits.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No appointments yet.</p>
+                ) : (
+                  <ul className="max-h-40 space-y-1.5 overflow-y-auto">
+                    {visits.map((v) => (
+                      <li
+                        key={v.id}
+                        className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-1.5 text-sm"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate">
+                            {v.appointmentDate} · Dr. {v.doctor.fullName}
+                          </p>
+                          {v.reason ? (
+                            <p className="truncate text-xs text-muted-foreground">{v.reason}</p>
+                          ) : null}
+                        </div>
+                        <Badge variant="outline" className="shrink-0 text-[10px]">
+                          {v.status.replace("_", " ")}
+                        </Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               <div className="border-t pt-3">
                 <p className="mb-2 flex items-center gap-1.5 text-sm font-medium">
                   <Users className="h-3.5 w-3.5" /> Family members
@@ -609,6 +782,23 @@ function PatientsPage() {
                       value={famPhone}
                       onChange={(e) => setFamPhone(e.target.value)}
                     />
+                    <Select value={famGender} onValueChange={setFamGender}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Gender (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MALE">Male</SelectItem>
+                        <SelectItem value="FEMALE">Female</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="date"
+                      placeholder="Date of birth"
+                      className="col-span-2"
+                      value={famDob}
+                      onChange={(e) => setFamDob(e.target.value)}
+                    />
                   </div>
                   {famError ? <p className="text-xs text-destructive">{famError}</p> : null}
                   <Button type="submit" size="sm" variant="outline" disabled={famSubmitting}>
@@ -621,6 +811,24 @@ function PatientsPage() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deactivating} onOpenChange={(v) => !v && setDeactivating(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Deactivate {deactivating?.firstName} {deactivating?.lastName ?? ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Their record and history stay intact — this just marks them Inactive. You can
+              reactivate them from this same profile at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeactivate}>Deactivate</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

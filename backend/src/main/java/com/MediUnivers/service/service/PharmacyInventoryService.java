@@ -3,6 +3,7 @@ package com.MediUnivers.service.service;
 import com.MediUnivers.service.domain.*;
 import com.MediUnivers.service.dto.*;
 import com.MediUnivers.service.repository.*;
+import com.MediUnivers.service.security.CurrentUserService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -36,6 +37,7 @@ public class PharmacyInventoryService {
     private final PharmacyCatalogService catalogService;
     private final NumberSeriesService numberSeriesService;
     private final AccessService accessService;
+    private final CurrentUserService currentUserService;
 
     // ---------------- Purchase Orders ----------------
 
@@ -66,6 +68,21 @@ public class PharmacyInventoryService {
         }
         po = purchaseOrderRepository.save(po);
         return toDto(po);
+    }
+
+    /** Only safe before anything has been received against it — once goods have arrived, the
+     * receipt (and the stock it created) is the record; cancelling the PO wouldn't undo that. */
+    public void cancelPurchaseOrder(Organization organization, Long purchaseOrderId) {
+        accessService.requireModuleEnabled(organization, ModuleGroup.PHARMACY);
+        PurchaseOrder po = purchaseOrderRepository.findById(purchaseOrderId)
+                .filter(p -> p.getOrganization().getId().equals(organization.getId()))
+                .orElseThrow(() -> new EntityNotFoundException("Purchase order not found: " + purchaseOrderId));
+        if (po.getStatus() == PurchaseOrderStatus.CANCELLED) return;
+        if (po.getStatus() == PurchaseOrderStatus.RECEIVED || po.getStatus() == PurchaseOrderStatus.PARTIALLY_RECEIVED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Goods have already been received against this order — it can't be cancelled.");
+        }
+        po.setStatus(PurchaseOrderStatus.CANCELLED);
     }
 
     // ---------------- Goods Receipt (GRN) ----------------
@@ -126,6 +143,7 @@ public class PharmacyInventoryService {
             batch.setQuantityReceived(input.quantity());
             batch.setQuantityAvailable(input.quantity());
             batch = batchRepository.save(batch);
+            grnItem.setBatch(batch);
 
             recordMovement(organization, branch, medicine, batch, StockMovementType.GRN_IN, input.quantity(), "GRN", null);
 
@@ -146,6 +164,45 @@ public class PharmacyInventoryService {
         return toDto(grn);
     }
 
+    /** Undoes a wrongly-entered GRN — only possible while every batch it created is still exactly
+     * as received (nothing sold, transferred or adjusted out of it yet). */
+    public GoodsReceiptDto reverseGoodsReceipt(Organization organization, Long grnId) {
+        accessService.requireModuleEnabled(organization, ModuleGroup.PHARMACY);
+        GoodsReceipt grn = goodsReceiptRepository.findById(grnId)
+                .filter(g -> g.getOrganization().getId().equals(organization.getId()))
+                .orElseThrow(() -> new EntityNotFoundException("Goods receipt not found: " + grnId));
+        if ("REVERSED".equals(grn.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This goods receipt has already been reversed.");
+        }
+        for (GoodsReceiptItem item : grn.getItems()) {
+            Batch batch = item.getBatch();
+            if (batch == null || batch.getQuantityAvailable() != batch.getQuantityReceived()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Some stock from batch " + item.getBatchNumber() + " has already been sold, transferred or adjusted — reverse that first, or use a stock adjustment instead.");
+            }
+        }
+        for (GoodsReceiptItem item : grn.getItems()) {
+            Batch batch = item.getBatch();
+            batch.setQuantityAvailable(0);
+            recordMovement(organization, grn.getBranch(), item.getMedicine(), batch,
+                    StockMovementType.GRN_REVERSAL, -item.getQuantity(), "GRN_REVERSAL", null);
+        }
+        PurchaseOrder po = grn.getPurchaseOrder();
+        if (po != null) {
+            for (GoodsReceiptItem item : grn.getItems()) {
+                po.getItems().stream()
+                        .filter(i -> i.getMedicine().getId().equals(item.getMedicine().getId()))
+                        .findFirst()
+                        .ifPresent(i -> i.setQuantityReceived(Math.max(0, i.getQuantityReceived() - item.getQuantity())));
+            }
+            boolean anyReceived = po.getItems().stream().anyMatch(i -> i.getQuantityReceived() > 0);
+            boolean allReceived = po.getItems().stream().allMatch(i -> i.getQuantityReceived() >= i.getQuantityOrdered());
+            po.setStatus(allReceived ? PurchaseOrderStatus.RECEIVED : anyReceived ? PurchaseOrderStatus.PARTIALLY_RECEIVED : PurchaseOrderStatus.ORDERED);
+        }
+        grn.setStatus("REVERSED");
+        return toDto(goodsReceiptRepository.save(grn));
+    }
+
     private GoodsReceiptDto toDto(GoodsReceipt grn) {
         List<GoodsReceiptItemDto> items = grn.getItems().stream()
                 .map(i -> new GoodsReceiptItemDto(i.getId(), i.getMedicine().getName(), i.getBatchNumber(),
@@ -154,7 +211,7 @@ public class PharmacyInventoryService {
         return new GoodsReceiptDto(grn.getId(), grn.getGrnNumber(), grn.getSupplier().getName(),
                 grn.getBranch() != null ? grn.getBranch().getName() : null,
                 grn.getPurchaseOrder() != null ? grn.getPurchaseOrder().getPoNumber() : null,
-                grn.getSupplierInvoiceNumber(), grn.getSupplierInvoiceDate(), grn.getReceivedAt(), items);
+                grn.getSupplierInvoiceNumber(), grn.getSupplierInvoiceDate(), grn.getStatus(), grn.getReceivedAt(), items);
     }
 
     // ---------------- Stock queries ----------------
@@ -274,11 +331,49 @@ public class PharmacyInventoryService {
         return new StockTransferDto(transfer.getId(), transfer.getTransferNumber(), from.getName(), to.getName(), transfer.getCreatedAt(), transfer.getItems().size());
     }
 
+    // ---------------- Stock adjustments (write-offs, count corrections) ----------------
+
+    public StockLedgerEntryDto adjustStock(Organization organization, CreateStockAdjustmentRequest request) {
+        accessService.requireModuleEnabled(organization, ModuleGroup.PHARMACY);
+        if (request.quantityChange() == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The quantity change can't be zero.");
+        }
+        Batch batch = batchRepository.findById(request.batchId())
+                .filter(b -> b.getOrganization().getId().equals(organization.getId()))
+                .orElseThrow(() -> new EntityNotFoundException("Batch not found: " + request.batchId()));
+        int newAvailable = batch.getQuantityAvailable() + request.quantityChange();
+        if (newAvailable < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Only " + batch.getQuantityAvailable() + " unit(s) of this batch are available to write off.");
+        }
+        batch.setQuantityAvailable(newAvailable);
+        return toDto(recordMovement(organization, batch.getBranch(), batch.getMedicine(), batch,
+                StockMovementType.ADJUSTMENT, request.quantityChange(), "STOCK_ADJUSTMENT", null, request.reason()));
+    }
+
+    @Transactional(readOnly = true)
+    public List<StockLedgerEntryDto> listAdjustments(Organization organization, Long branchId) {
+        accessService.requireModuleEnabled(organization, ModuleGroup.PHARMACY);
+        return ledgerRepository.findByOrganizationIdAndBranchIdAndTypeOrderByCreatedAtDesc(organization.getId(), branchId, StockMovementType.ADJUSTMENT)
+                .stream().map(this::toDto).toList();
+    }
+
+    private StockLedgerEntryDto toDto(StockLedgerEntry e) {
+        return new StockLedgerEntryDto(e.getId(), e.getMedicine().getName(), e.getBatch() != null ? e.getBatch().getBatchNumber() : null,
+                e.getType().name(), e.getQuantity(), e.getBalanceAfter(), e.getReferenceType(), e.getNote(),
+                e.getCreatedBy() != null ? e.getCreatedBy().getFullName() : null, e.getCreatedAt());
+    }
+
     // ---------------- Shared ledger writer ----------------
 
     /** quantity is signed: positive for stock coming in, negative for stock going out. */
     void recordMovement(Organization organization, Branch branch, Medicine medicine, Batch batch,
                          StockMovementType type, int quantity, String referenceType, Long referenceId) {
+        recordMovement(organization, branch, medicine, batch, type, quantity, referenceType, referenceId, null);
+    }
+
+    private StockLedgerEntry recordMovement(Organization organization, Branch branch, Medicine medicine, Batch batch,
+                         StockMovementType type, int quantity, String referenceType, Long referenceId, String note) {
         int newBalance = batchRepository.findByMedicineIdAndBranchIdOrderByExpiryDateAsc(medicine.getId(), branch.getId())
                 .stream().mapToInt(Batch::getQuantityAvailable).sum();
         StockLedgerEntry entry = new StockLedgerEntry();
@@ -291,7 +386,9 @@ public class PharmacyInventoryService {
         entry.setBalanceAfter(newBalance);
         entry.setReferenceType(referenceType);
         entry.setReferenceId(referenceId);
-        ledgerRepository.save(entry);
+        entry.setNote(note);
+        entry.setCreatedBy(currentUserService.require());
+        return ledgerRepository.save(entry);
     }
 
     private Branch resolveBranch(Organization organization, Long branchId) {

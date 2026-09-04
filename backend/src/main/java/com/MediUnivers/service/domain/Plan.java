@@ -52,6 +52,10 @@ public class Plan {
     @Column(name = "tax_percent", nullable = false, precision = 5, scale = 2)
     private java.math.BigDecimal taxPercent = java.math.BigDecimal.ZERO;
 
+    /** Null means this plan isn't offered yearly yet — checkout falls back to priceWithoutTax x 12. */
+    @Column(name = "price_without_tax_yearly", precision = 12, scale = 2)
+    private java.math.BigDecimal priceWithoutTaxYearly;
+
     /** Doctor seats per branch — enforced the same way maxUsers already is (spec extension for req #7). */
     @Column(name = "max_doctors_per_branch", nullable = false)
     private int maxDoctorsPerBranch = 999;
@@ -65,6 +69,10 @@ public class Plan {
     /** Soft-delete flag — deactivated plans are hidden from GET /api/public/plans but never physically removed (they're FK'd from Organization/Subscription history). */
     @Column(nullable = false)
     private boolean active = true;
+
+    /** The plan pre-selected on the public site's plan picker — at most one plan is ever true at a time (see PlanService). */
+    @Column(name = "default_selected", nullable = false)
+    private boolean defaultSelected = false;
 
     /** Optional availability window — null means always available. Existing subscribers already on this plan are unaffected once it lapses. */
     @Column(name = "valid_from")

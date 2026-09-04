@@ -30,10 +30,12 @@ public class UserService {
     private final AppUserRepository appUserRepository;
     private final RoleRepository roleRepository;
     private final BranchRepository branchRepository;
+    private final PatientRepository patientRepository;
     private final OrgModuleService orgModuleService;
     private final UserInvitationService userInvitationService;
     private final PasswordEncoder passwordEncoder;
     private final PlatformNotificationService platformNotificationService;
+    private final AddonAccessService addonAccessService;
 
     @Transactional(readOnly = true)
     public List<OrgUserDto> listForOrganization(Long organizationId) {
@@ -58,8 +60,8 @@ public class UserService {
         // invited or already active; Patient Portal accounts never count against this limit.
         long occupiedSeats = appUserRepository.countByOrganizationIdAndPortalAndStatusIn(
                 organization.getId(), Portal.TENANT, List.of(UserStatus.ACTIVE, UserStatus.INVITED));
-        if (occupiedSeats >= organization.getPlan().getMaxUsers()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Your subscription user limit has been reached.");
+        if (occupiedSeats >= addonAccessService.effectiveMaxUsers(organization)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Your subscription user limit has been reached — buy the Extra Staff addon to add more.");
         }
 
         Role role = requireUsableRole(organization, request.roleCode());
@@ -185,6 +187,14 @@ public class UserService {
         String newEmail = request.email().trim();
         if (!newEmail.equalsIgnoreCase(user.getEmail()) && appUserRepository.existsByEmailIgnoreCase(newEmail)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Another account already uses this email.");
+        }
+        // A patient-portal account isn't linked to its clinical Patient record by a foreign key —
+        // it's resolved by matching this email against the org's patient roster (see
+        // PatientPortalService). Keep that link alive across an email change instead of silently
+        // locking the patient out of their own portal data.
+        if (user.getPortal() == Portal.PATIENT && user.getOrganization() != null && !newEmail.equalsIgnoreCase(user.getEmail())) {
+            patientRepository.findByOrganizationIdAndEmailIgnoreCase(user.getOrganization().getId(), user.getEmail())
+                    .ifPresent(patient -> patient.setEmail(newEmail));
         }
         user.setFullName(request.fullName().trim());
         user.setEmail(newEmail);

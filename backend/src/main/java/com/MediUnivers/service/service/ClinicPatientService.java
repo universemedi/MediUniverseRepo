@@ -5,6 +5,7 @@ import com.MediUnivers.service.dto.*;
 import com.MediUnivers.service.repository.BranchRepository;
 import com.MediUnivers.service.repository.FamilyMemberRepository;
 import com.MediUnivers.service.repository.PatientRepository;
+import com.MediUnivers.service.repository.RoleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,8 +24,10 @@ public class ClinicPatientService {
     private final PatientRepository patientRepository;
     private final FamilyMemberRepository familyMemberRepository;
     private final BranchRepository branchRepository;
+    private final RoleRepository roleRepository;
     private final NumberSeriesService numberSeriesService;
     private final AccessService accessService;
+    private final UserInvitationService userInvitationService;
 
     @Transactional(readOnly = true)
     public List<PatientDto> list(Organization organization, String search) {
@@ -70,7 +73,7 @@ public class ClinicPatientService {
         return toDto(p);
     }
 
-    public PatientDto update(Organization organization, Long patientId, CreatePatientRequest request) {
+    public PatientDto update(Organization organization, Long patientId, UpdatePatientRequest request) {
         Patient p = requireOwned(organization, patientId);
 
         Branch branch = null;
@@ -90,7 +93,29 @@ public class ClinicPatientService {
         p.setEmail(request.email());
         p.setBloodGroup(request.bloodGroup());
         p.setAddress(request.address());
+        if (request.status() != null && !request.status().isBlank()) {
+            p.setStatus(request.status());
+        }
         return toDto(p);
+    }
+
+    public void deactivate(Organization organization, Long patientId) {
+        Patient p = requireOwned(organization, patientId);
+        p.setStatus("INACTIVE");
+    }
+
+    /** Invites this patient to the patient portal (spec-equivalent of the staff invite flow in
+     * UserInvitationService), using the email already on file — the portal account is later
+     * resolved back to this Patient by matching that email (see PatientPortalService). */
+    public void invitePatientToPortal(Organization organization, Long patientId) {
+        Patient p = requireOwned(organization, patientId);
+        if (p.getEmail() == null || p.getEmail().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Add an email to this patient record first.");
+        }
+        Role patientRole = roleRepository.findByCode("PATIENT")
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "The patient portal role isn't set up for this platform."));
+        String fullName = (p.getFirstName() + " " + p.getLastName()).trim();
+        userInvitationService.invite(organization, Portal.PATIENT, patientRole, fullName, p.getEmail(), null, null, null);
     }
 
     public FamilyMemberDto addFamilyMember(Organization organization, Long patientId, CreateFamilyMemberRequest request) {

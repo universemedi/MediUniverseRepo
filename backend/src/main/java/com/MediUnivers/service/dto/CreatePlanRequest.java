@@ -20,8 +20,11 @@ public record CreatePlanRequest(
         @NotBlank String storageLabel,
         @NotNull @PositiveOrZero BigDecimal priceWithoutTax,
         @NotNull @PositiveOrZero BigDecimal taxPercent,
+        /** Null means this plan isn't offered yearly — checkout falls back to priceWithoutTax x 12. */
+        @PositiveOrZero BigDecimal priceWithoutTaxYearly,
         boolean freeTrial,
         @PositiveOrZero int freeTrialDays,
+        boolean defaultSelected,
         /** Availability window — null means always available. */
         LocalDate validFrom,
         LocalDate validTo,

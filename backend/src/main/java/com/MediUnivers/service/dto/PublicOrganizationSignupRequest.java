@@ -13,7 +13,8 @@ import jakarta.validation.constraints.NotBlank;
 public record PublicOrganizationSignupRequest(
         @NotBlank String organizationName,
         String subdomain,
-        @NotBlank String orgTypeCode,
+        /** Optional — the signup flow no longer asks for this; OrganizationService falls back to a sensible default. */
+        String orgTypeCode,
         @Email String email,
         String phone,
         String addressLine1,

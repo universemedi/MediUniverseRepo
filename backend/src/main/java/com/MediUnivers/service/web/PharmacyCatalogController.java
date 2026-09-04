@@ -32,6 +32,19 @@ public class PharmacyCatalogController {
         return catalogService.createSupplier(requireOrgUser().getOrganization(), request);
     }
 
+    @PutMapping("/api/pharmacy/suppliers/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_PHARMACIST'))")
+    public SupplierDto updateSupplier(@PathVariable Long id, @Valid @RequestBody UpdateSupplierRequest request) {
+        return catalogService.updateSupplier(requireOrgUser().getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/api/pharmacy/suppliers/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_PHARMACIST'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivateSupplier(@PathVariable Long id) {
+        catalogService.deactivateSupplier(requireOrgUser().getOrganization(), id);
+    }
+
     @GetMapping("/api/pharmacy/medicines")
     public List<MedicineDto> listMedicines(
             @RequestParam(value = "branchId", required = false) Long branchId,
@@ -43,6 +56,19 @@ public class PharmacyCatalogController {
     @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_PHARMACIST'))")
     public MedicineDto createMedicine(@Valid @RequestBody CreateMedicineRequest request) {
         return catalogService.createMedicine(requireOrgUser().getOrganization(), request);
+    }
+
+    @PutMapping("/api/pharmacy/medicines/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_PHARMACIST'))")
+    public MedicineDto updateMedicine(@PathVariable Long id, @Valid @RequestBody UpdateMedicineRequest request) {
+        return catalogService.updateMedicine(requireOrgUser().getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/api/pharmacy/medicines/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_PHARMACIST'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivateMedicine(@PathVariable Long id) {
+        catalogService.deactivateMedicine(requireOrgUser().getOrganization(), id);
     }
 
     private AppUser requireOrgUser() {

@@ -2,9 +2,11 @@ package com.MediUnivers.service.web;
 
 import com.MediUnivers.service.domain.AppUser;
 import com.MediUnivers.service.domain.LabOrderStatus;
+import com.MediUnivers.service.dto.CancelLabOrderRequest;
 import com.MediUnivers.service.dto.CollectSampleRequest;
 import com.MediUnivers.service.dto.CreateLabOrderRequest;
 import com.MediUnivers.service.dto.LabOrderDto;
+import com.MediUnivers.service.dto.RejectSampleRequest;
 import com.MediUnivers.service.security.CurrentUserService;
 import com.MediUnivers.service.service.LabOrderService;
 import jakarta.validation.Valid;
@@ -54,6 +56,18 @@ public class LabOrderController {
     @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_LAB_MANAGER') or hasAuthority('ROLE_LAB_TECHNICIAN'))")
     public LabOrderDto startProcessing(@PathVariable Long id) {
         return orderService.markProcessing(requireOrgUser().getOrganization(), id);
+    }
+
+    @PostMapping("/{id}/reject-sample")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_LAB_MANAGER') or hasAuthority('ROLE_LAB_TECHNICIAN'))")
+    public LabOrderDto rejectSample(@PathVariable Long id, @Valid @RequestBody RejectSampleRequest request) {
+        return orderService.rejectSample(requireOrgUser().getOrganization(), id, request);
+    }
+
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_LAB_MANAGER'))")
+    public LabOrderDto cancel(@PathVariable Long id, @RequestBody(required = false) CancelLabOrderRequest request) {
+        return orderService.cancelOrder(requireOrgUser().getOrganization(), id, request != null ? request : new CancelLabOrderRequest(null));
     }
 
     private AppUser requireOrgUser() {

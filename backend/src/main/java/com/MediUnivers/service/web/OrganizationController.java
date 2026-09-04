@@ -3,6 +3,7 @@ package com.MediUnivers.service.web;
 import com.MediUnivers.service.domain.OrgStatus;
 import com.MediUnivers.service.dto.CreateOrganizationRequest;
 import com.MediUnivers.service.dto.OrganizationDto;
+import com.MediUnivers.service.dto.UpdateOrganizationProfileRequest;
 import com.MediUnivers.service.service.OrganizationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,12 @@ public class OrganizationController {
     @PreAuthorize("hasAuthority('PORTAL_PLATFORM') and (hasAuthority('ROLE_SUPER_ADMIN') or hasAuthority('ROLE_PLATFORM_SALES_LEAD'))")
     public OrganizationDto create(@Valid @RequestBody CreateOrganizationRequest request) {
         return organizationService.create(request);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_PLATFORM') and (hasAuthority('ROLE_SUPER_ADMIN') or hasAuthority('ROLE_PLATFORM_SALES_LEAD'))")
+    public OrganizationDto update(@PathVariable Long id, @Valid @RequestBody UpdateOrganizationProfileRequest request) {
+        return organizationService.updatePlatformProfile(id, request);
     }
 
     @PutMapping("/{id}/plan")

@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface SampleCollectionRepository extends JpaRepository<SampleCollection, Long> {
     Optional<SampleCollection> findByOrderId(Long orderId);
     List<SampleCollection> findByOrderIdIn(List<Long> orderIds);
+    List<SampleCollection> findByOrderIdOrderByCollectedAtDesc(Long orderId);
 }

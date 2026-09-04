@@ -125,6 +125,27 @@ public class ClinicAppointmentService {
         return toDto(a);
     }
 
+    /** Moves a still-pending appointment to a new date/time, optionally a different doctor — a booked slot that hasn't
+     * been acted on yet is free to move; one already checked in, in consultation, completed or cancelled is not. */
+    public AppointmentDto reschedule(Organization organization, Long appointmentId, RescheduleAppointmentRequest request) {
+        accessService.requireModuleEnabled(organization, ModuleGroup.CLINIC);
+        Appointment a = requireOwned(organization, appointmentId);
+        if (a.getStatus() != AppointmentStatus.BOOKED && a.getStatus() != AppointmentStatus.NO_SHOW) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Can't reschedule an appointment that's already " + a.getStatus().name().toLowerCase(Locale.ROOT) + ".");
+        }
+        if (request.doctorId() != null && !request.doctorId().equals(a.getDoctor().getId())) {
+            a.setDoctor(doctorService.requireOwned(organization, request.doctorId()));
+        }
+        a.setAppointmentDate(request.appointmentDate());
+        a.setScheduledAt(request.scheduledAt());
+        a.setStatus(AppointmentStatus.BOOKED);
+        a = appointmentRepository.save(a);
+        notifyBooked(organization, a);
+        scheduleReminders(organization, a);
+        return toDto(a);
+    }
+
     // ---------------- Communication Engine hooks ----------------
 
     private void notifyBooked(Organization organization, Appointment a) {

@@ -21,7 +21,9 @@ public final class DtoMapper {
         return new PlanDto(p.getId(), p.getCode(), p.getName(), p.getPriceLabel(), p.getTagline(),
                 p.getMaxBranches(), p.getMaxUsers(), p.getMaxDoctorsPerBranch(), p.getStorageLabel(),
                 p.getPriceWithoutTax(), p.getTaxPercent(), PricingCalculator.withTax(p.getPriceWithoutTax(), p.getTaxPercent()),
-                p.isFreeTrial(), p.getFreeTrialDays(), p.isActive(), p.getValidFrom(), p.getValidTo(),
+                p.getPriceWithoutTaxYearly(),
+                p.getPriceWithoutTaxYearly() != null ? PricingCalculator.withTax(p.getPriceWithoutTaxYearly(), p.getTaxPercent()) : null,
+                p.isFreeTrial(), p.getFreeTrialDays(), p.isActive(), p.isDefaultSelected(), p.getValidFrom(), p.getValidTo(),
                 p.getModules(), p.getHighlights());
     }
 

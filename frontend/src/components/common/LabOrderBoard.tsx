@@ -17,6 +17,16 @@ export interface LabOrderItemApiDto {
   sampleType: string;
 }
 
+export interface SampleCollectionApiDto {
+  id: number;
+  collectionNumber: string;
+  sampleTypes: string;
+  status: "COLLECTED" | "RECEIVED" | "PROCESSING" | "COMPLETED" | "REJECTED";
+  remarks: string | null;
+  collectedAt: string;
+  collectedByName: string | null;
+}
+
 export interface LabOrderApiDto {
   id: number;
   orderNumber: string;
@@ -32,6 +42,7 @@ export interface LabOrderApiDto {
   patient: { id: number; patientNumber: string; name: string };
   doctorName: string | null;
   items: LabOrderItemApiDto[];
+  samples: SampleCollectionApiDto[];
   createdAt: string;
 }
 
@@ -162,6 +173,13 @@ export function LabOrderBoard({ path, statuses, emptyMessage, actions }: LabOrde
                     {o.orderNumber} · {o.patient.patientNumber} ·{" "}
                     {o.items.map((i) => i.testName).join(", ")}
                   </p>
+                  {o.samples[0] ? (
+                    <p className="text-xs text-muted-foreground">
+                      Sample {o.samples[0].collectionNumber}
+                      {o.samples[0].status === "REJECTED" ? " · Rejected" : ""}
+                      {o.samples.length > 1 ? ` (+${o.samples.length - 1} earlier)` : ""}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">

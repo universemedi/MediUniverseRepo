@@ -52,6 +52,14 @@ public class StockLedgerEntry {
     @Column(name = "reference_id")
     private Long referenceId;
 
+    /** free-text reason — mandatory for a manual ADJUSTMENT, unused for system-generated movements */
+    @Column(length = 300)
+    private String note;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private AppUser createdBy;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 }

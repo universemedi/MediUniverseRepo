@@ -65,4 +65,24 @@ public class PatientPortalController {
     public AppointmentDto book(@Valid @RequestBody BookPatientAppointmentRequest request) {
         return portalService.book(currentUserService.require(), request);
     }
+
+    @PostMapping("/appointments/{id}/cancel")
+    public AppointmentDto cancelAppointment(@PathVariable Long id) {
+        return portalService.cancelAppointment(currentUserService.require(), id);
+    }
+
+    @GetMapping("/family")
+    public List<FamilyMemberDto> family() {
+        return portalService.listFamilyMembers(currentUserService.require());
+    }
+
+    @PostMapping("/invoices/{id}/gateway/order")
+    public GatewayOrderDto createGatewayOrder(@PathVariable Long id, @RequestBody(required = false) CreateGatewayOrderRequest request) {
+        return portalService.createInvoiceGatewayOrder(currentUserService.require(), id, request);
+    }
+
+    @PostMapping("/invoices/{id}/gateway/confirm")
+    public InvoiceDto confirmGatewayPayment(@PathVariable Long id, @Valid @RequestBody ConfirmGatewayPaymentRequest request) {
+        return portalService.confirmInvoiceGatewayPayment(currentUserService.require(), id, request);
+    }
 }

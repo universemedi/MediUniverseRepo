@@ -28,15 +28,21 @@ public class OrgSubscriptionController {
 
     private final OrganizationService organizationService;
     private final CurrentUserService currentUserService;
+    private final com.MediUnivers.service.service.AddonAccessService addonAccessService;
 
     @PostMapping("/change-plan/gateway-order")
     public GatewayOrderDto gatewayOrder(@Valid @RequestBody ChangePlanRequest request) {
-        return organizationService.createPlanChangeGatewayOrder(requireOrgUser().getOrganization(), request.planCode());
+        return organizationService.createPlanChangeGatewayOrder(requireOrgUser().getOrganization(), request);
     }
 
     @PostMapping("/change-plan/confirm")
     public OrganizationDto confirm(@Valid @RequestBody ConfirmGatewayPaymentRequest request) {
         return organizationService.confirmPlanChangePayment(requireOrgUser().getOrganization(), request);
+    }
+
+    @GetMapping("/addons")
+    public java.util.List<com.MediUnivers.service.dto.SubscriptionAddonDto> currentAddons() {
+        return addonAccessService.currentAddonDtos(requireOrgUser().getOrganization());
     }
 
     private AppUser requireOrgUser() {

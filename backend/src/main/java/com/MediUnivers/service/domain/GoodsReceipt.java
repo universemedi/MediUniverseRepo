@@ -46,6 +46,10 @@ public class GoodsReceipt {
     @Column(name = "supplier_invoice_date")
     private java.time.LocalDate supplierInvoiceDate;
 
+    /** RECEIVED (normal) or REVERSED (wrongly entered, undone) — see PharmacyInventoryService#reverseGoodsReceipt */
+    @Column(nullable = false, length = 20)
+    private String status = "RECEIVED";
+
     @OneToMany(mappedBy = "goodsReceipt", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<GoodsReceiptItem> items = new ArrayList<>();
 

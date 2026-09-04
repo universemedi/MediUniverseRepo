@@ -32,6 +32,9 @@ public class LabOrderService {
     private final CurrentUserService currentUserService;
     private final BillingService billingService;
 
+    private static final List<LabOrderStatus> TERMINAL_STATUSES =
+            List.of(LabOrderStatus.VERIFIED, LabOrderStatus.COMPLETED, LabOrderStatus.CANCELLED, LabOrderStatus.REJECTED);
+
     @Transactional(readOnly = true)
     public List<LabOrderDto> list(Organization organization, List<LabOrderStatus> statuses) {
         accessService.requireModuleEnabled(organization, ModuleGroup.LAB);
@@ -120,6 +123,38 @@ public class LabOrderService {
         return toDto(order);
     }
 
+    /** Voids an order before its report is out — patient no-show, wrong test ordered, duplicate order. Once results
+     * are verified the report has effectively already been delivered, so cancellation stops being available. */
+    public LabOrderDto cancelOrder(Organization organization, Long orderId, CancelLabOrderRequest request) {
+        LabOrder order = requireOwned(organization, orderId);
+        if (TERMINAL_STATUSES.contains(order.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Can't cancel an order that's already " + order.getStatus().name().toLowerCase(java.util.Locale.ROOT) + ".");
+        }
+        if (order.getInvoice() != null) {
+            billingService.cancelInvoice(organization, order.getInvoice().getId());
+        }
+        order.setStatus(LabOrderStatus.CANCELLED);
+        return toDto(order);
+    }
+
+    /** The specimen itself is unusable (haemolyzed, insufficient quantity, wrong container, mislabeled) — the order
+     * stays open and drops back to awaiting a fresh collection, reusing the same order/invoice rather than voiding it. */
+    public LabOrderDto rejectSample(Organization organization, Long orderId, RejectSampleRequest request) {
+        LabOrder order = requireOwned(organization, orderId);
+        if (order.getStatus() != LabOrderStatus.COLLECTED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Only a collected-but-not-yet-processed sample can be rejected.");
+        }
+        SampleCollection latest = sampleCollectionRepository.findByOrderIdOrderByCollectedAtDesc(orderId).stream()
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "No sample collection found for this order."));
+        latest.setStatus(SampleStatus.REJECTED);
+        latest.setRemarks(request.reason());
+        order.setStatus(LabOrderStatus.SAMPLE_PENDING);
+        return toDto(order);
+    }
+
     public LabOrderDto markProcessing(Organization organization, Long orderId) {
         LabOrder order = requireOwned(organization, orderId);
         if (order.getStatus() != LabOrderStatus.COLLECTED) {
@@ -155,11 +190,16 @@ public class LabOrderService {
 
     LabOrderDto toDto(LabOrder o) {
         List<LabOrderItemDto> items = o.getItems().stream().map(this::toItemDto).toList();
+        List<SampleCollectionDto> samples = sampleCollectionRepository.findByOrderIdOrderByCollectedAtDesc(o.getId()).stream()
+                .map(s -> new SampleCollectionDto(s.getId(), s.getCollectionNumber(), s.getSampleTypes(),
+                        s.getStatus().name(), s.getRemarks(), s.getCollectedAt(),
+                        s.getCollectedBy() != null ? s.getCollectedBy().getFullName() : null))
+                .toList();
         Patient p = o.getPatient();
         return new LabOrderDto(o.getId(), o.getOrderNumber(), o.getStatus().name(),
                 new PatientSummaryDto(p.getId(), p.getPatientNumber(), p.fullName(), p.getPhone()),
                 o.getDoctor() != null ? o.getDoctor().getFullName() : null,
-                items, o.getCreatedAt(), o.getInvoice() != null ? o.getInvoice().getId() : null);
+                items, samples, o.getCreatedAt(), o.getInvoice() != null ? o.getInvoice().getId() : null);
     }
 
     private LabOrderItemDto toItemDto(LabOrderItem item) {

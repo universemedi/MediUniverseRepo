@@ -5,6 +5,6 @@ import java.util.List;
 
 public record LabOrderDto(
         Long id, String orderNumber, String status, PatientSummaryDto patient, String doctorName,
-        List<LabOrderItemDto> items, Instant createdAt, Long invoiceId
+        List<LabOrderItemDto> items, List<SampleCollectionDto> samples, Instant createdAt, Long invoiceId
 ) {
 }

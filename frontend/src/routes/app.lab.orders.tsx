@@ -25,6 +25,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/app/lab/orders")({
   head: () => ({
@@ -99,6 +109,14 @@ function OrdersPage() {
   const [sampleTypes, setSampleTypes] = useState("");
   const [remarks, setRemarks] = useState("");
   const [collecting, setCollecting] = useState(false);
+
+  const [cancelling, setCancelling] = useState<Order | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+
+  const [rejectingSample, setRejectingSample] = useState<Order | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
 
   function load() {
     if (isPlatform || unavailable) return;
@@ -196,6 +214,47 @@ function OrdersPage() {
     }
   }
 
+  async function confirmCancel() {
+    if (!cancelling) return;
+    setCancelSubmitting(true);
+    try {
+      await apiFetch(`/api/lab/orders/${cancelling.id}/cancel`, {
+        method: "POST",
+        data: { reason: cancelReason.trim() || null },
+      });
+      toast.success(`${cancelling.orderNumber} cancelled`);
+      setCancelling(null);
+      setCancelReason("");
+      load();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't cancel this order.");
+    } finally {
+      setCancelSubmitting(false);
+    }
+  }
+
+  async function submitRejectSample() {
+    if (!rejectingSample) return;
+    if (!rejectReason.trim()) return;
+    setRejectSubmitting(true);
+    try {
+      await apiFetch(`/api/lab/orders/${rejectingSample.id}/reject-sample`, {
+        method: "POST",
+        data: { reason: rejectReason.trim() },
+      });
+      toast.success(`Sample rejected for ${rejectingSample.orderNumber}`, {
+        description: "The order is back to awaiting a fresh sample.",
+      });
+      setRejectingSample(null);
+      setRejectReason("");
+      load();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't reject this sample.");
+    } finally {
+      setRejectSubmitting(false);
+    }
+  }
+
   const selectedTestsTotal = tests
     .filter((t) => selectedTests.includes(t.id))
     .reduce((sum, t) => sum + t.price, 0);
@@ -255,6 +314,16 @@ function OrdersPage() {
                   Start processing
                 </Button>
               ) : null}
+              {o.status === "COLLECTED" ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive"
+                  onClick={() => setRejectingSample(o)}
+                >
+                  Reject sample
+                </Button>
+              ) : null}
               {o.status === "PROCESSING" || o.status === "RESULT_READY" ? (
                 <Button asChild size="sm" variant="outline">
                   <Link to="/app/lab/results" search={{ orderId: o.id }}>
@@ -267,6 +336,16 @@ function OrdersPage() {
                   <Link to="/app/lab/reports" search={{ orderId: o.id }}>
                     View report
                   </Link>
+                </Button>
+              ) : null}
+              {["SAMPLE_PENDING", "COLLECTED", "PROCESSING", "RESULT_READY"].includes(o.status) ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive"
+                  onClick={() => setCancelling(o)}
+                >
+                  Cancel
                 </Button>
               ) : null}
             </div>
@@ -371,6 +450,68 @@ function OrdersPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!rejectingSample} onOpenChange={(v) => !v && setRejectingSample(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject sample</DialogTitle>
+            <DialogDescription>
+              {rejectingSample?.orderNumber} · {rejectingSample?.patient.name} — the order stays
+              open and drops back to awaiting a fresh collection.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>
+                Reason <span className="font-bold text-destructive">*</span>
+              </Label>
+              <Input
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="e.g. Haemolyzed, insufficient quantity, wrong container"
+              />
+            </div>
+            <div className="flex justify-end gap-2 border-t pt-4">
+              <Button variant="outline" onClick={() => setRejectingSample(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={submitRejectSample}
+                disabled={rejectSubmitting || !rejectReason.trim()}
+              >
+                {rejectSubmitting ? "Saving…" : "Reject sample"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!cancelling} onOpenChange={(v) => !v && setCancelling(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel {cancelling?.orderNumber}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This voids the order for {cancelling?.patient.name}. If an invoice was generated and
+              nothing has been paid against it yet, it's cancelled too.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1.5 px-6 pb-2">
+            <Label>Reason (optional)</Label>
+            <Input
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="e.g. Patient no-show, duplicate order"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep order</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCancel} disabled={cancelSubmitting}>
+              {cancelSubmitting ? "Cancelling…" : "Cancel order"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

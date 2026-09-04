@@ -7,6 +7,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 import type { PlanApiDto } from "@/lib/types";
 import { ModulePricingCard } from "@/components/platform/ModulePricingCard";
+import { AddonPricingCard } from "@/components/platform/AddonPricingCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -57,10 +58,12 @@ interface FormState {
   maxDoctorsPerBranch: string;
   storageLabel: string;
   priceWithoutTax: string;
+  priceWithoutTaxYearly: string;
   taxPercent: string;
   freeTrial: boolean;
   freeTrialDays: string;
   active: boolean;
+  defaultSelected: boolean;
   validFrom: string;
   validTo: string;
   modules: string[];
@@ -78,10 +81,12 @@ const EMPTY_FORM: FormState = {
   maxDoctorsPerBranch: "5",
   storageLabel: "1 GB",
   priceWithoutTax: "0",
+  priceWithoutTaxYearly: "",
   taxPercent: "18",
   freeTrial: false,
   freeTrialDays: "0",
   active: true,
+  defaultSelected: false,
   validFrom: "",
   validTo: "",
   modules: ["CLINIC"],
@@ -98,10 +103,12 @@ function toForm(p: PlanApiDto): FormState {
     maxDoctorsPerBranch: String(p.maxDoctorsPerBranch),
     storageLabel: p.storageLabel,
     priceWithoutTax: String(p.priceWithoutTax),
+    priceWithoutTaxYearly: p.priceWithoutTaxYearly != null ? String(p.priceWithoutTaxYearly) : "",
     taxPercent: String(p.taxPercent),
     freeTrial: p.freeTrial,
     freeTrialDays: String(p.freeTrialDays),
     active: p.active,
+    defaultSelected: p.defaultSelected,
     validFrom: p.validFrom ?? "",
     validTo: p.validTo ?? "",
     modules: p.modules.filter((m) => (BUSINESS_MODULES as readonly string[]).includes(m)),
@@ -132,6 +139,11 @@ function validateField(key: keyof FormState, f: FormState, isEditing: boolean): 
       return Number(f.priceWithoutTax) >= 0 && f.priceWithoutTax.trim() !== ""
         ? undefined
         : "Enter a valid price.";
+    case "priceWithoutTaxYearly":
+      if (f.priceWithoutTaxYearly.trim() === "") return undefined;
+      return Number(f.priceWithoutTaxYearly) >= 0
+        ? undefined
+        : "Enter a valid price, or leave it blank.";
     case "taxPercent": {
       const n = Number(f.taxPercent);
       return f.taxPercent.trim() !== "" && n >= 0 && n <= 100 ? undefined : "Enter 0–100.";
@@ -157,6 +169,7 @@ const VALIDATED_FIELDS: (keyof FormState)[] = [
   "maxUsers",
   "maxDoctorsPerBranch",
   "priceWithoutTax",
+  "priceWithoutTaxYearly",
   "taxPercent",
   "freeTrialDays",
   "validTo",
@@ -288,10 +301,13 @@ function PlansPage() {
       maxDoctorsPerBranch: Number(form.maxDoctorsPerBranch) || 0,
       storageLabel: form.storageLabel.trim() || "1 GB",
       priceWithoutTax: Number(form.priceWithoutTax) || 0,
+      priceWithoutTaxYearly:
+        form.priceWithoutTaxYearly.trim() === "" ? null : Number(form.priceWithoutTaxYearly),
       taxPercent: Number(form.taxPercent) || 0,
       freeTrial: form.freeTrial,
       freeTrialDays: Number(form.freeTrialDays) || 0,
       active: form.active,
+      defaultSelected: form.defaultSelected,
       validFrom: form.validFrom || null,
       validTo: form.validTo || null,
       modules: [...BASE_MODULES, ...form.modules],
@@ -356,6 +372,8 @@ function PlansPage() {
 
       <ModulePricingCard readOnly={!canManage} />
 
+      <AddonPricingCard readOnly={!canManage} />
+
       {loadError ? (
         <Card className="p-4 text-sm text-destructive">{loadError}</Card>
       ) : !plans ? (
@@ -378,7 +396,10 @@ function PlansPage() {
                     <p className="text-[11px] text-muted-foreground">{p.code}</p>
                   </div>
                 </div>
-                {!p.active ? <Badge variant="outline">Inactive</Badge> : null}
+                <div className="flex gap-1">
+                  {p.defaultSelected ? <Badge>Default</Badge> : null}
+                  {!p.active ? <Badge variant="outline">Inactive</Badge> : null}
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">{p.tagline}</p>
               <div className="text-lg font-semibold">
@@ -392,7 +413,8 @@ function PlansPage() {
               </div>
               {!p.freeTrial ? (
                 <p className="text-[11px] text-muted-foreground">
-                  {currency(p.priceWithoutTax)} + tax
+                  {currency(p.priceWithoutTax)} + tax ·{" "}
+                  {currency(p.priceWithTaxYearly ?? p.priceWithTax * 12)} / year (incl. tax)
                 </p>
               ) : null}
               <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
@@ -626,6 +648,34 @@ function PlansPage() {
                 ) : null}
               </div>
               <div className="space-y-1.5">
+                <Label htmlFor="p-price-yearly">Price without tax (₹ / year)</Label>
+                <Input
+                  id="p-price-yearly"
+                  ref={(el) => {
+                    fieldRefs.current.priceWithoutTaxYearly = el;
+                  }}
+                  type="number"
+                  min={0}
+                  placeholder="monthly × 12 if blank"
+                  value={form.priceWithoutTaxYearly}
+                  aria-invalid={
+                    !!(touched.priceWithoutTaxYearly && fieldErrors.priceWithoutTaxYearly)
+                  }
+                  className={cn(
+                    touched.priceWithoutTaxYearly &&
+                      fieldErrors.priceWithoutTaxYearly &&
+                      "border-destructive focus-visible:ring-destructive",
+                  )}
+                  onChange={(e) => setField("priceWithoutTaxYearly", e.target.value)}
+                  onBlur={() => handleBlur("priceWithoutTaxYearly")}
+                />
+                {touched.priceWithoutTaxYearly && fieldErrors.priceWithoutTaxYearly ? (
+                  <p className="text-xs font-medium text-destructive">
+                    {fieldErrors.priceWithoutTaxYearly}
+                  </p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
                 <Label htmlFor="p-tax">
                   Tax percent (GST)<span className="ml-1 font-bold text-destructive">*</span>
                 </Label>
@@ -755,6 +805,23 @@ function PlansPage() {
                 id="p-active"
                 checked={form.active}
                 onCheckedChange={(v) => setField("active", v)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label htmlFor="p-default" className="text-sm">
+                  Default plan
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Pre-selected on the public plan picker. Turning this on unsets it on every other
+                  plan.
+                </p>
+              </div>
+              <Switch
+                id="p-default"
+                checked={form.defaultSelected}
+                onCheckedChange={(v) => setField("defaultSelected", v)}
               />
             </div>
 

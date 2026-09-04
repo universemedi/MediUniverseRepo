@@ -28,6 +28,7 @@ public class PharmacyReturnService {
     private final PharmacyInventoryService inventoryService;
     private final NumberSeriesService numberSeriesService;
     private final AccessService accessService;
+    private final BillingService billingService;
 
     @Transactional(readOnly = true)
     public List<PharmacyReturnDto> list(Organization organization) {
@@ -90,6 +91,12 @@ public class PharmacyReturnService {
 
         ret.setRefundAmount(totalRefund);
         ret = returnRepository.save(ret);
+
+        if (sale.getInvoice() != null && totalRefund.signum() > 0) {
+            billingService.applyReturnCredit(organization, sale.getInvoice().getId(), totalRefund, refundMode,
+                    "Return " + ret.getReturnNumber() + " — " + request.reason());
+        }
+
         return toDto(ret);
     }
 

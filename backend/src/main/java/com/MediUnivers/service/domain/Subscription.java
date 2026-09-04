@@ -8,6 +8,8 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * One row per organization per subscription period — start/end date, a price
@@ -47,6 +49,10 @@ public class Subscription {
 
     @Column(name = "end_date")
     private LocalDate endDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "billing_cycle", nullable = false, length = 10)
+    private BillingCycle billingCycle = BillingCycle.MONTHLY;
 
     @Column(name = "is_free_trial", nullable = false)
     private boolean freeTrial = false;
@@ -89,6 +95,14 @@ public class Subscription {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
+
+    @OneToMany(mappedBy = "subscription", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<SubscriptionAddon> addons = new ArrayList<>();
+
+    public void addAddon(SubscriptionAddon addon) {
+        addon.setSubscription(this);
+        this.addons.add(addon);
+    }
 
     @PreUpdate
     void onUpdate() {

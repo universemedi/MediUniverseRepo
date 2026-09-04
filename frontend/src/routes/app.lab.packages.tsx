@@ -19,6 +19,7 @@ interface LabPackageApiDto {
   name: string;
   price: number;
   discountPercent: number;
+  testIds: number[];
   testNames: string[];
   status: string;
 }
@@ -55,12 +56,12 @@ function PackagesPage() {
       }),
       col("price", "Price", "money", { required: true }),
       col("discount", "Discount %", "percent", { secondary: true }),
-      col("status", "Status", "badge", { options: ["ACTIVE", "INACTIVE"], formHidden: true }),
+      col("status", "Status", "badge", { options: ["ACTIVE", "INACTIVE"] }),
     ],
     [tests],
   );
 
-  function toCreateBody(values: Record<string, string>) {
+  function toBody(values: Record<string, string>) {
     const testIds = (values["tests"] ?? "")
       .split(",")
       .map((n) => n.trim())
@@ -75,6 +76,14 @@ function PackagesPage() {
     };
   }
 
+  function toCreateBody(values: Record<string, string>) {
+    return toBody(values);
+  }
+
+  function toUpdateBody(values: Record<string, string>) {
+    return { ...toBody(values), status: values["status"] };
+  }
+
   return (
     <RealModulePage<LabPackageApiDto>
       path="lab/packages"
@@ -82,7 +91,7 @@ function PackagesPage() {
       columns={columns}
       toRow={toRow}
       toCreateBody={toCreateBody}
-      supportsDelete={false}
+      toUpdateBody={toUpdateBody}
     />
   );
 }

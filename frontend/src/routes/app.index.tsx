@@ -6,8 +6,6 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useAppSelector } from "@/store";
 import { apiFetch } from "@/lib/api";
 import type {
-  LeadApiDto,
-  SubscriptionApiDto,
   PlatformDashboardApiDto,
   ClinicDashboardApiDto,
   PharmacyDashboardApiDto,
@@ -37,24 +35,11 @@ function currency(n: number) {
   }).format(n);
 }
 
-/** Real day-over-day comparison — omitted (no badge shown) when there's no prior-day baseline to compare against. */
-function dayOverDayDelta(today: number, yesterday: number): Pick<StatDef, "delta" | "trend"> {
-  if (yesterday <= 0) return {};
-  const pct = ((today - yesterday) / yesterday) * 100;
+/** Real period-over-period comparison — omitted (no badge shown) when there's no prior baseline to compare against. */
+function percentDelta(current: number, previous: number): Pick<StatDef, "delta" | "trend"> {
+  if (previous <= 0) return {};
+  const pct = ((current - previous) / previous) * 100;
   return { delta: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`, trend: pct >= 0 ? "up" : "down" };
-}
-
-/** Six trailing 7-day windows, oldest first — used for the onboarding funnel chart. */
-function weekBuckets(n: number) {
-  const dayMs = 86_400_000;
-  const now = Date.now();
-  const buckets: { start: number; end: number; label: string }[] = [];
-  for (let i = n - 1; i >= 0; i--) {
-    const end = now - i * 7 * dayMs;
-    const start = end - 7 * dayMs;
-    buckets.push({ start, end, label: `W${n - i}` });
-  }
-  return buckets;
 }
 
 function Dashboard() {
@@ -68,31 +53,13 @@ function Dashboard() {
     }))
     .filter((s) => s.items.length);
 
-  const [leads, setLeads] = useState<LeadApiDto[] | null>(null);
-  const [subscriptions, setSubscriptions] = useState<SubscriptionApiDto[] | null>(null);
-  const [trials, setTrials] = useState<SubscriptionApiDto[] | null>(null);
   const [platformDashboard, setPlatformDashboard] = useState<PlatformDashboardApiDto | null>(null);
 
   useEffect(() => {
     if (!isPlatform) return;
-    Promise.all([
-      apiFetch<LeadApiDto[]>("/api/platform/leads"),
-      apiFetch<SubscriptionApiDto[]>("/api/platform/subscriptions"),
-      apiFetch<SubscriptionApiDto[]>("/api/platform/subscriptions/trials"),
-      apiFetch<PlatformDashboardApiDto>("/api/platform/dashboard"),
-    ])
-      .then(([l, s, t, d]) => {
-        setLeads(l);
-        setSubscriptions(s);
-        setTrials(t);
-        setPlatformDashboard(d);
-      })
-      .catch(() => {
-        setLeads([]);
-        setSubscriptions([]);
-        setTrials([]);
-        setPlatformDashboard(null);
-      });
+    apiFetch<PlatformDashboardApiDto>("/api/platform/dashboard")
+      .then(setPlatformDashboard)
+      .catch(() => setPlatformDashboard(null));
   }, [isPlatform]);
 
   // A clinic-only org's plan never includes pharmacy/lab, and vice versa — both the
@@ -131,64 +98,13 @@ function Dashboard() {
     });
   }, [isPlatform, hasClinic, hasPharmacy, hasLab]);
 
-  const pipelineLoading = isPlatform && (!leads || !subscriptions || !trials);
-  const demoLeads = (leads ?? []).filter((l) => l.source === "REQUEST_DEMO");
-  const openDemoLeads = demoLeads.filter((l) => l.status !== "WON" && l.status !== "LOST");
-  const newDemoLeads = demoLeads.filter((l) => l.status === "NEW_LEAD");
-  const now = new Date();
-  const expiringSoon = (trials ?? []).filter((t) => {
-    if (!t.endDate) return false;
-    const days = (new Date(t.endDate).getTime() - now.getTime()) / 86_400_000;
-    return days <= 7;
-  });
-  const wonThisMonth = (leads ?? []).filter((l) => {
-    if (l.status !== "WON") return false;
-    const d = new Date(l.updatedAt);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  });
-  const lapsedSubscriptions = (subscriptions ?? []).filter(
-    (s) => s.status === "CANCELLED" || s.status === "EXPIRED",
-  );
-
-  const pipeline = [
-    {
-      stage: "Demo requests",
-      count: String(openDemoLeads.length),
-      note: `${newDemoLeads.length} awaiting first contact`,
-    },
-    {
-      stage: "Active trials",
-      count: String((trials ?? []).length),
-      note: `${expiringSoon.length} expiring within 7 days`,
-    },
-    { stage: "Won this month", count: String(wonThisMonth.length), note: "Leads marked Won" },
-    {
-      stage: "Lapsed subscriptions",
-      count: String(lapsedSubscriptions.length),
-      note: "Cancelled or expired",
-    },
-  ];
-
-  const activeSubscriptions = (subscriptions ?? []).filter((s) => s.status === "ACTIVE");
-  const planCounts = new Map<string, number>();
-  for (const s of activeSubscriptions) {
-    planCounts.set(s.planName, (planCounts.get(s.planName) ?? 0) + 1);
-  }
-  const planMix = Array.from(planCounts.entries())
-    .map(([name, orgs]) => ({
-      name,
-      orgs,
-      share: activeSubscriptions.length ? Math.round((orgs / activeSubscriptions.length) * 100) : 0,
-    }))
-    .sort((a, b) => b.orgs - a.orgs);
-
   const statsLoading = isPlatform ? !platformDashboard : !tenantLoaded;
 
   const stats: StatDef[] = useMemo(() => {
     if (isPlatform) {
       if (!platformDashboard) return [];
       const s = platformDashboard.stats;
-      return [
+      const list: StatDef[] = [
         {
           label: "Active organizations",
           value: String(s.activeOrganizations),
@@ -197,17 +113,32 @@ function Dashboard() {
             : {}),
         },
         {
-          label: "Appointments today",
-          value: String(s.appointmentsToday),
-          ...dayOverDayDelta(s.appointmentsToday, s.appointmentsYesterday),
+          label: "Demo requests",
+          value: String(s.openDemoRequests),
+          ...(s.newDemoRequestsLast30Days > 0
+            ? { delta: `+${s.newDemoRequestsLast30Days} new (30d)`, trend: "up" as const }
+            : {}),
         },
         {
-          label: "Pharmacy revenue (today)",
-          value: currency(s.pharmacyRevenueToday),
-          ...dayOverDayDelta(s.pharmacyRevenueToday, s.pharmacyRevenueYesterday),
+          label: "Expiring within 30 days",
+          value: String(s.organizationsExpiringWithin30Days),
         },
-        { label: "Pending lab results", value: String(s.pendingLabResults) },
+        {
+          label: "Demo → live conversion",
+          value:
+            s.demoConversionRatePercent != null
+              ? `${s.demoConversionRatePercent.toFixed(0)}%`
+              : "—",
+        },
       ];
+      if (s.revenueVisible) {
+        list.push({
+          label: "Subscription revenue (this month)",
+          value: currency(s.subscriptionRevenueThisMonth ?? 0),
+          ...percentDelta(s.subscriptionRevenueThisMonth ?? 0, s.subscriptionRevenueLastMonth ?? 0),
+        });
+      }
+      return list;
     }
     const list: StatDef[] = [];
     if (hasClinic && clinicDashboard) {
@@ -254,75 +185,57 @@ function Dashboard() {
     billingDashboard,
   ]);
 
-  const funnelRows = useMemo<ChartRow[]>(() => {
-    if (!isPlatform || !leads || !subscriptions || !trials) return [];
-    return weekBuckets(6).map((b) => {
-      const leadsCount = leads.filter((l) => {
-        const t = new Date(l.createdAt).getTime();
-        return t >= b.start && t < b.end;
-      }).length;
-      const trialsCount = trials.filter((s) => {
-        const t = new Date(s.startDate).getTime();
-        return t >= b.start && t < b.end;
-      }).length;
-      const liveCount = subscriptions.filter((s) => {
-        if (s.freeTrial) return false;
-        const t = new Date(s.startDate).getTime();
-        return t >= b.start && t < b.end;
-      }).length;
-      return { name: b.label, Leads: leadsCount, Trials: trialsCount, Live: liveCount };
-    });
-  }, [isPlatform, leads, subscriptions, trials]);
-
   const chartsWithData: { def: ChartDef; data: ChartRow[] }[] = useMemo(() => {
     if (isPlatform) {
       if (!platformDashboard) return [];
-      const trend = platformDashboard.appointmentsRevenueTrend;
-      const byType = platformDashboard.organizationsByType;
-      const subscriptionMix: ChartRow[] = planMix.map((p) => ({
-        name: p.name,
-        Organizations: p.orgs,
-      }));
+      const modulePopularity = platformDashboard.modulePopularity;
+      const demoConversion = platformDashboard.demoConversionTrend;
+      const subscriptionTypes = platformDashboard.subscriptionTypeMix;
       const result: { def: ChartDef; data: ChartRow[] }[] = [
         {
           def: {
-            type: "area",
-            title: "Appointments & revenue trend",
-            dataKeys: ["Appointments", "Revenue"],
-            categories: trend.map((r) => r.name),
+            type: "bar",
+            title: "Modules organizations have selected",
+            dataKeys: ["Organizations"],
+            categories: modulePopularity.map((r) => r.name),
           },
-          data: trend,
+          data: modulePopularity,
         },
         {
           def: {
             type: "bar",
-            title: "Organizations by type",
-            dataKeys: ["Organizations"],
-            categories: byType.map((r) => r.name),
+            title: "Demo requests converting to live",
+            dataKeys: ["Demo requests", "Converted to live"],
+            categories: demoConversion.map((r) => r.name),
           },
-          data: byType,
+          data: demoConversion,
         },
       ];
-      if (subscriptionMix.length) {
+      if (subscriptionTypes.length) {
         result.push({
           def: {
             type: "pie",
-            title: "Subscription mix",
+            title: "Overall subscription types",
             dataKeys: ["Organizations"],
-            categories: subscriptionMix.map((r) => r.name),
+            categories: subscriptionTypes.map((r) => r.name),
           },
-          data: subscriptionMix,
+          data: subscriptionTypes,
         });
       }
-      result.push({
-        def: {
-          type: "line",
-          title: "Onboarding funnel velocity",
-          dataKeys: ["Leads", "Trials", "Live"],
-          categories: funnelRows.map((r) => r.name),
-        },
-        data: funnelRows,
-      });
+      if (
+        platformDashboard.stats.revenueVisible &&
+        platformDashboard.subscriptionRevenueTrend.length
+      ) {
+        result.push({
+          def: {
+            type: "area",
+            title: "Subscription revenue trend",
+            dataKeys: ["Revenue"],
+            categories: platformDashboard.subscriptionRevenueTrend.map((r) => r.name),
+          },
+          data: platformDashboard.subscriptionRevenueTrend,
+        });
+      }
       return result;
     }
 
@@ -381,8 +294,6 @@ function Dashboard() {
   }, [
     isPlatform,
     platformDashboard,
-    planMix,
-    funnelRows,
     hasClinic,
     hasPharmacy,
     hasLab,
@@ -413,59 +324,45 @@ function Dashboard() {
       <StatCards stats={stats} loading={statsLoading} />
 
       {isPlatform ? (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="p-5 lg:col-span-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Demo → Trial → Subscription pipeline
-            </h2>
-            {pipelineLoading ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-20 rounded-xl" />
-                ))}
-              </div>
-            ) : (
-              <div className="mt-4 grid gap-3 sm:grid-cols-4">
-                {pipeline.map((p) => (
-                  <div key={p.stage} className="rounded-xl border border-border bg-muted/30 p-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {p.stage}
+        <Card className="p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Organizations expiring within 30 days
+          </h2>
+          {statsLoading ? (
+            <div className="mt-4 space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 rounded-lg" />
+              ))}
+            </div>
+          ) : !platformDashboard || platformDashboard.organizationsExpiringSoon.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">
+              No organizations renewing in the next 30 days.
+            </p>
+          ) : (
+            <ul className="mt-4 divide-y divide-border">
+              {platformDashboard.organizationsExpiringSoon.map((o) => (
+                <li key={o.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">{o.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {o.planName ?? "No plan"} · renews {o.renewsOn}
                     </p>
-                    <p className="mt-1 text-xl font-semibold text-foreground">{p.count}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">{p.note}</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </Card>
-          <Card className="p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Plan distribution
-            </h2>
-            {pipelineLoading ? (
-              <Skeleton className="mt-4 h-32 rounded-xl" />
-            ) : planMix.length === 0 ? (
-              <p className="mt-4 text-sm text-muted-foreground">No active subscriptions yet.</p>
-            ) : (
-              <ul className="mt-4 space-y-3">
-                {planMix.map((p) => (
-                  <li key={p.name} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-foreground">{p.name}</span>
-                      <span className="text-muted-foreground">{p.orgs} orgs</span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${p.share}%` }}
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </div>
+                  <Badge
+                    variant="outline"
+                    className={
+                      o.daysLeft <= 7
+                        ? "shrink-0 border-destructive/25 bg-destructive/10 text-destructive"
+                        : "shrink-0 border-amber-300 bg-amber-50 text-amber-700"
+                    }
+                  >
+                    {o.daysLeft <= 0 ? "Today" : `${o.daysLeft}d left`}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
       ) : (
         <Card className="p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">

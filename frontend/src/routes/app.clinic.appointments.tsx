@@ -97,6 +97,12 @@ function AppointmentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
+  const [rescheduling, setRescheduling] = useState<Appointment | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleDoctorId, setRescheduleDoctorId] = useState("");
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
+  const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false);
+
   function load() {
     if (isPlatform || unavailable) return;
     Promise.all([
@@ -195,6 +201,41 @@ function AppointmentsPage() {
     }
   }
 
+  function openReschedule(a: Appointment) {
+    setRescheduling(a);
+    setRescheduleDate(a.appointmentDate);
+    setRescheduleDoctorId(String(a.doctor.id));
+    setRescheduleError(null);
+  }
+
+  async function submitReschedule() {
+    if (!rescheduling) return;
+    if (!rescheduleDate) {
+      setRescheduleError("Choose a date.");
+      return;
+    }
+    setRescheduleError(null);
+    setRescheduleSubmitting(true);
+    try {
+      await apiFetch(`/api/clinic/appointments/${rescheduling.id}/reschedule`, {
+        method: "PUT",
+        data: {
+          appointmentDate: rescheduleDate,
+          doctorId: rescheduleDoctorId ? Number(rescheduleDoctorId) : null,
+        },
+      });
+      toast.success(`${rescheduling.patient.name}'s appointment rescheduled`);
+      setRescheduling(null);
+      load();
+    } catch (err) {
+      setRescheduleError(
+        err instanceof ApiError ? err.message : "Couldn't reschedule this appointment.",
+      );
+    } finally {
+      setRescheduleSubmitting(false);
+    }
+  }
+
   async function transition(a: Appointment, status: string) {
     try {
       await apiFetch(`/api/clinic/appointments/${a.id}/status`, {
@@ -274,6 +315,11 @@ function AppointmentsPage() {
                 {a.status === "BOOKED" ? (
                   <Button size="sm" variant="outline" onClick={() => transition(a, "CHECKED_IN")}>
                     Check in
+                  </Button>
+                ) : null}
+                {a.status === "BOOKED" || a.status === "NO_SHOW" ? (
+                  <Button size="sm" variant="outline" onClick={() => openReschedule(a)}>
+                    Reschedule
                   </Button>
                 ) : null}
                 {a.status === "BOOKED" ? (
@@ -409,6 +455,53 @@ function AppointmentsPage() {
               </Button>
               <Button onClick={submitBooking} disabled={submitting}>
                 {submitting ? "Saving…" : mode === "walkin" ? "Check in" : "Book"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!rescheduling} onOpenChange={(v) => !v && setRescheduling(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reschedule {rescheduling?.patient.name}'s appointment</DialogTitle>
+            <DialogDescription>
+              Pick a new date, and a different doctor if needed — the patient will be notified.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>
+                New date <span className="font-bold text-destructive">*</span>
+              </Label>
+              <Input
+                type="date"
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Doctor</Label>
+              <Select value={rescheduleDoctorId} onValueChange={setRescheduleDoctorId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select doctor" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {doctors.map((d) => (
+                    <SelectItem key={d.id} value={String(d.id)}>
+                      Dr. {d.fullName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {rescheduleError ? <p className="text-sm text-destructive">{rescheduleError}</p> : null}
+            <div className="flex justify-end gap-2 border-t pt-4">
+              <Button variant="outline" onClick={() => setRescheduling(null)}>
+                Cancel
+              </Button>
+              <Button onClick={submitReschedule} disabled={rescheduleSubmitting}>
+                {rescheduleSubmitting ? "Saving…" : "Reschedule"}
               </Button>
             </div>
           </div>

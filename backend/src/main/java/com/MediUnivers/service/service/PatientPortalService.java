@@ -39,6 +39,7 @@ public class PatientPortalService {
     private final DoctorRepository doctorRepository;
     private final DoctorAvailabilityRepository availabilityRepository;
     private final ClinicAppointmentService appointmentService;
+    private final ClinicPatientService patientService;
     private final ClinicConsultationService consultationService;
     private final LabOrderService labOrderService;
     private final BillingService billingService;
@@ -50,9 +51,13 @@ public class PatientPortalService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This account is not attached to an organization.");
         }
         accessService.requireModuleEnabled(organization, ModuleGroup.PATIENT);
-        return patientRepository.findByOrganizationIdAndEmailIgnoreCase(organization.getId(), user.getEmail())
+        Patient patient = patientRepository.findByOrganizationIdAndEmailIgnoreCase(organization.getId(), user.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "We couldn't find a patient record matching your account email — ask reception to update it on file."));
+        if ("INACTIVE".equals(patient.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This patient record has been deactivated — contact reception.");
+        }
+        return patient;
     }
 
     public List<AppointmentDto> listAppointments(AppUser user) {
@@ -82,7 +87,7 @@ public class PatientPortalService {
     public List<LabOrderDto> listLabReports(AppUser user) {
         Patient patient = requireCurrentPatient(user);
         return labOrderService.listForPatient(user.getOrganization(), patient.getId()).stream()
-                .filter(o -> o.status().equals(LabOrderStatus.VERIFIED.name()) || o.status().equals(LabOrderStatus.COMPLETED.name()))
+                .filter(o -> o.status().equals(LabOrderStatus.VERIFIED.name()))
                 .toList();
     }
 
@@ -130,5 +135,45 @@ public class PatientPortalService {
         CreateAppointmentRequest createRequest = new CreateAppointmentRequest(
                 patient.getId(), request.doctorId(), request.appointmentDate(), scheduledAt, request.reason(), null);
         return appointmentService.book(user.getOrganization(), createRequest);
+    }
+
+    /** A patient can only cancel their own booking — 404s (not 403) on someone else's, same as getPrescription, so an
+     * appointment id doesn't leak whether it belongs to another patient. */
+    @Transactional
+    public AppointmentDto cancelAppointment(AppUser user, Long appointmentId) {
+        Patient patient = requireCurrentPatient(user);
+        Appointment appointment = appointmentService.requireOwned(user.getOrganization(), appointmentId);
+        if (!appointment.getPatient().getId().equals(patient.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found.");
+        }
+        return appointmentService.updateStatus(user.getOrganization(), appointmentId, new UpdateAppointmentStatusRequest("CANCELLED"));
+    }
+
+    public List<FamilyMemberDto> listFamilyMembers(AppUser user) {
+        Patient patient = requireCurrentPatient(user);
+        return patientService.listFamilyMembers(user.getOrganization(), patient.getId());
+    }
+
+    /** Same ownership check as cancelAppointment — a patient can only ever open the gateway
+     * checkout, or confirm a payment, against an invoice that's actually theirs. */
+    public GatewayOrderDto createInvoiceGatewayOrder(AppUser user, Long invoiceId, CreateGatewayOrderRequest request) {
+        Patient patient = requireCurrentPatient(user);
+        Invoice invoice = requireOwnInvoice(user, patient, invoiceId);
+        return billingService.createGatewayOrder(user.getOrganization(), invoice.getId(), request);
+    }
+
+    @Transactional
+    public InvoiceDto confirmInvoiceGatewayPayment(AppUser user, Long invoiceId, ConfirmGatewayPaymentRequest request) {
+        Patient patient = requireCurrentPatient(user);
+        Invoice invoice = requireOwnInvoice(user, patient, invoiceId);
+        return billingService.toDto(billingService.confirmGatewayPayment(user.getOrganization(), invoice.getId(), request));
+    }
+
+    private Invoice requireOwnInvoice(AppUser user, Patient patient, Long invoiceId) {
+        Invoice invoice = billingService.requireOwned(user.getOrganization(), invoiceId);
+        if (invoice.getPatient() == null || !invoice.getPatient().getId().equals(patient.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found.");
+        }
+        return invoice;
     }
 }

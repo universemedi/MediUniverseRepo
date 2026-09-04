@@ -45,6 +45,16 @@ public class ClinicAppointmentController {
         return appointmentService.updateStatus(requireOrgUser().getOrganization(), id, request);
     }
 
+    @GetMapping("/patient/{patientId}")
+    public List<AppointmentDto> listForPatient(@PathVariable Long patientId) {
+        return appointmentService.listForPatient(requireOrgUser().getOrganization(), patientId);
+    }
+
+    @PutMapping("/{id}/reschedule")
+    public AppointmentDto reschedule(@PathVariable Long id, @Valid @RequestBody RescheduleAppointmentRequest request) {
+        return appointmentService.reschedule(requireOrgUser().getOrganization(), id, request);
+    }
+
     private AppUser requireOrgUser() {
         AppUser me = currentUserService.require();
         if (me.getOrganization() == null) {

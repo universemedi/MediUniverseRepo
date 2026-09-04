@@ -86,14 +86,26 @@ public class LabResultService {
 
     private void notifyReportReady(Organization organization, LabOrder order) {
         Patient patient = order.getPatient();
-        if (patient == null || (isBlank(patient.getEmail()) && isBlank(patient.getPhone()))) return;
         Map<String, String> vars = new HashMap<>();
-        vars.put("patientName", patient.fullName());
+        vars.put("patientName", patient != null ? patient.fullName() : "");
         vars.put("organizationName", organization.getName());
         vars.put("orderNumber", order.getOrderNumber());
-        notificationService.notify(organization, NotificationEventType.LAB_REPORT_READY,
-                NotificationRecipient.of(patient.fullName(), patient.getEmail(), patient.getPhone()),
-                vars, NotificationPriority.NORMAL, "LAB_ORDER", order.getId(), null);
+
+        if (patient != null && (!isBlank(patient.getEmail()) || !isBlank(patient.getPhone()))) {
+            notificationService.notify(organization, NotificationEventType.LAB_REPORT_READY,
+                    NotificationRecipient.of(patient.fullName(), patient.getEmail(), patient.getPhone()),
+                    vars, NotificationPriority.NORMAL, "LAB_ORDER", order.getId(), null);
+        }
+
+        // The ordering doctor (when there is one — reception can book a lab visit with no
+        // referring doctor) gets the same "report ready" nudge, not just the patient.
+        Doctor doctor = order.getDoctor();
+        AppUser doctorUser = doctor != null ? doctor.getAppUser() : null;
+        if (doctorUser != null && (!isBlank(doctorUser.getEmail()) || !isBlank(doctorUser.getPhone()))) {
+            notificationService.notify(organization, NotificationEventType.LAB_REPORT_READY,
+                    NotificationRecipient.of(doctorUser.getFullName(), doctorUser.getEmail(), doctorUser.getPhone()),
+                    vars, NotificationPriority.NORMAL, "LAB_ORDER", order.getId(), null);
+        }
     }
 
     private boolean isBlank(String s) {

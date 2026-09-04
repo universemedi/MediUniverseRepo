@@ -6,7 +6,7 @@ import java.util.List;
 
 public record GoodsReceiptDto(
         Long id, String grnNumber, String supplierName, String branchName, String poNumber,
-        String supplierInvoiceNumber, LocalDate supplierInvoiceDate, Instant receivedAt,
+        String supplierInvoiceNumber, LocalDate supplierInvoiceDate, String status, Instant receivedAt,
         List<GoodsReceiptItemDto> items
 ) {
 }

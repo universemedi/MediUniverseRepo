@@ -144,6 +144,7 @@ const ITEM_ICONS: Record<string, string> = {
   "patient/prescriptions": "FileHeart",
   "patient/reports": "FileBarChart",
   "patient/invoices": "Receipt",
+  "patient/family": "Users",
 };
 
 export const NAV_SECTIONS: NavSection[] = Object.keys(SECTION_LABELS).map((group) => ({

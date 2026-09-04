@@ -40,7 +40,7 @@ public class PublicOrganizationController {
     @PostMapping("/{id}/select-plan")
     public GatewayOrderDto selectPlan(@PathVariable Long id, @RequestHeader("X-Signup-Token") String signupToken,
                                        @Valid @RequestBody SelectPlanRequest request) {
-        return organizationService.selectPlanAndCreateGatewayOrder(id, signupToken, request.planCode());
+        return organizationService.selectPlanAndCreateGatewayOrder(id, signupToken, request);
     }
 
     @PostMapping("/{id}/select-custom-plan")

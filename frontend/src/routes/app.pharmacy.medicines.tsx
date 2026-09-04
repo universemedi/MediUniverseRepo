@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Lock, Pill, Plus, Search, ShieldAlert } from "lucide-react";
+import { Lock, Pencil, Pill, Plus, Search, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/lib/api";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -44,8 +44,11 @@ interface Medicine {
   id: number;
   code: string;
   name: string;
+  categoryId: number | null;
   category: string | null;
+  unitId: number | null;
   unit: string | null;
+  manufacturerId: number | null;
   manufacturer: string | null;
   hsnCode: string | null;
   taxPercent: number;
@@ -76,6 +79,7 @@ function MedicinesPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Medicine | null>(null);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -86,9 +90,11 @@ function MedicinesPage() {
   const [reorderLevel, setReorderLevel] = useState("10");
   const [controlled, setControlled] = useState(false);
   const [allowSubstitution, setAllowSubstitution] = useState(true);
+  const [status, setStatus] = useState("ACTIVE");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   function load(term?: string, branch?: number | null) {
     if (isPlatform || unavailable) return;
@@ -151,6 +157,7 @@ function MedicinesPage() {
   }
 
   function resetForm() {
+    setEditing(null);
     setCode("");
     setName("");
     setCategoryId("");
@@ -161,8 +168,40 @@ function MedicinesPage() {
     setReorderLevel("10");
     setControlled(false);
     setAllowSubstitution(true);
+    setStatus("ACTIVE");
     setError(null);
     setTouched(false);
+  }
+
+  function openEdit(m: Medicine) {
+    setEditing(m);
+    setCode(m.code);
+    setName(m.name);
+    setCategoryId(m.categoryId ? String(m.categoryId) : "");
+    setUnitId(m.unitId ? String(m.unitId) : "");
+    setManufacturerId(m.manufacturerId ? String(m.manufacturerId) : "");
+    setHsnCode(m.hsnCode ?? "");
+    setTaxPercent(String(m.taxPercent));
+    setReorderLevel(String(m.reorderLevel));
+    setControlled(m.controlled);
+    setAllowSubstitution(m.allowSubstitution);
+    setStatus(m.status);
+    setError(null);
+    setTouched(false);
+    setOpen(true);
+  }
+
+  async function deactivate(m: Medicine) {
+    setTogglingId(m.id);
+    try {
+      await apiFetch(`/api/pharmacy/medicines/${m.id}`, { method: "DELETE" });
+      toast.success(`${m.name} deactivated`);
+      load(search, branchId);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't deactivate this medicine.");
+    } finally {
+      setTogglingId(null);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -172,28 +211,32 @@ function MedicinesPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await apiFetch("/api/pharmacy/medicines", {
-        method: "POST",
-        data: {
-          code: code.trim(),
-          name: name.trim(),
-          categoryId: categoryId ? Number(categoryId) : null,
-          unitId: unitId ? Number(unitId) : null,
-          manufacturerId: manufacturerId ? Number(manufacturerId) : null,
-          hsnCode: hsnCode.trim() || null,
-          taxPercent: Number(taxPercent) || 0,
-          reorderLevel: Number(reorderLevel) || 10,
-          controlled,
-          allowSubstitution,
-        },
-      });
-      toast.success(`${name.trim()} added to the medicine master`);
+      const body = {
+        code: code.trim(),
+        name: name.trim(),
+        categoryId: categoryId ? Number(categoryId) : null,
+        unitId: unitId ? Number(unitId) : null,
+        manufacturerId: manufacturerId ? Number(manufacturerId) : null,
+        hsnCode: hsnCode.trim() || null,
+        taxPercent: Number(taxPercent) || 0,
+        reorderLevel: Number(reorderLevel) || 10,
+        controlled,
+        allowSubstitution,
+        status: editing ? status : undefined,
+      };
+      if (editing) {
+        await apiFetch(`/api/pharmacy/medicines/${editing.id}`, { method: "PUT", data: body });
+        toast.success(`${name.trim()} updated`);
+      } else {
+        await apiFetch("/api/pharmacy/medicines", { method: "POST", data: body });
+        toast.success(`${name.trim()} added to the medicine master`);
+      }
       setOpen(false);
       resetForm();
       load(search, branchId);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Couldn't add this medicine. Please try again.",
+        err instanceof ApiError ? err.message : "Couldn't save this medicine. Please try again.",
       );
     } finally {
       setSubmitting(false);
@@ -283,6 +326,14 @@ function MedicinesPage() {
                   Controlled
                 </Badge>
               ) : null}
+              {m.status === "INACTIVE" ? (
+                <Badge
+                  variant="outline"
+                  className="border-destructive/25 bg-destructive/10 text-destructive"
+                >
+                  Inactive
+                </Badge>
+              ) : null}
               <Badge
                 variant="outline"
                 className={
@@ -293,15 +344,40 @@ function MedicinesPage() {
               >
                 {m.availableStock} in stock
               </Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground"
+                onClick={() => openEdit(m)}
+                aria-label={`Edit ${m.name}`}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              {m.status !== "INACTIVE" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={togglingId === m.id}
+                  onClick={() => deactivate(m)}
+                >
+                  Deactivate
+                </Button>
+              ) : null}
             </div>
           ))}
         </Card>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) resetForm();
+        }}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add a medicine</DialogTitle>
+            <DialogTitle>{editing ? `Edit ${editing.name}` : "Add a medicine"}</DialogTitle>
             <DialogDescription>
               Categories, units and manufacturers come from your organization's master data.
             </DialogDescription>
@@ -395,6 +471,20 @@ function MedicinesPage() {
                   onChange={(e) => setReorderLevel(e.target.value)}
                 />
               </div>
+              {editing ? (
+                <div className="space-y-1.5">
+                  <Label>Status</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="INACTIVE">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-4">
               <label className="flex items-center gap-2 text-sm">
@@ -415,7 +505,13 @@ function MedicinesPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Adding…" : "Add medicine"}
+                {submitting
+                  ? editing
+                    ? "Saving…"
+                    : "Adding…"
+                  : editing
+                    ? "Save changes"
+                    : "Add medicine"}
               </Button>
             </div>
           </form>

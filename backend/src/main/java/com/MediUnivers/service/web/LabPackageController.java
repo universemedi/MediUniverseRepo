@@ -3,6 +3,7 @@ package com.MediUnivers.service.web;
 import com.MediUnivers.service.domain.AppUser;
 import com.MediUnivers.service.dto.CreateLabPackageRequest;
 import com.MediUnivers.service.dto.LabPackageDto;
+import com.MediUnivers.service.dto.UpdateLabPackageRequest;
 import com.MediUnivers.service.security.CurrentUserService;
 import com.MediUnivers.service.service.LabPackageService;
 import jakarta.validation.Valid;
@@ -32,6 +33,19 @@ public class LabPackageController {
     @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_LAB_MANAGER'))")
     public LabPackageDto create(@Valid @RequestBody CreateLabPackageRequest request) {
         return service.create(requireOrgUser().getOrganization(), request);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_LAB_MANAGER'))")
+    public LabPackageDto update(@PathVariable Long id, @Valid @RequestBody UpdateLabPackageRequest request) {
+        return service.update(requireOrgUser().getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_LAB_MANAGER'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivate(@PathVariable Long id) {
+        service.deactivate(requireOrgUser().getOrganization(), id);
     }
 
     private AppUser requireOrgUser() {

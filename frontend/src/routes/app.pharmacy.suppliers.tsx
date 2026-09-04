@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Lock, Plus, ShieldAlert, Truck } from "lucide-react";
+import { Lock, Pencil, Plus, ShieldAlert, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/lib/api";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -8,7 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -45,14 +53,17 @@ function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Supplier | null>(null);
   const [name, setName] = useState("");
   const [contactName, setContactName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [gstNumber, setGstNumber] = useState("");
+  const [status, setStatus] = useState("ACTIVE");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   function load() {
     if (isPlatform || unavailable) return;
@@ -90,13 +101,41 @@ function SuppliersPage() {
   }
 
   function resetForm() {
+    setEditing(null);
     setName("");
     setContactName("");
     setPhone("");
     setEmail("");
     setAddress("");
     setGstNumber("");
+    setStatus("ACTIVE");
     setError(null);
+  }
+
+  function openEdit(s: Supplier) {
+    setEditing(s);
+    setName(s.name);
+    setContactName(s.contactName ?? "");
+    setPhone(s.phone ?? "");
+    setEmail(s.email ?? "");
+    setAddress(s.address ?? "");
+    setGstNumber(s.gstNumber ?? "");
+    setStatus(s.status);
+    setError(null);
+    setOpen(true);
+  }
+
+  async function deactivate(s: Supplier) {
+    setTogglingId(s.id);
+    try {
+      await apiFetch(`/api/pharmacy/suppliers/${s.id}`, { method: "DELETE" });
+      toast.success(`${s.name} deactivated`);
+      load();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't deactivate this supplier.");
+    } finally {
+      setTogglingId(null);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -105,24 +144,28 @@ function SuppliersPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await apiFetch("/api/pharmacy/suppliers", {
-        method: "POST",
-        data: {
-          name: name.trim(),
-          contactName: contactName.trim() || null,
-          phone: phone.trim() || null,
-          email: email.trim() || null,
-          address: address.trim() || null,
-          gstNumber: gstNumber.trim() || null,
-        },
-      });
-      toast.success(`${name.trim()} added`);
+      const body = {
+        name: name.trim(),
+        contactName: contactName.trim() || null,
+        phone: phone.trim() || null,
+        email: email.trim() || null,
+        address: address.trim() || null,
+        gstNumber: gstNumber.trim() || null,
+        status: editing ? status : undefined,
+      };
+      if (editing) {
+        await apiFetch(`/api/pharmacy/suppliers/${editing.id}`, { method: "PUT", data: body });
+        toast.success(`${name.trim()} updated`);
+      } else {
+        await apiFetch("/api/pharmacy/suppliers", { method: "POST", data: body });
+        toast.success(`${name.trim()} added`);
+      }
       setOpen(false);
       resetForm();
       load();
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Couldn't add this supplier. Please try again.",
+        err instanceof ApiError ? err.message : "Couldn't save this supplier. Please try again.",
       );
     } finally {
       setSubmitting(false);
@@ -174,15 +217,48 @@ function SuppliersPage() {
                   {s.email ?? "No email"}
                 </p>
               </div>
+              {s.status === "INACTIVE" ? (
+                <Badge
+                  variant="outline"
+                  className="border-destructive/25 bg-destructive/10 text-destructive"
+                >
+                  Inactive
+                </Badge>
+              ) : null}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground"
+                onClick={() => openEdit(s)}
+                aria-label={`Edit ${s.name}`}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              {s.status !== "INACTIVE" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={togglingId === s.id}
+                  onClick={() => deactivate(s)}
+                >
+                  Deactivate
+                </Button>
+              ) : null}
             </div>
           ))}
         </Card>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) resetForm();
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add a supplier</DialogTitle>
+            <DialogTitle>{editing ? `Edit ${editing.name}` : "Add a supplier"}</DialogTitle>
             <DialogDescription>Used on purchase orders and goods receipts.</DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleSubmit} noValidate>
@@ -228,6 +304,20 @@ function SuppliersPage() {
                   onChange={(e) => setAddress(e.target.value)}
                 />
               </div>
+              {editing ? (
+                <div className="space-y-1.5">
+                  <Label>Status</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="INACTIVE">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
             </div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <div className="flex justify-end gap-2 border-t pt-4">
@@ -235,7 +325,13 @@ function SuppliersPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Adding…" : "Add supplier"}
+                {submitting
+                  ? editing
+                    ? "Saving…"
+                    : "Adding…"
+                  : editing
+                    ? "Save changes"
+                    : "Add supplier"}
               </Button>
             </div>
           </form>

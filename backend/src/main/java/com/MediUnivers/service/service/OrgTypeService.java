@@ -4,6 +4,7 @@ import com.MediUnivers.service.domain.OrgType;
 import com.MediUnivers.service.dto.CreateOrgTypeRequest;
 import com.MediUnivers.service.dto.OrgTypeDto;
 import com.MediUnivers.service.dto.UpdateOrgTypeRequest;
+import com.MediUnivers.service.repository.OrganizationRepository;
 import com.MediUnivers.service.repository.OrgTypeRepository;
 import com.MediUnivers.service.security.CurrentUserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -21,6 +22,7 @@ import java.util.List;
 public class OrgTypeService {
 
     private final OrgTypeRepository repository;
+    private final OrganizationRepository organizationRepository;
     private final AuditLogService auditLogService;
     private final CurrentUserService currentUserService;
 
@@ -62,13 +64,27 @@ public class OrgTypeService {
         return DtoMapper.toDto(repository.save(t));
     }
 
-    /** Soft delete — existing organizations keep working even if their type is later hidden from the signup catalog. */
+    /** Hides it from the signup catalog immediately while any existing organizations of this type
+     * keep working unaffected — use this instead of delete when it might still be needed later. */
     @Transactional
     public void deactivate(Long id) {
         OrgType t = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Organization type not found: " + id));
         t.setActive(false);
         repository.save(t);
+    }
+
+    /** Real delete — only when no organization (of any status) references it; otherwise use deactivate instead. */
+    @Transactional
+    public void delete(Long id) {
+        OrgType t = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Organization type not found: " + id));
+        if (organizationRepository.countByOrgTypeId(id) > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Organizations are using this type — deactivate it instead of deleting it.");
+        }
+        repository.delete(t);
+        auditLogService.record(currentUserService.require(), "DELETED", "ORG_TYPE", t.getCode(), null);
     }
 
     private void applyFields(OrgType t, String name, String description,

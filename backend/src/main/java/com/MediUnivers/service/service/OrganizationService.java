@@ -53,6 +53,8 @@ public class OrganizationService {
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentGatewayService paymentGatewayService;
     private final ModulePriceRepository modulePriceRepository;
+    private final AddonPricingRepository addonPricingRepository;
+    private final AddonAccessService addonAccessService;
     private final PlatformNotificationService platformNotificationService;
     private final com.MediUnivers.service.realtime.RealtimeEventService realtimeEventService;
 
@@ -129,6 +131,13 @@ public class OrganizationService {
         inviteOwner(org, head, request.ownerFullName(), request.ownerEmail(), request.ownerPhone());
 
         return DtoMapper.toDto(org, List.of(head));
+    }
+
+    /** Platform staff correcting an org's own profile fields — e.g. a typo entered while closing an offline deal — without needing the org's own Owner/Admin to log in and use the self-service {@link #updateProfile} endpoint. Same field set, same validation. */
+    public OrganizationDto updatePlatformProfile(Long organizationId, UpdateOrganizationProfileRequest request) {
+        Organization org = organizationRepository.findById(organizationId)
+                .orElseThrow(() -> new EntityNotFoundException("Organization not found: " + organizationId));
+        return updateProfile(org, request);
     }
 
     public OrganizationDto changePlan(Long organizationId, String planCode) {
@@ -241,15 +250,15 @@ public class OrganizationService {
     }
 
     /** Step 2a (public, no login): pick a real plan and ask the gateway for an order. */
-    public GatewayOrderDto selectPlanAndCreateGatewayOrder(Long organizationId, String signupToken, String planCode) {
+    public GatewayOrderDto selectPlanAndCreateGatewayOrder(Long organizationId, String signupToken, SelectPlanRequest request) {
         Organization org = requireDraftOrgByToken(organizationId, signupToken);
-        Plan plan = requirePlan(planCode);
+        Plan plan = requirePlan(request.planCode());
         if (plan.isFreeTrial()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This plan is a free trial — use the free trial signup instead.");
         }
 
         cancelPendingSubscriptions(organizationId);
-        Subscription sub = buildPendingSubscription(org, plan);
+        Subscription sub = buildPendingSubscription(org, plan, request.billingCycle(), request.addons());
         subscriptionRepository.save(sub);
         return requestGatewayOrder(org, sub);
     }
@@ -292,23 +301,80 @@ public class OrganizationService {
                 request.maxDoctorsPerBranch(), priceWithoutTax);
 
         cancelPendingSubscriptions(organizationId);
-        Subscription sub = buildPendingSubscription(org, plan);
+        Subscription sub = buildPendingSubscription(org, plan, request.billingCycle(), request.addons());
         subscriptionRepository.save(sub);
         return requestGatewayOrder(org, sub);
     }
 
-    private Subscription buildPendingSubscription(Organization org, Plan plan) {
+    private Subscription buildPendingSubscription(Organization org, Plan plan, String billingCycle, List<AddonSelectionInput> addons) {
         Subscription sub = new Subscription();
         sub.setOrganization(org);
         sub.setPlan(plan);
         sub.setPlanCodeSnapshot(plan.getCode());
         sub.setPlanNameSnapshot(plan.getName());
         sub.setStartDate(LocalDate.now());
-        sub.setPriceWithoutTax(plan.getPriceWithoutTax());
-        sub.setTaxPercent(plan.getTaxPercent());
-        sub.setPriceWithTax(PricingCalculator.withTax(plan.getPriceWithoutTax(), plan.getTaxPercent()));
+        applyPricing(sub, plan, billingCycle, addons);
         sub.setStatus(SubscriptionStatus.PENDING_PAYMENT);
         return sub;
+    }
+
+    /** Sets billingCycle, prices the plan for that cycle, prices/attaches every selected addon for that
+     * same cycle, and rolls the whole thing (plan + addons) into priceWithoutTax/priceWithTax — the one
+     * place every checkout path (new signup, custom plan, plan change) computes what's actually owed. */
+    private void applyPricing(Subscription sub, Plan plan, String billingCycleRaw, List<AddonSelectionInput> addonInputs) {
+        BillingCycle cycle = parseBillingCycle(billingCycleRaw);
+        sub.setBillingCycle(cycle);
+
+        java.math.BigDecimal basePrice = cycle == BillingCycle.YEARLY
+                ? (plan.getPriceWithoutTaxYearly() != null ? plan.getPriceWithoutTaxYearly()
+                        : plan.getPriceWithoutTax().multiply(java.math.BigDecimal.valueOf(12)))
+                : plan.getPriceWithoutTax();
+
+        java.math.BigDecimal addonsTotal = java.math.BigDecimal.ZERO;
+        if (addonInputs != null) {
+            for (AddonSelectionInput input : addonInputs) {
+                AddonType type = parseAddonType(input.addonType());
+                AddonPricing pricing = addonPricingRepository.findByAddonType(type)
+                        .filter(AddonPricing::isActive)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, type + " isn't available right now."));
+                int quantity = pricing.isQuantityBased() ? Math.max(1, input.quantity()) : 1;
+                java.math.BigDecimal unitPriceWithoutTax = cycle == BillingCycle.YEARLY
+                        ? (pricing.getPricePerUnitYearly() != null ? pricing.getPricePerUnitYearly()
+                                : pricing.getPricePerUnitMonthly().multiply(java.math.BigDecimal.valueOf(12)))
+                        : pricing.getPricePerUnitMonthly();
+
+                SubscriptionAddon addon = new SubscriptionAddon();
+                addon.setAddonType(type);
+                addon.setQuantity(quantity);
+                addon.setUnitPriceWithoutTax(unitPriceWithoutTax);
+                addon.setUnitPriceWithTax(PricingCalculator.withTax(unitPriceWithoutTax, plan.getTaxPercent()));
+                sub.addAddon(addon);
+
+                addonsTotal = addonsTotal.add(unitPriceWithoutTax.multiply(java.math.BigDecimal.valueOf(quantity)));
+            }
+        }
+
+        java.math.BigDecimal totalWithoutTax = basePrice.add(addonsTotal);
+        sub.setPriceWithoutTax(totalWithoutTax);
+        sub.setTaxPercent(plan.getTaxPercent());
+        sub.setPriceWithTax(PricingCalculator.withTax(totalWithoutTax, plan.getTaxPercent()));
+    }
+
+    private BillingCycle parseBillingCycle(String raw) {
+        if (raw == null || raw.isBlank()) return BillingCycle.MONTHLY;
+        try {
+            return BillingCycle.valueOf(raw.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown billing cycle: " + raw);
+        }
+    }
+
+    private AddonType parseAddonType(String raw) {
+        try {
+            return AddonType.valueOf(raw.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown addon: " + raw);
+        }
     }
 
     private GatewayOrderDto requestGatewayOrder(Organization org, Subscription sub) {
@@ -359,7 +425,7 @@ public class OrganizationService {
         sub.setGatewayOrderId(request.gatewayOrderId());
         sub.setGatewayPaymentId(request.gatewayPaymentId());
         sub.setStartDate(LocalDate.now());
-        sub.setEndDate(LocalDate.now().plusMonths(1));
+        sub.setEndDate(endDateFor(sub.getBillingCycle()));
         subscriptionRepository.save(sub);
 
         org.setPlan(sub.getPlan());
@@ -372,6 +438,10 @@ public class OrganizationService {
         return DtoMapper.toDto(org, branchRepository.findByOrganizationId(org.getId()));
     }
 
+    private LocalDate endDateFor(BillingCycle cycle) {
+        return cycle == BillingCycle.YEARLY ? LocalDate.now().plusYears(1) : LocalDate.now().plusMonths(1);
+    }
+
     // ---------------- Org self-service: re-subscribe (req #4) ----------------
 
     /**
@@ -380,8 +450,8 @@ public class OrganizationService {
      * /subscribe but never paid) or SUSPENDED/CANCELLED (lapsed) — this is
      * how they pick a plan and pay to activate/reactivate.
      */
-    public GatewayOrderDto createPlanChangeGatewayOrder(Organization organization, String planCode) {
-        Plan plan = requirePlan(planCode);
+    public GatewayOrderDto createPlanChangeGatewayOrder(Organization organization, ChangePlanRequest request) {
+        Plan plan = requirePlan(request.planCode());
         if (plan.isFreeTrial()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Free trial is only available when first creating an organization.");
         }
@@ -394,9 +464,7 @@ public class OrganizationService {
         sub.setPlanCodeSnapshot(plan.getCode());
         sub.setPlanNameSnapshot(plan.getName());
         sub.setStartDate(LocalDate.now());
-        sub.setPriceWithoutTax(plan.getPriceWithoutTax());
-        sub.setTaxPercent(plan.getTaxPercent());
-        sub.setPriceWithTax(PricingCalculator.withTax(plan.getPriceWithoutTax(), plan.getTaxPercent()));
+        applyPricing(sub, plan, request.billingCycle(), request.addons());
         sub.setStatus(SubscriptionStatus.PENDING_PAYMENT);
         subscriptionRepository.save(sub);
 
@@ -452,7 +520,7 @@ public class OrganizationService {
         sub.setGatewayOrderId(request.gatewayOrderId());
         sub.setGatewayPaymentId(request.gatewayPaymentId());
         sub.setStartDate(LocalDate.now());
-        sub.setEndDate(LocalDate.now().plusMonths(1));
+        sub.setEndDate(endDateFor(sub.getBillingCycle()));
         subscriptionRepository.save(sub);
 
         organization.setPlan(sub.getPlan());
@@ -577,8 +645,8 @@ public class OrganizationService {
         long currentActive = branchRepository.findByOrganizationId(organization.getId()).stream()
                 .filter(b -> b.getStatus() != BranchStatus.CLOSED)
                 .count();
-        if (currentActive >= organization.getPlan().getMaxBranches()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Your subscription branch limit has been reached.");
+        if (currentActive >= addonAccessService.effectiveMaxBranches(organization)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Your subscription branch limit has been reached — buy the Extra Branch addon to add more.");
         }
 
         Branch branch = new Branch();
@@ -745,7 +813,17 @@ public class OrganizationService {
         }
     }
 
+    /** Reserved fallback used whenever a signup path doesn't ask for an organization type
+     * (the public signup flow no longer does) — the most permissive built-in type, so the org
+     * starts able to run every module its plan actually pays for. */
+    private static final String DEFAULT_ORG_TYPE_CODE = "MULTI_SPECIALITY";
+
     private OrgType requireOrgType(String code) {
+        if (code == null || code.isBlank()) {
+            return orgTypeRepository.findByCode(DEFAULT_ORG_TYPE_CODE)
+                    .or(() -> orgTypeRepository.findAll().stream().filter(OrgType::isActive).findFirst())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "No organization type is configured yet."));
+        }
         return orgTypeRepository.findByCode(code)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown organization type: " + code));
     }

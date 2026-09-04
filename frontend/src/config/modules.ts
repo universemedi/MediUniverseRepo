@@ -1424,6 +1424,20 @@ export const MODULES: ModulePageDef[] = [
       col("status", "Status", "badge", { options: ["Paid", "Pending"] }),
     ],
   },
+  {
+    path: "patient/family",
+    title: "My Family",
+    description: "Family members registered under your patient record.",
+    group: "patient",
+    singular: "Family Member",
+    rowCount: 4,
+    columns: [
+      col("name", "Name", "text"),
+      col("relation", "Relation", "text"),
+      col("gender", "Gender", "badge", { options: ["Male", "Female"] }),
+      col("dob", "Date of Birth", "date"),
+    ],
+  },
 ];
 
 export const moduleByPath = (path: string) => MODULES.find((m) => m.path === path);

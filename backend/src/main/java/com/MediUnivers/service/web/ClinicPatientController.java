@@ -38,8 +38,15 @@ public class ClinicPatientController {
     }
 
     @PutMapping("/{id}")
-    public PatientDto update(@PathVariable Long id, @Valid @RequestBody CreatePatientRequest request) {
+    public PatientDto update(@PathVariable Long id, @Valid @RequestBody UpdatePatientRequest request) {
         return patientService.update(requireOrgUser().getOrganization(), id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_CLINIC_ADMIN') or hasAuthority('ROLE_RECEPTIONIST'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivate(@PathVariable Long id) {
+        patientService.deactivate(requireOrgUser().getOrganization(), id);
     }
 
     @GetMapping("/{id}/family")
@@ -50,6 +57,13 @@ public class ClinicPatientController {
     @PostMapping("/{id}/family")
     public FamilyMemberDto addFamily(@PathVariable Long id, @Valid @RequestBody CreateFamilyMemberRequest request) {
         return patientService.addFamilyMember(requireOrgUser().getOrganization(), id, request);
+    }
+
+    @PostMapping("/{id}/invite-portal")
+    @PreAuthorize("hasAuthority('PORTAL_TENANT') and (hasAuthority('ROLE_ORG_OWNER') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_CLINIC_ADMIN') or hasAuthority('ROLE_RECEPTIONIST'))")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void invitePortal(@PathVariable Long id) {
+        patientService.invitePatientToPortal(requireOrgUser().getOrganization(), id);
     }
 
     private AppUser requireOrgUser() {

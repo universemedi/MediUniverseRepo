@@ -53,15 +53,17 @@ public class BillingService {
     private final CurrentUserService currentUserService;
     private final NotificationService notificationService;
     private final Map<String, PaymentGatewayService> gateways;
+    private final AddonAccessService addonAccessService;
     private static final String DEFAULT_GATEWAY = "razorpay";
 
     public BillingService(InvoiceRepository invoiceRepository, NumberSeriesService numberSeriesService,
                            CurrentUserService currentUserService, NotificationService notificationService,
-                           List<PaymentGatewayService> gatewayBeans) {
+                           List<PaymentGatewayService> gatewayBeans, AddonAccessService addonAccessService) {
         this.invoiceRepository = invoiceRepository;
         this.numberSeriesService = numberSeriesService;
         this.currentUserService = currentUserService;
         this.notificationService = notificationService;
+        this.addonAccessService = addonAccessService;
         // Keyed by each gateway's own gatewayName() — not the Spring bean name — so the
         // API surface (and any request body) can use a short, stable identifier like
         // "razorpay" regardless of how the implementation class happens to be named.
@@ -120,6 +122,60 @@ public class BillingService {
         return invoice;
     }
 
+    /** Called by a source module when the thing that generated an invoice gets voided (e.g. a cancelled lab order) —
+     * only safe for an invoice nothing has been paid against yet; anything already paid needs a refund, not a cancel. */
+    public void cancelInvoice(Organization organization, Long invoiceId) {
+        Invoice invoice = requireOwned(organization, invoiceId);
+        if (invoice.getStatus() == InvoiceStatus.CANCELLED) return;
+        if (invoice.getAmountPaid().signum() > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This invoice already has a payment recorded against it — refund it instead of cancelling.");
+        }
+        invoice.setStatus(InvoiceStatus.CANCELLED);
+    }
+
+    /** Called by a source module (e.g. Pharmacy returns) to credit part of an invoice back — reduces
+     * the grand total by the returned amount, and if that pushes what's been paid above the new
+     * total, records a refund payment for the difference (money actually owed back to the patient). */
+    public Invoice applyReturnCredit(Organization organization, Long invoiceId, BigDecimal amount,
+                                      PaymentMode refundMode, String note) {
+        if (amount.signum() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Credit amount must be greater than zero.");
+        }
+        Invoice invoice = requireOwned(organization, invoiceId);
+        if (invoice.getStatus() == InvoiceStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This invoice has been cancelled.");
+        }
+        if (amount.compareTo(invoice.getGrandTotal()) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "That's more than the invoice's total.");
+        }
+        invoice.setGrandTotal(invoice.getGrandTotal().subtract(amount));
+
+        BigDecimal excess = invoice.getAmountPaid().subtract(invoice.getGrandTotal());
+        if (excess.signum() > 0) {
+            Payment refund = new Payment();
+            refund.setPaymentNumber(numberSeriesService.next(organization, "PAYMENT", "PAY", ResetPolicy.YEARLY, 6));
+            refund.setAmount(excess);
+            refund.setMode(refundMode);
+            refund.setNote(note);
+            refund.setRefund(true);
+            refund.setReceivedBy(currentUserService.require());
+            refund.setReceivedAt(Instant.now());
+            invoice.addPayment(refund);
+            invoice.setAmountPaid(invoice.getAmountPaid().subtract(excess));
+        }
+
+        BigDecimal balance = invoice.balanceDue();
+        if (balance.compareTo(BigDecimal.ZERO) <= 0) {
+            invoice.setStatus(InvoiceStatus.PAID);
+        } else if (invoice.getAmountPaid().signum() > 0) {
+            invoice.setStatus(InvoiceStatus.PARTIALLY_PAID);
+        } else {
+            invoice.setStatus(InvoiceStatus.UNPAID);
+        }
+        return invoiceRepository.save(invoice);
+    }
+
     public Invoice recordPayment(Organization organization, Long invoiceId, RecordPaymentRequest request) {
         Invoice invoice = requireOwned(organization, invoiceId);
         if (invoice.getStatus() == InvoiceStatus.PAID) {
@@ -169,6 +225,10 @@ public class BillingService {
     /** Step 1 of online payment: create an order on the gateway so the frontend can open its checkout widget. */
     @Transactional(readOnly = true)
     public GatewayOrderDto createGatewayOrder(Organization organization, Long invoiceId, CreateGatewayOrderRequest request) {
+        if (!addonAccessService.hasAddon(organization, AddonType.PAYMENT_GATEWAY)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Buy the Payment addon to collect online payments — record this one manually (cash/UPI/bank transfer) instead.");
+        }
         Invoice invoice = requireOwned(organization, invoiceId);
         if (invoice.balanceDue().compareTo(BigDecimal.ZERO) <= 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This invoice has nothing outstanding to pay.");

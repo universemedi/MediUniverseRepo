@@ -99,6 +99,38 @@ const EMPTY_FORM: CreateForm = {
 
 type FieldErrors = Partial<Record<keyof CreateForm, string>>;
 
+interface EditForm {
+  name: string;
+  email: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode: string;
+  gstNumber: string;
+  registrationNumber: string;
+  website: string;
+}
+
+function toEditForm(o: OrganizationApiDto): EditForm {
+  return {
+    name: o.name,
+    email: o.email ?? "",
+    phone: o.phone ?? "",
+    addressLine1: o.addressLine1 ?? "",
+    addressLine2: o.addressLine2 ?? "",
+    city: o.city ?? "",
+    state: o.state ?? "",
+    country: o.country ?? "",
+    postalCode: o.postalCode ?? "",
+    gstNumber: o.gstNumber ?? "",
+    registrationNumber: o.registrationNumber ?? "",
+    website: o.website ?? "",
+  };
+}
+
 const selectStyles = {
   control: (base: Record<string, unknown>, state: { isFocused: boolean }) => ({
     ...base,
@@ -139,6 +171,12 @@ function OrganizationsPage() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [editing, setEditing] = useState<OrganizationApiDto | null>(null);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editNameError, setEditNameError] = useState<string | null>(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
   const states = useIndiaStates();
   const [cityOptions, setCityOptions] = useState<string[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
@@ -179,6 +217,52 @@ function OrganizationsPage() {
       );
   }
   useEffect(load, [isPlatform]);
+
+  function openEdit(org: OrganizationApiDto) {
+    setEditing(org);
+    setEditForm(toEditForm(org));
+    setEditError(null);
+    setEditNameError(null);
+  }
+
+  async function submitEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editing || !editForm) return;
+    if (!editForm.name.trim() || editForm.name.trim().length < 3) {
+      setEditNameError("Organization name must be at least 3 characters.");
+      return;
+    }
+    setEditNameError(null);
+    setEditError(null);
+    setEditSubmitting(true);
+    try {
+      await apiFetch(`/api/platform/organizations/${editing.id}`, {
+        method: "PUT",
+        data: {
+          name: editForm.name.trim(),
+          email: editForm.email.trim() || null,
+          phone: editForm.phone.trim() || null,
+          addressLine1: editForm.addressLine1.trim() || null,
+          addressLine2: editForm.addressLine2.trim() || null,
+          city: editForm.city.trim() || null,
+          state: editForm.state.trim() || null,
+          country: editForm.country.trim() || null,
+          postalCode: editForm.postalCode.trim() || null,
+          gstNumber: editForm.gstNumber.trim() || null,
+          registrationNumber: editForm.registrationNumber.trim() || null,
+          website: editForm.website.trim() || null,
+        },
+      });
+      toast.success(`${editForm.name.trim()} updated`);
+      setEditing(null);
+      setEditForm(null);
+      load();
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : "Couldn't update this organization.");
+    } finally {
+      setEditSubmitting(false);
+    }
+  }
 
   async function changeStatus(org: OrganizationApiDto, status: string) {
     try {
@@ -353,6 +437,11 @@ function OrganizationsPage() {
           rows={orgs.map(toRow)}
           columns={columns}
           canExport
+          canUpdate={canCreate}
+          onEdit={(row) => {
+            const org = orgs.find((o) => String(o.id) === row["id"]);
+            if (org) openEdit(org);
+          }}
         />
       )}
 
@@ -633,6 +722,140 @@ function OrganizationsPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!editing}
+        onOpenChange={(v) => {
+          if (!v) {
+            setEditing(null);
+            setEditForm(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit {editing?.name}</DialogTitle>
+            <DialogDescription>
+              Correct this organization's own profile fields — the same fields its Owner/Admin can
+              edit from their own Settings page. Subdomain, org type and plan are changed elsewhere.
+            </DialogDescription>
+          </DialogHeader>
+          {editForm ? (
+            <form className="space-y-4" onSubmit={submitEdit} noValidate>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>
+                    Organization name<span className="ml-1 font-bold text-destructive">*</span>
+                  </Label>
+                  <Input
+                    value={editForm.name}
+                    className={cn(editNameError && "border-destructive")}
+                    onChange={(e) => {
+                      setEditForm({ ...editForm, name: e.target.value });
+                      if (editNameError) setEditNameError(null);
+                    }}
+                  />
+                  {editNameError ? (
+                    <p className="text-xs font-medium text-destructive">{editNameError}</p>
+                  ) : null}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Phone</Label>
+                  <Input
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Address line 1</Label>
+                  <Input
+                    value={editForm.addressLine1}
+                    onChange={(e) => setEditForm({ ...editForm, addressLine1: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Address line 2</Label>
+                  <Input
+                    value={editForm.addressLine2}
+                    onChange={(e) => setEditForm({ ...editForm, addressLine2: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>City</Label>
+                  <Input
+                    value={editForm.city}
+                    onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>State</Label>
+                  <Input
+                    value={editForm.state}
+                    onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Country</Label>
+                  <Input
+                    value={editForm.country}
+                    onChange={(e) => setEditForm({ ...editForm, country: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Postal code</Label>
+                  <Input
+                    value={editForm.postalCode}
+                    onChange={(e) => setEditForm({ ...editForm, postalCode: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>GST number</Label>
+                  <Input
+                    value={editForm.gstNumber}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, gstNumber: e.target.value.toUpperCase() })
+                    }
+                    maxLength={15}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Registration number</Label>
+                  <Input
+                    value={editForm.registrationNumber}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, registrationNumber: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Website</Label>
+                  <Input
+                    value={editForm.website}
+                    onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
+                  />
+                </div>
+              </div>
+              {editError ? <p className="text-sm text-destructive">{editError}</p> : null}
+              <div className="flex justify-end gap-2 border-t pt-4">
+                <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={editSubmitting}>
+                  {editSubmitting ? "Saving…" : "Save changes"}
+                </Button>
+              </div>
+            </form>
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

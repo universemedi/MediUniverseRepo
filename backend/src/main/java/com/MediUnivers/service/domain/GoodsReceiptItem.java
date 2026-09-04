@@ -27,6 +27,11 @@ public class GoodsReceiptItem {
     @JoinColumn(name = "medicine_id")
     private Medicine medicine;
 
+    /** the batch this line created — needed so a reversal can find and undo exactly it */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "batch_id")
+    private Batch batch;
+
     @Column(name = "batch_number", nullable = false, length = 60)
     private String batchNumber;
 

@@ -80,6 +80,11 @@ interface MasterItem {
   name: string;
   platformDefault: boolean;
 }
+interface Department {
+  id: number;
+  name: string;
+  status: string;
+}
 
 const EMPTY_RANGE: RangeRow = {
   gender: "",
@@ -98,6 +103,7 @@ function TestsPage() {
 
   const [tests, setTests] = useState<LabTest[] | null>(null);
   const [categories, setCategories] = useState<MasterItem[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [search, setSearch] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -106,6 +112,7 @@ function TestsPage() {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [sampleType, setSampleType] = useState("Blood");
   const [price, setPrice] = useState("");
   const [taxPercent, setTaxPercent] = useState("0");
@@ -121,10 +128,12 @@ function TestsPage() {
     Promise.all([
       apiFetch<LabTest[]>(`/api/lab/tests${term ? `?search=${encodeURIComponent(term)}` : ""}`),
       apiFetch<MasterItem[]>("/api/lab/categories"),
+      apiFetch<Department[]>("/api/org/departments"),
     ])
-      .then(([t, c]) => {
+      .then(([t, c, d]) => {
         setTests(t);
         setCategories(c);
+        setDepartments(d.filter((dep) => dep.status === "ACTIVE"));
       })
       .catch((err) =>
         setLoadError(err instanceof ApiError ? err.message : "Couldn't load the test master."),
@@ -162,6 +171,7 @@ function TestsPage() {
     setCode("");
     setName("");
     setCategoryId("");
+    setDepartmentId("");
     setSampleType("Blood");
     setPrice("");
     setTaxPercent("0");
@@ -176,6 +186,7 @@ function TestsPage() {
     setCode(t.code);
     setName(t.name);
     setCategoryId(t.categoryId ? String(t.categoryId) : "");
+    setDepartmentId(t.departmentId ? String(t.departmentId) : "");
     setSampleType(t.sampleType);
     setPrice(String(t.price));
     setTaxPercent(String(t.taxPercent));
@@ -223,6 +234,7 @@ function TestsPage() {
         code: code.trim(),
         name: name.trim(),
         categoryId: categoryId ? Number(categoryId) : null,
+        departmentId: departmentId ? Number(departmentId) : null,
         sampleType: sampleType.trim(),
         price: Number(price),
         taxPercent: taxPercent ? Number(taxPercent) : 0,
@@ -398,6 +410,21 @@ function TestsPage() {
                     {categories.map((c) => (
                       <SelectItem key={c.id} value={String(c.id)}>
                         {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Department (optional)</Label>
+                <Select value={departmentId} onValueChange={setDepartmentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={String(d.id)}>
+                        {d.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

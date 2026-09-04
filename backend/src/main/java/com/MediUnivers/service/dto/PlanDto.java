@@ -20,9 +20,13 @@ public record PlanDto(
         BigDecimal priceWithoutTax,
         BigDecimal taxPercent,
         BigDecimal priceWithTax,
+        /** Null when this plan isn't offered yearly yet — the frontend falls back to priceWithoutTax x 12. */
+        BigDecimal priceWithoutTaxYearly,
+        BigDecimal priceWithTaxYearly,
         boolean freeTrial,
         int freeTrialDays,
         boolean active,
+        boolean defaultSelected,
         LocalDate validFrom,
         LocalDate validTo,
         Set<ModuleGroup> modules,

@@ -1,10 +1,13 @@
 package com.MediUnivers.service.repository;
 
 import com.MediUnivers.service.domain.StockLedgerEntry;
+import com.MediUnivers.service.domain.StockMovementType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
 public interface StockLedgerEntryRepository extends JpaRepository<StockLedgerEntry, Long> {
     List<StockLedgerEntry> findByMedicineIdAndBranchIdOrderByCreatedAtDesc(Long medicineId, Long branchId);
+
+    List<StockLedgerEntry> findByOrganizationIdAndBranchIdAndTypeOrderByCreatedAtDesc(Long organizationId, Long branchId, StockMovementType type);
 }

@@ -25,6 +25,9 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
     long countByStatusIn(List<OrgStatus> statuses);
     long countByStatusInAndCreatedAtBefore(List<OrgStatus> statuses, Instant before);
 
+    /** Guards a hard delete of the org type — never remove one an organization (of any status) still references. */
+    long countByOrgTypeId(Long orgTypeId);
+
     /** Atomic, gap-tolerant sequence — safe under concurrent organization creation. */
     @Query(value = "select nextval('organization_code_seq')", nativeQuery = true)
     long nextOrganizationCodeNumber();

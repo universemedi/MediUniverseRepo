@@ -64,10 +64,12 @@ public class PlanService {
         p.setCode(request.code());
         applyFields(p, request.name(), request.tagline(), request.maxBranches(), request.maxUsers(),
                 request.maxDoctorsPerBranch(), request.storageLabel(), request.priceWithoutTax(), request.taxPercent(),
-                request.freeTrial(), request.freeTrialDays(), true, request.validFrom(), request.validTo(),
+                request.priceWithoutTaxYearly(), request.freeTrial(), request.freeTrialDays(), true, request.validFrom(), request.validTo(),
                 request.modules(), request.highlights());
         p.setSortOrder(repository.findAll().size());
         p.setPriceLabel(formatPriceLabel(request.priceWithoutTax(), request.freeTrial(), request.freeTrialDays()));
+        if (request.defaultSelected()) clearOtherDefaults(null);
+        p.setDefaultSelected(request.defaultSelected());
         Plan saved = repository.save(p);
         auditLogService.record(currentUserService.require(), "CREATED", "PLAN", saved.getCode(), null);
         return DtoMapper.toDto(saved);
@@ -81,9 +83,11 @@ public class PlanService {
         requireValidWindow(request.validFrom(), request.validTo());
         applyFields(p, request.name(), request.tagline(), request.maxBranches(), request.maxUsers(),
                 request.maxDoctorsPerBranch(), request.storageLabel(), request.priceWithoutTax(), request.taxPercent(),
-                request.freeTrial(), request.freeTrialDays(), request.active(), request.validFrom(), request.validTo(),
+                request.priceWithoutTaxYearly(), request.freeTrial(), request.freeTrialDays(), request.active(), request.validFrom(), request.validTo(),
                 request.modules(), request.highlights());
         p.setPriceLabel(formatPriceLabel(request.priceWithoutTax(), request.freeTrial(), request.freeTrialDays()));
+        if (request.defaultSelected()) clearOtherDefaults(p.getId());
+        p.setDefaultSelected(request.defaultSelected());
         Plan saved = repository.save(p);
         auditLogService.record(currentUserService.require(), "UPDATED", "PLAN", saved.getCode(), null);
         return DtoMapper.toDto(saved);
@@ -109,6 +113,17 @@ public class PlanService {
         repository.save(p);
     }
 
+    /** Only one plan is ever pre-selected on the public picker — unset the flag on every other
+     * plan (excludeId lets an update skip unsetting the very row it's about to set true on). */
+    private void clearOtherDefaults(Long excludeId) {
+        for (Plan other : repository.findAll()) {
+            if (other.isDefaultSelected() && !other.getId().equals(excludeId)) {
+                other.setDefaultSelected(false);
+                repository.save(other);
+            }
+        }
+    }
+
     private void requireNotReserved(Plan p) {
         if (UNSUBSCRIBED_PLAN_CODE.equals(p.getCode()) || p.getCode().startsWith("CUSTOM-")) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This is a reserved system plan and can't be modified.");
@@ -117,7 +132,7 @@ public class PlanService {
 
     private void applyFields(Plan p, String name, String tagline, int maxBranches, int maxUsers, int maxDoctorsPerBranch,
                               String storageLabel, java.math.BigDecimal priceWithoutTax, java.math.BigDecimal taxPercent,
-                              boolean freeTrial, int freeTrialDays, boolean active,
+                              java.math.BigDecimal priceWithoutTaxYearly, boolean freeTrial, int freeTrialDays, boolean active,
                               java.time.LocalDate validFrom, java.time.LocalDate validTo,
                               java.util.Set<com.MediUnivers.service.domain.ModuleGroup> modules, List<String> highlights) {
         p.setName(name);
@@ -128,6 +143,7 @@ public class PlanService {
         p.setStorageLabel(storageLabel);
         p.setPriceWithoutTax(priceWithoutTax);
         p.setTaxPercent(taxPercent);
+        p.setPriceWithoutTaxYearly(priceWithoutTaxYearly);
         p.setFreeTrial(freeTrial);
         p.setFreeTrialDays(freeTrialDays);
         p.setActive(active);

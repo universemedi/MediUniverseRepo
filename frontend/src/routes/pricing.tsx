@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Check, Minus } from "lucide-react";
 import { SiteLayout, PageHero } from "@/components/site/SiteLayout";
+import { PlanAddonPicker } from "@/components/site/PlanAddonPicker";
+import { TestimonialsPreview } from "@/components/site/TestimonialsPreview";
 import { apiFetchPublic, ApiError } from "@/lib/api";
 import type { PlanApiDto } from "@/lib/types";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
@@ -38,20 +37,6 @@ const MODULE_ROWS: { key: string; label: string }[] = [
   { key: "PATIENT", label: "Patient portal" },
 ];
 
-function currency(n: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
-
-function priceLine(p: PlanApiDto): string {
-  if (p.freeTrial) return `Free / ${p.freeTrialDays} days`;
-  if (!p.priceWithoutTax) return "Custom";
-  return `${currency(p.priceWithTax)} / month`;
-}
-
 function PricingPage() {
   const [plans, setPlans] = useState<PlanApiDto[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -71,67 +56,20 @@ function PricingPage() {
         bannerKey="pricing"
       />
 
-      <section className="mx-auto max-w-6xl px-4 py-16">
-        {loadError ? (
+      {loadError ? (
+        <section className="mx-auto max-w-6xl px-4 py-16">
           <Card className="p-4 text-sm text-destructive">{loadError}</Card>
-        ) : !plans ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-80 rounded-xl" />
-            ))}
-          </div>
-        ) : (
-          <>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {plans.map((p) => (
-                <Card key={p.code} className="flex flex-col p-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-foreground">{p.name}</h2>
-                    {p.code === "PROFESSIONAL" ? (
-                      <Badge className="bg-primary text-primary-foreground">Popular</Badge>
-                    ) : null}
-                  </div>
-                  <p className="mt-2 text-2xl font-semibold text-primary">{priceLine(p)}</p>
-                  {!p.freeTrial && p.priceWithoutTax > 0 ? (
-                    <p className="text-xs text-muted-foreground">
-                      {currency(p.priceWithoutTax)} + {p.taxPercent}% tax
-                    </p>
-                  ) : null}
-                  <p className="mt-2 text-sm text-muted-foreground">{p.tagline}</p>
-                  <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
-                    {p.highlights.map((h) => (
-                      <li key={h} className="flex items-start gap-2">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {h}
-                      </li>
-                    ))}
-                    <li className="flex items-start gap-2">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {p.storageLabel}{" "}
-                      storage
-                    </li>
-                  </ul>
-                  <div className="mt-5 flex flex-col gap-2">
-                    {p.freeTrial ? (
-                      <Button asChild variant={p.code === "PROFESSIONAL" ? "default" : "outline"}>
-                        <Link to="/free-trial">Start free trial</Link>
-                      </Button>
-                    ) : (
-                      <>
-                        <Button asChild variant={p.code === "PROFESSIONAL" ? "default" : "outline"}>
-                          <Link to="/subscribe" search={{ plan: p.code }}>
-                            Subscribe now
-                          </Link>
-                        </Button>
-                        <Button asChild variant="ghost" size="sm">
-                          <Link to="/request-demo">Talk to sales instead</Link>
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
+        </section>
+      ) : (
+        <PlanAddonPicker />
+      )}
 
-            <h2 className="mt-16 text-xl font-semibold tracking-tight text-foreground">
+      <TestimonialsPreview />
+
+      {plans && !loadError ? (
+        <section className="mx-auto max-w-6xl px-4 py-16">
+          <>
+            <h2 className="text-xl font-semibold tracking-tight text-foreground">
               Module comparison
             </h2>
             <div className="mt-4 overflow-x-auto rounded-lg border border-border">
@@ -189,8 +127,8 @@ function PricingPage() {
               </table>
             </div>
           </>
-        )}
-      </section>
+        </section>
+      ) : null}
     </SiteLayout>
   );
 }

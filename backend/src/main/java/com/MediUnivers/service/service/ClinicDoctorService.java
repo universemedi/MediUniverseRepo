@@ -28,6 +28,7 @@ public class ClinicDoctorService {
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final AccessService accessService;
+    private final AddonAccessService addonAccessService;
 
     @Transactional(readOnly = true)
     public List<DoctorDto> list(Organization organization) {
@@ -68,8 +69,8 @@ public class ClinicDoctorService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Branch does not belong to this organization."));
             // Doctor seats are capped per branch by the subscription (req #7), separate from the org-wide user seat check above.
             long doctorsInBranch = doctorRepository.countByBranchId(branch.getId());
-            if (doctorsInBranch >= organization.getPlan().getMaxDoctorsPerBranch()) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "This branch has reached its subscription's doctor limit.");
+            if (doctorsInBranch >= addonAccessService.effectiveMaxDoctorsPerBranch(organization)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "This branch has reached its subscription's doctor limit — buy the Extra Doctor addon to add more.");
             }
         }
 
@@ -125,8 +126,8 @@ public class ClinicDoctorService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Branch does not belong to this organization."));
             if (!branch.getId().equals(doctor.getBranch() != null ? doctor.getBranch().getId() : null)) {
                 long doctorsInBranch = doctorRepository.countByBranchId(branch.getId());
-                if (doctorsInBranch >= organization.getPlan().getMaxDoctorsPerBranch()) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "This branch has reached its subscription's doctor limit.");
+                if (doctorsInBranch >= addonAccessService.effectiveMaxDoctorsPerBranch(organization)) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "This branch has reached its subscription's doctor limit — buy the Extra Doctor addon to add more.");
                 }
             }
         }

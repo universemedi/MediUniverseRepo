@@ -4,7 +4,7 @@ import { Check, CheckCircle2, ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout, PageHero } from "@/components/site/SiteLayout";
 import { apiFetchPublic, ApiError } from "@/lib/api";
-import type { ModulePriceApiDto, PlanApiDto } from "@/lib/types";
+import type { AddonPricingApiDto, ModulePriceApiDto, PlanApiDto } from "@/lib/types";
 import { readSignupSession, clearSignupSession, type SignupSession } from "@/lib/signupSession";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -158,6 +158,10 @@ function ChoosePlanPage() {
   const [customError, setCustomError] = useState<string | null>(null);
   const [customPaying, setCustomPaying] = useState(false);
 
+  const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
+  const [addonPricing, setAddonPricing] = useState<AddonPricingApiDto[] | null>(null);
+  const [selectedAddons, setSelectedAddons] = useState<Record<string, number>>({});
+
   useEffect(() => {
     const { session: stored, preselectPlan } = readSignupSession();
     setSession(stored);
@@ -171,7 +175,95 @@ function ChoosePlanPage() {
     apiFetchPublic<ModulePriceApiDto[]>("/api/public/module-prices")
       .then(setModulePrices)
       .catch(() => setModulePrices([]));
+    apiFetchPublic<AddonPricingApiDto[]>("/api/public/addon-pricing")
+      .then(setAddonPricing)
+      .catch(() => setAddonPricing([]));
   }, []);
+
+  function addonUnitPrice(a: AddonPricingApiDto) {
+    if (billingCycle === "YEARLY") return a.pricePerUnitYearly ?? a.pricePerUnitMonthly * 12;
+    return a.pricePerUnitMonthly;
+  }
+
+  function toggleAddon(a: AddonPricingApiDto, checked: boolean) {
+    setSelectedAddons((prev) => {
+      const next = { ...prev };
+      if (checked) next[a.addonType] = a.quantityBased ? Math.max(1, next[a.addonType] ?? 1) : 1;
+      else delete next[a.addonType];
+      return next;
+    });
+  }
+
+  function setAddonQuantity(addonType: string, quantity: number) {
+    setSelectedAddons((prev) => ({ ...prev, [addonType]: Math.max(1, quantity) }));
+  }
+
+  const addonSelections = Object.entries(selectedAddons).map(([addonType, quantity]) => ({
+    addonType,
+    quantity,
+  }));
+  const addonsTotalWithoutTax = (addonPricing ?? []).reduce((sum, a) => {
+    const qty = selectedAddons[a.addonType];
+    if (!qty) return sum;
+    return sum + addonUnitPrice(a) * qty;
+  }, 0);
+
+  function planPrice(p: PlanApiDto) {
+    if (billingCycle === "YEARLY") {
+      return {
+        withTax: p.priceWithTaxYearly ?? p.priceWithTax * 12,
+        withoutTax: p.priceWithoutTaxYearly ?? p.priceWithoutTax * 12,
+      };
+    }
+    return { withTax: p.priceWithTax, withoutTax: p.priceWithoutTax };
+  }
+
+  function AddonsPicker() {
+    if (!addonPricing || addonPricing.length === 0) return null;
+    return (
+      <Card className="mt-8 p-6">
+        <h2 className="text-sm font-semibold text-foreground">Add extras (optional)</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Applies to whichever plan you subscribe to below — SMS, WhatsApp and online payment
+          collection are simple on/off unlocks; the rest raise your plan's limits per unit.
+        </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {addonPricing.map((a) => {
+            const checked = a.addonType in selectedAddons;
+            return (
+              <div
+                key={a.addonType}
+                className="flex items-center justify-between gap-2 rounded-md border p-2.5 text-sm"
+              >
+                <label className="flex flex-1 items-center gap-2">
+                  <Checkbox checked={checked} onCheckedChange={(v) => toggleAddon(a, !!v)} />
+                  <span>
+                    {a.label}
+                    {a.quantityBased && a.unitLabel ? (
+                      <span className="text-muted-foreground"> (per {a.unitLabel})</span>
+                    ) : null}
+                  </span>
+                </label>
+                {checked && a.quantityBased ? (
+                  <Input
+                    type="number"
+                    min={1}
+                    className="h-8 w-16"
+                    value={selectedAddons[a.addonType]}
+                    onChange={(e) => setAddonQuantity(a.addonType, Number(e.target.value) || 1)}
+                  />
+                ) : null}
+                <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">
+                  {currency(addonUnitPrice(a))}
+                  {billingCycle === "YEARLY" ? "/yr" : "/mo"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    );
+  }
 
   async function subscribe(plan: PlanApiDto) {
     if (!session) return;
@@ -183,7 +275,7 @@ function ChoosePlanPage() {
         {
           method: "POST",
           headers: { "X-Signup-Token": session.token },
-          data: { planCode: plan.code },
+          data: { planCode: plan.code, billingCycle, addons: addonSelections },
         },
       );
       await payAndConfirm(
@@ -206,9 +298,13 @@ function ChoosePlanPage() {
     setSelectedModules((prev) => (checked ? [...prev, group] : prev.filter((m) => m !== group)));
   }
 
-  const customTotal = (modulePrices ?? [])
+  const customMonthlyBase = (modulePrices ?? [])
     .filter((m) => selectedModules.includes(m.moduleGroup))
     .reduce((sum, m) => sum + m.pricePerMonth, 0);
+  const customTotal =
+    billingCycle === "YEARLY"
+      ? customMonthlyBase * 12 + addonsTotalWithoutTax
+      : customMonthlyBase + addonsTotalWithoutTax;
   const customTotalWithTax = customTotal * (1 + CUSTOM_TAX_PERCENT / 100);
 
   async function subscribeCustom() {
@@ -232,7 +328,14 @@ function ChoosePlanPage() {
         {
           method: "POST",
           headers: { "X-Signup-Token": session.token },
-          data: { modules: selectedModules, maxBranches, maxUsers, maxDoctorsPerBranch },
+          data: {
+            modules: selectedModules,
+            maxBranches,
+            maxUsers,
+            maxDoctorsPerBranch,
+            billingCycle,
+            addons: addonSelections,
+          },
         },
       );
       await payAndConfirm(
@@ -298,6 +401,26 @@ function ChoosePlanPage() {
         ) : (
           <>
             {error ? <p className="mb-4 text-sm text-destructive">{error}</p> : null}
+
+            <div className="mb-6 flex justify-center">
+              <div className="inline-flex rounded-lg border border-border p-1">
+                {(["MONTHLY", "YEARLY"] as const).map((cycle) => (
+                  <button
+                    key={cycle}
+                    type="button"
+                    onClick={() => setBillingCycle(cycle)}
+                    className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                      billingCycle === cycle
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {cycle === "MONTHLY" ? "Monthly" : "Yearly"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-3">
               {plans.map((p) => (
                 <Card
@@ -311,10 +434,15 @@ function ChoosePlanPage() {
                     ) : null}
                   </div>
                   <p className="mt-2 text-2xl font-semibold text-primary">
-                    {currency(p.priceWithTax)} / month
+                    {currency(
+                      planPrice(p).withTax + addonsTotalWithoutTax * (1 + p.taxPercent / 100),
+                    )}{" "}
+                    / {billingCycle === "YEARLY" ? "year" : "month"}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {currency(p.priceWithoutTax)} + {p.taxPercent}% tax
+                    {currency(planPrice(p).withoutTax + addonsTotalWithoutTax)} + {p.taxPercent}%
+                    tax
+                    {Object.keys(selectedAddons).length ? " (incl. addons)" : ""}
                   </p>
                   <p className="mt-2 text-sm text-muted-foreground">{p.tagline}</p>
 
@@ -360,6 +488,8 @@ function ChoosePlanPage() {
                 </Card>
               ))}
             </div>
+
+            <AddonsPicker />
 
             <Card className="mt-8 p-6">
               <button

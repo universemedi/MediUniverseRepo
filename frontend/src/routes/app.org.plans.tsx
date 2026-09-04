@@ -5,9 +5,11 @@ import { toast } from "sonner";
 import { apiFetch, apiFetchPublic, ApiError } from "@/lib/api";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAppSelector } from "@/store";
-import type { PlanApiDto } from "@/lib/types";
+import type { AddonPricingApiDto, PlanApiDto, SubscriptionAddonApiDto } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/app/org/plans")({
   head: () => ({
@@ -95,11 +97,127 @@ function ReSubscribePage() {
   const [payingCode, setPayingCode] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
+  const [addonPricing, setAddonPricing] = useState<AddonPricingApiDto[] | null>(null);
+  const [currentAddons, setCurrentAddons] = useState<SubscriptionAddonApiDto[] | null>(null);
+  const [selectedAddons, setSelectedAddons] = useState<Record<string, number>>({});
+  const [addonsOpen, setAddonsOpen] = useState(false);
+  const [addonsSaving, setAddonsSaving] = useState(false);
+
   useEffect(() => {
     apiFetchPublic<PlanApiDto[]>("/api/public/plans")
       .then((all) => setPlans(all.filter((p) => !p.freeTrial)))
       .catch(() => setError("Couldn't load plans. Please refresh and try again."));
+    apiFetchPublic<AddonPricingApiDto[]>("/api/public/addon-pricing")
+      .then(setAddonPricing)
+      .catch(() => setAddonPricing([]));
   }, []);
+
+  useEffect(() => {
+    if (!isLive) return;
+    apiFetch<SubscriptionAddonApiDto[]>("/api/org/subscription/addons")
+      .then((data) => {
+        setCurrentAddons(data);
+        setSelectedAddons(Object.fromEntries(data.map((a) => [a.addonType, a.quantity])));
+      })
+      .catch(() => setCurrentAddons([]));
+  }, [isLive]);
+
+  function addonUnitPrice(a: AddonPricingApiDto) {
+    if (billingCycle === "YEARLY") return a.pricePerUnitYearly ?? a.pricePerUnitMonthly * 12;
+    return a.pricePerUnitMonthly;
+  }
+
+  function toggleAddon(a: AddonPricingApiDto, checked: boolean) {
+    setSelectedAddons((prev) => {
+      const next = { ...prev };
+      if (checked) next[a.addonType] = a.quantityBased ? Math.max(1, next[a.addonType] ?? 1) : 1;
+      else delete next[a.addonType];
+      return next;
+    });
+  }
+
+  function setAddonQuantity(addonType: string, quantity: number) {
+    setSelectedAddons((prev) => ({ ...prev, [addonType]: Math.max(1, quantity) }));
+  }
+
+  const addonSelections = Object.entries(selectedAddons).map(([addonType, quantity]) => ({
+    addonType,
+    quantity,
+  }));
+
+  async function saveAddons() {
+    if (!currentPlanCode) return;
+    setAddonsSaving(true);
+    setError(null);
+    try {
+      const order = await apiFetch<GatewayOrder>(
+        "/api/org/subscription/change-plan/gateway-order",
+        {
+          method: "POST",
+          data: { planCode: currentPlanCode, billingCycle, addons: addonSelections },
+        },
+      );
+
+      const confirm = async (
+        gatewayOrderId: string,
+        gatewayPaymentId: string,
+        signature: string,
+      ) => {
+        try {
+          await apiFetch("/api/org/subscription/change-plan/confirm", {
+            method: "POST",
+            data: { gateway: order.gateway, gatewayOrderId, gatewayPaymentId, signature },
+          });
+          toast.success("Addons updated");
+          setAddonsOpen(false);
+          window.location.reload();
+        } catch (err) {
+          toast.error(
+            err instanceof ApiError
+              ? err.message
+              : "Payment succeeded but couldn't be confirmed — contact support.",
+          );
+        } finally {
+          setAddonsSaving(false);
+        }
+      };
+
+      if (order.mock) {
+        await confirm(order.gatewayOrderId, "mock_payment_" + Date.now(), "mock_signature");
+        return;
+      }
+
+      await loadRazorpayScript();
+      if (!window.Razorpay) throw new Error("Payment widget failed to load.");
+
+      const checkout = new window.Razorpay({
+        key: order.publicKey,
+        amount: Math.round(order.amount * 100),
+        currency: order.currency,
+        name: "MediUnivers",
+        description: "Addon update",
+        order_id: order.gatewayOrderId,
+        handler: async (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) => {
+          await confirm(
+            response.razorpay_order_id,
+            response.razorpay_payment_id,
+            response.razorpay_signature,
+          );
+        },
+        modal: { ondismiss: () => setAddonsSaving(false) },
+        theme: { color: "#0f766e" },
+      });
+      checkout.open();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't update addons. Please try again.");
+      setAddonsSaving(false);
+    }
+  }
 
   if (isPlatform) {
     return (
@@ -121,7 +239,7 @@ function ReSubscribePage() {
         "/api/org/subscription/change-plan/gateway-order",
         {
           method: "POST",
-          data: { planCode: plan.code },
+          data: { planCode: plan.code, billingCycle, addons: addonSelections },
         },
       );
 
@@ -241,12 +359,39 @@ function ReSubscribePage() {
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
+      <div className="flex justify-center">
+        <div className="inline-flex rounded-lg border border-border p-1">
+          {(["MONTHLY", "YEARLY"] as const).map((cycle) => (
+            <button
+              key={cycle}
+              type="button"
+              onClick={() => setBillingCycle(cycle)}
+              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                billingCycle === cycle
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {cycle === "MONTHLY" ? "Monthly" : "Yearly"}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {!plans ? (
         <p className="text-sm text-muted-foreground">Loading plans…</p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {plans.map((p) => {
             const isCurrent = isLive && p.code === currentPlanCode;
+            const priceWithTax =
+              billingCycle === "YEARLY"
+                ? (p.priceWithTaxYearly ?? p.priceWithTax * 12)
+                : p.priceWithTax;
+            const priceWithoutTax =
+              billingCycle === "YEARLY"
+                ? (p.priceWithoutTaxYearly ?? p.priceWithoutTax * 12)
+                : p.priceWithoutTax;
             return (
               <Card key={p.code} className="flex flex-col p-5">
                 <div className="flex items-center justify-between gap-2">
@@ -258,10 +403,10 @@ function ReSubscribePage() {
                   ) : null}
                 </div>
                 <p className="mt-1 text-xl font-semibold text-primary">
-                  {currency(p.priceWithTax)} / month
+                  {currency(priceWithTax)} / {billingCycle === "YEARLY" ? "year" : "month"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {currency(p.priceWithoutTax)} + {p.taxPercent}% tax
+                  {currency(priceWithoutTax)} + {p.taxPercent}% tax
                 </p>
                 <ul className="mt-3 flex-1 space-y-1 text-xs text-muted-foreground">
                   {p.highlights.map((h) => (
@@ -289,6 +434,74 @@ function ReSubscribePage() {
           })}
         </div>
       )}
+
+      {addonPricing && addonPricing.length > 0 ? (
+        <Card className="p-5">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between text-left"
+            onClick={() => setAddonsOpen((v) => !v)}
+          >
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Addons</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {currentAddons && currentAddons.length > 0
+                  ? `${currentAddons.length} addon(s) active`
+                  : "SMS, WhatsApp, online payments, extra branches/doctors/staff/storage"}
+              </p>
+            </div>
+          </button>
+          {addonsOpen ? (
+            <div className="mt-4 space-y-3 border-t pt-4">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {addonPricing.map((a) => {
+                  const checked = a.addonType in selectedAddons;
+                  return (
+                    <div
+                      key={a.addonType}
+                      className="flex items-center justify-between gap-2 rounded-md border p-2.5 text-sm"
+                    >
+                      <label className="flex flex-1 items-center gap-2">
+                        <Checkbox checked={checked} onCheckedChange={(v) => toggleAddon(a, !!v)} />
+                        <span>
+                          {a.label}
+                          {a.quantityBased && a.unitLabel ? (
+                            <span className="text-muted-foreground"> (per {a.unitLabel})</span>
+                          ) : null}
+                        </span>
+                      </label>
+                      {checked && a.quantityBased ? (
+                        <Input
+                          type="number"
+                          min={1}
+                          className="h-8 w-16"
+                          value={selectedAddons[a.addonType]}
+                          onChange={(e) =>
+                            setAddonQuantity(a.addonType, Number(e.target.value) || 1)
+                          }
+                        />
+                      ) : null}
+                      <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">
+                        {currency(addonUnitPrice(a))}
+                        {billingCycle === "YEARLY" ? "/yr" : "/mo"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {isLive ? (
+                <Button onClick={saveAddons} disabled={addonsSaving}>
+                  {addonsSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save addons"}
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Pick your addons here, then subscribe to a plan above — they're added together.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
     </div>
   );
 }
